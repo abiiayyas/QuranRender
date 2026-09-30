@@ -74,7 +74,7 @@ pub fn init_background_worker(app: &mut tauri::App) {
                             job_id: job.id.clone(),
                             status: "error".to_string(),
                             progress: 0,
-                            error: Some(e),
+                            error: Some(e.to_string()),
                         });
                     }
                 }
@@ -84,8 +84,8 @@ pub fn init_background_worker(app: &mut tauri::App) {
 }
 
 #[tauri::command]
-pub fn enqueue_render(app_handle: tauri::AppHandle, job: RenderJob) -> Result<String, String> {
-    let tx = WORKER_TX.get().ok_or("Worker not initialized")?;
+pub fn enqueue_render(app_handle: tauri::AppHandle, job: RenderJob) -> Result<String, crate::error::AppError> {
+    let tx = WORKER_TX.get().ok_or("Worker not initialized".to_string())?;
     tx.send(job.clone()).map_err(|e| format!("Failed to enqueue job: {}", e))?;
 
     let _ = app_handle.emit("render-status", RenderStatusEvent {
@@ -139,7 +139,7 @@ fn run_ffmpeg_with_timeout(
     args: &[String],
     total_ms: u64,
     on_progress: std::sync::Arc<dyn Fn(u8) + Send + Sync>,
-) -> Result<(bool, String), String> {
+) -> Result<(bool, String), crate::error::AppError> {
     let max_secs = 2 * 60 * 60; // 2h — long renders run single-threaded (see -filter_threads 1), so be generous.
     let sleep = std::time::Duration::from_millis(500);
 
@@ -199,7 +199,7 @@ fn run_ffmpeg_with_timeout(
             let _ = filter_thread.join();
             let stderr = std::fs::read_to_string(&stderr_file_path).unwrap_or_default();
             let _ = std::fs::remove_file(&stderr_file_path);
-            return Err(format!("FFmpeg timed out after 30 minutes (filtergraph likely stalled): {}", stderr.trim()));
+            return Err(format!("FFmpeg timed out after 30 minutes (filtergraph likely stalled): {}", stderr.trim()).into());
         }
         std::thread::sleep(sleep);
     }
@@ -234,7 +234,7 @@ fn probe_audio_duration_ms(path: &str) -> u64 {
     duration_ms
 }
 
-fn execute_ffmpeg(job: &RenderJob, app_handle: &tauri::AppHandle) -> Result<(), String> {
+fn execute_ffmpeg(job: &RenderJob, app_handle: &tauri::AppHandle) -> Result<(), crate::error::AppError> {
     println!("Starting render job: {}", job.id);
 
     // Reset progress for this new job.
@@ -471,7 +471,7 @@ fn execute_ffmpeg(job: &RenderJob, app_handle: &tauri::AppHandle) -> Result<(), 
         filter_complex.push_str(&format!("[{}][v_overlay]overlay=0:0[vfinal]", current_bg));
         current_bg = "vfinal".to_string();
     } else {
-        return Err("No overlay provided".to_string());
+        return Err("No overlay provided".to_string().into());
     }
 
     args.push("-filter_complex".to_string());
@@ -556,7 +556,7 @@ fn execute_ffmpeg(job: &RenderJob, app_handle: &tauri::AppHandle) -> Result<(), 
 
     match status {
         Ok(s) if s.0 => Ok(()),
-        Ok(s) => Err(format!("Render failed: {}", s.1.trim())),
-        Err(e) => Err(format!("Failed to start FFmpeg: {}", e)),
+        Ok(s) => Err(format!("Render failed: {}", s.1.trim()).into()),
+        Err(e) => Err(format!("Failed to start FFmpeg: {}", e).into()),
     }
 }

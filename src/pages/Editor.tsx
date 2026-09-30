@@ -6,7 +6,9 @@ import { toPng } from 'html-to-image';
 import { getFontEmbedCSS } from '../utils/fontEmbed';
 import { PreviewCanvas, PreviewCanvasHandle } from '../components/PreviewCanvas';
 import { getAudioDuration } from '../utils/audio';
-import { convertFileSrc, invoke } from '@tauri-apps/api/core';
+import { convertFileSrc } from '@tauri-apps/api/core';
+import { fetchQuranVerses, downloadAudio, searchStockMedia, downloadBackground, fetchTafsir, aiSummarizeTafsir, aiGenerateImage, aiGenerateAudio, runAlignment } from '../lib/ipc';
+import { runCloudAlignment } from '../lib/cloudAligner';
 import { SURAH_LIST } from '../utils/surahList';
 import { RECITER_LIST } from '../utils/reciterList';
 
@@ -20,6 +22,7 @@ export const Editor: React.FC = () => {
   const [ayatEnd, setAyatEnd] = useState('2');
   const [loading, setLoading] = useState(false);
   const [autoFetchAudio, setAutoFetchAudio] = useState<boolean>(true);
+  const [useCloudAligner, setUseCloudAligner] = useState<boolean>(false);
   
   // AI & Tafsir State
   const [tafsirSourceId, setTafsirSourceId] = useState<string>('169'); // 169 = Ibn Kathir English
@@ -29,6 +32,27 @@ export const Editor: React.FC = () => {
   const [isGeneratingSummary, setIsGeneratingSummary] = useState<boolean>(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState<boolean>(false);
   const [isGeneratingAudio, setIsGeneratingAudio] = useState<boolean>(false);
+
+  // Stock background fetch state
+  interface StockMedia {
+    id: string;
+    provider: string;
+    media_type: string;
+    preview_url: string;
+    download_url: string;
+    width: number;
+    height: number;
+    duration: number | null;
+    author: string;
+  }
+  const [stockModalOpen, setStockModalOpen] = useState(false);
+  const [stockQuery, setStockQuery] = useState('');
+  const [stockProvider, setStockProvider] = useState<'pixabay' | 'pexels'>('pixabay');
+  const [stockType, setStockType] = useState<'image' | 'video'>('image');
+  const [stockResults, setStockResults] = useState<StockMedia[]>([]);
+  const [isFetchingStock, setIsFetchingStock] = useState(false);
+  const [isDownloadingStock, setIsDownloadingStock] = useState(false);
+  const [stockError, setStockError] = useState('');
 
   const activeSlide = store.activeSlideId ? store.slides.find(s => s.id === store.activeSlideId) : null; 
   const [reciterId, setReciterId] = useState('7'); // Default Mishary
@@ -108,12 +132,12 @@ export const Editor: React.FC = () => {
   const handleFetchAyat = async () => {
     try {
       setLoading(true);
-      const verses = await invoke('fetch_quran_verses', {
-        surah: parseInt(surah),
-        ayatStart: parseInt(ayatStart),
-        ayatEnd: parseInt(ayatEnd),
-        reciterId: parseInt(reciterId) // Pass reciterId to fetch words correctly from Rust
-      }) as any[];
+      const verses = await fetchQuranVerses(
+        parseInt(surah),
+        parseInt(ayatStart),
+        parseInt(ayatEnd),
+        parseInt(reciterId) // Pass reciterId to fetch words correctly from Rust
+      );
       store.setVerses(verses);
 
       if (autoFetchAudio && verses.length > 0) {
@@ -131,10 +155,7 @@ export const Editor: React.FC = () => {
             }
             const filename = `quran_${surah}_${v.ayah}_${reciterId}.mp3`;
             
-            const localPath = await invoke('download_audio', {
-              url,
-              filename
-            }) as string;
+            const localPath = await downloadAudio(url, filename);
             
             const dur = await getAudioDuration(convertFileSrc(localPath));
             store.updateVerseAudio(i, localPath, dur);
@@ -148,6 +169,57 @@ export const Editor: React.FC = () => {
     } catch (err) {
       console.error(err);
       alert('Failed to fetch ayat or audio');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSegment = async () => {
+    if (!store.audioPath || store.verses.length === 0) {
+      alert('Fetch ayat and audio first.');
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const req = {
+        audio_path: store.audioPath,
+        surah: parseInt(surah),
+        ayahs: store.verses.map(v => v.ayah),
+        texts: store.verses.map(v => v.arabic) // usually Arabic text is passed to aligner
+      };
+      
+      let segResult;
+      if (useCloudAligner) {
+        segResult = await runCloudAlignment(req, true); // true = local fallback
+      } else {
+        segResult = await runAlignment(req);
+      }
+
+      if (segResult.success && segResult.ayahs) {
+        const updatedVerses = store.verses.map((v) => {
+          const matched = segResult.ayahs.find(a => a.ayah === v.ayah);
+          if (matched) {
+            return {
+              ...v,
+              words: matched.words.map((w, idx) => ({
+                position: idx + 1,
+                arabic: w.word,
+                start_ms: w.start_ms,
+                end_ms: w.end_ms
+              })),
+            };
+          }
+          return v;
+        });
+        store.setVerses(updatedVerses as any);
+        alert('Alignment complete!');
+      } else {
+        alert('Alignment failed: ' + segResult.error_message);
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Alignment exception: ' + e);
     } finally {
       setLoading(false);
     }
@@ -170,6 +242,44 @@ export const Editor: React.FC = () => {
     });
     if (file) {
       store.setBgPath(file as string);
+    }
+  };
+
+  const handleSearchStock = async () => {
+    if (!stockQuery.trim()) return;
+    setIsFetchingStock(true);
+    setStockError('');
+    try {
+      const results = await searchStockMedia(
+        stockProvider,
+        stockQuery,
+        stockType,
+        24
+      );
+      setStockResults(results);
+      if (results.length === 0) setStockError('No results found.');
+    } catch (e) {
+      setStockError(String(e));
+      setStockResults([]);
+    } finally {
+      setIsFetchingStock(false);
+    }
+  };
+
+  const handlePickStock = async (item: StockMedia) => {
+    if (!item.download_url) { alert('No download URL for this item.'); return; }
+    setIsDownloadingStock(true);
+    try {
+      const extMatch = item.download_url.split('?')[0].match(/\.(\w{2,5})$/);
+      const ext = extMatch ? extMatch[1] : (item.media_type === 'video' ? 'mp4' : 'jpg');
+      const filename = `${item.provider}_${item.id}.${ext}`;
+      const localPath = await downloadBackground(item.download_url, filename);
+      store.setBgPath(localPath);
+      setStockModalOpen(false);
+    } catch (e) {
+      alert(`Download failed: ${e}`);
+    } finally {
+      setIsDownloadingStock(false);
     }
   };
 
@@ -297,7 +407,7 @@ export const Editor: React.FC = () => {
               
               const start_time = word.start_ms;
               const next_word = displayWords[i + 1] || nextSlideWord;
-              const end_time = next_word?.start_ms ?? (verse.audioDurationMs || 5000);
+              const end_time = word.end_ms ?? (next_word?.start_ms ?? (verse.audioDurationMs || 5000));
               
               const shouldFadeIn = isFirstSlideOfFirstVerse && i === 0 && previous_end_ms === 0;
               const shouldFadeOut = isLastSlideOfLastVerse && i === displayWords.length - 1;
@@ -428,9 +538,11 @@ export const Editor: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-1 overflow-hidden">
-      {/* Left panel: Controls */}
-      <div className="w-1/3 bg-card border-r border-border flex flex-col overflow-hidden">
+    <div className="flex flex-col flex-1 h-full overflow-hidden">
+      {/* Top Section */}
+      <div className="flex flex-1 h-[60%] min-h-[400px] overflow-hidden border-b border-border">
+        {/* Left panel: Controls */}
+        <div className="w-1/3 bg-card border-r border-border flex flex-col overflow-hidden">
         <div className="p-4 border-b border-border">
           <h2 className="text-xl font-bold mb-4">Project Editor</h2>
           <div className="flex bg-muted p-1 rounded-md">
@@ -527,8 +639,23 @@ export const Editor: React.FC = () => {
                       Auto-Fetch Audio & Enable Batch Mode
                     </label>
                   </div>
+                  <div className="flex items-center mb-2 gap-2">
+                    <input 
+                      type="checkbox" 
+                      id="useCloudAligner"
+                      checked={useCloudAligner}
+                      onChange={e => setUseCloudAligner(e.target.checked)}
+                      className="rounded bg-background border-input"
+                    />
+                    <label htmlFor="useCloudAligner" className="text-xs text-muted-foreground">
+                      Use Cloud HF Aligner (quranic-universal-aligner)
+                    </label>
+                  </div>
                   <button onClick={handleFetchAyat} disabled={loading} className="w-full bg-primary hover:bg-primary/90 py-2 rounded text-primary-foreground font-medium transition disabled:opacity-50">
                     {loading ? 'Processing...' : (autoFetchAudio ? 'Fetch & Auto-Audio' : 'Fetch Quran Text')}
+                  </button>
+                  <button onClick={handleSegment} disabled={loading || store.verses.length === 0} className="w-full bg-secondary hover:bg-secondary/80 py-2 rounded text-secondary-foreground font-medium transition disabled:opacity-50 mt-2">
+                    {loading ? 'Aligning...' : 'Run Aligner / Segment'}
                   </button>
                 </>
               ) : (
@@ -649,6 +776,10 @@ export const Editor: React.FC = () => {
               <button onClick={handleImportBackground} className="w-full bg-muted hover:bg-muted/80 py-2 rounded transition flex flex-col items-center justify-center p-2 text-sm">
                 <span className="font-semibold text-foreground">Import Background</span>
                 {store.bgPath && <span className="text-xs text-muted-foreground mt-1 break-all px-2">{store.bgPath}</span>}
+              </button>
+              <button onClick={() => setStockModalOpen(true)} className="w-full bg-muted hover:bg-muted/80 py-2 rounded transition flex flex-col items-center justify-center p-2 text-sm">
+                <span className="font-semibold text-foreground">🌐 Fetch Background Online</span>
+                <span className="text-xs text-muted-foreground mt-1">Pixabay / Pexels</span>
               </button>
               <button onClick={handleImportThumbnail} className="w-full bg-muted hover:bg-muted/80 py-2 rounded transition flex flex-col items-center justify-center p-2 text-sm">
                 <span className="font-semibold text-foreground">Import Thumbnail</span>
@@ -1009,11 +1140,11 @@ export const Editor: React.FC = () => {
                       if (!verse) return;
                       setIsFetchingTafsir(true);
                       try {
-                        const text = await invoke<string>('fetch_tafsir', { 
-                          surah: verse.surah, 
-                          ayah: verse.ayah, 
-                          tafsirId: parseInt(tafsirSourceId) 
-                        });
+                        const text = await fetchTafsir(
+                          verse.surah,
+                          verse.ayah,
+                          parseInt(tafsirSourceId)
+                        );
                         setRawTafsir(text);
                       } catch (e) {
                         alert(`Failed to fetch tafsir: ${e}`);
@@ -1040,10 +1171,10 @@ export const Editor: React.FC = () => {
                       if (!rawTafsir) { alert('Fetch raw tafsir first'); return; }
                       setIsGeneratingSummary(true);
                       try {
-                        const summary = await invoke<string>('ai_summarize_tafsir', { 
-                          rawText: rawTafsir,
-                          language: store.customization.translationLanguage
-                        });
+                        const summary = await aiSummarizeTafsir(
+                          rawTafsir,
+                          store.customization.translationLanguage
+                        );
                         setAiSummary(summary);
                       } catch (e) {
                         alert(`Failed to summarize: ${e}`);
@@ -1094,7 +1225,7 @@ export const Editor: React.FC = () => {
                         
                         setIsGeneratingImage(true);
                         try {
-                          const imgPath = await invoke<string>('ai_generate_image', { contextText });
+                          const imgPath = await aiGenerateImage(contextText);
                           store.updateSlideCustomBg(activeSlide.id, imgPath);
                         } catch (e) {
                           alert(`Image gen failed: ${e}`);
@@ -1114,7 +1245,7 @@ export const Editor: React.FC = () => {
                           if (!activeSlide.tafsirText) return;
                           setIsGeneratingAudio(true);
                           try {
-                            const audioPath = await invoke<string>('ai_generate_audio', { text: activeSlide.tafsirText });
+                            const audioPath = await aiGenerateAudio(activeSlide.tafsirText);
                             store.updateSlideAudio(activeSlide.id, audioPath);
                           } catch (e) {
                             alert(`Audio gen failed: ${e}`);
@@ -1197,8 +1328,79 @@ export const Editor: React.FC = () => {
              <h1 className="text-white font-bold text-center" style={{ fontSize: '100px', lineHeight: '1.2', textShadow: '0 4px 24px rgba(0,0,0,0.5)' }}>{thumbnailTitle}</h1>
              <p className="text-gray-300 font-semibold text-center" style={{ fontSize: '60px', textShadow: '0 2px 12px rgba(0,0,0,0.5)' }}>{thumbnailSubtitle}</p>
            </div>
+           </div>
         </div>
       </div>
+
+
+      {/* Stock Background Fetch Modal */}
+      {stockModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6" onClick={() => setStockModalOpen(false)}>
+          <div
+            className="bg-card border border-border rounded-lg shadow-xl w-full max-w-3xl max-h-[85vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-4 border-b border-border space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-card-foreground">Fetch Background Online</h3>
+                <button onClick={() => setStockModalOpen(false)} className="text-muted-foreground hover:text-foreground text-lg px-2">✕</button>
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={stockQuery}
+                  onChange={(e) => setStockQuery(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleSearchStock(); }}
+                  placeholder="Search... (e.g. night sky, mosque, mountains)"
+                  className="flex-1 p-2 bg-background border border-input rounded text-foreground text-sm"
+                  autoFocus
+                />
+                <button onClick={handleSearchStock} disabled={isFetchingStock || !stockQuery.trim()} className="px-4 py-2 rounded bg-primary hover:bg-primary/90 text-primary-foreground text-sm transition disabled:opacity-50">
+                  {isFetchingStock ? 'Searching...' : 'Search'}
+                </button>
+              </div>
+              <div className="flex gap-2">
+                <select value={stockProvider} onChange={(e) => setStockProvider(e.target.value as 'pixabay' | 'pexels')} className="p-1.5 bg-background border border-input rounded text-foreground text-xs">
+                  <option value="pixabay">Pixabay</option>
+                  <option value="pexels">Pexels</option>
+                </select>
+                <div className="flex rounded overflow-hidden border border-input">
+                  <button onClick={() => setStockType('image')} className={`px-3 py-1.5 text-xs ${stockType === 'image' ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:text-foreground'}`}>Photos</button>
+                  <button onClick={() => setStockType('video')} className={`px-3 py-1.5 text-xs ${stockType === 'video' ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:text-foreground'}`}>Videos</button>
+                </div>
+                <span className="text-[10px] text-muted-foreground self-center ml-auto">API key di Settings → Stock Background APIs</span>
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4">
+              {stockError && <p className="text-sm text-destructive mb-2">{stockError}</p>}
+              {isFetchingStock && <p className="text-sm text-muted-foreground">Searching...</p>}
+              <div className="grid grid-cols-3 gap-3">
+                {stockResults.map(item => (
+                  <button
+                    key={`${item.provider}-${item.id}`}
+                    onClick={() => handlePickStock(item)}
+                    disabled={isDownloadingStock}
+                    className="relative group rounded border border-border overflow-hidden hover:border-primary transition disabled:opacity-50"
+                  >
+                    <img src={item.preview_url} alt={`by ${item.author}`} loading="lazy" className="w-full h-28 object-cover" />
+                    <div className="absolute inset-x-0 bottom-0 bg-black/60 text-white text-[10px] px-1.5 py-0.5 flex items-center justify-between opacity-0 group-hover:opacity-100 transition">
+                      <span>by {item.author}</span>
+                      <span>{item.width}×{item.height}</span>
+                    </div>
+                    {item.duration != null && (
+                      <span className="absolute top-1 right-1 bg-black/70 text-white text-[10px] px-1.5 py-0.5 rounded">{item.duration}s</span>
+                    )}
+                    {isDownloadingStock && <div className="absolute inset-0 flex items-center justify-center bg-black/50"><span className="text-white text-xs">Downloading...</span></div>}
+                  </button>
+                ))}
+              </div>
+              {!isFetchingStock && stockResults.length === 0 && !stockError && (
+                <p className="text-sm text-muted-foreground text-center mt-8">Type a query and press Search.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

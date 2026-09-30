@@ -14,6 +14,20 @@ export const Settings: React.FC = () => {
   const [aiImageApiKey, setAiImageApiKey] = useState('');
   const [aiTtsProvider, setAiTtsProvider] = useState('openai');
   const [aiTtsApiKey, setAiTtsApiKey] = useState('');
+  const [pixabayApiKey, setPixabayApiKey] = useState('');
+  const [pexelsApiKey, setPexelsApiKey] = useState('');
+  const [ytDlpPath, setYtDlpPath] = useState('');
+  const [toolStatus, setToolStatus] = useState<any>(null);
+
+  const checkTools = async () => {
+    try {
+      const res: any = await invoke('check_ytdlp_status');
+      setToolStatus(res);
+      if (res?.yt_dlp_path) setYtDlpPath(res.yt_dlp_path);
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const loadAiSettings = async () => {
     try {
@@ -29,6 +43,12 @@ export const Settings: React.FC = () => {
       if (tp) setAiTtsProvider(tp);
       const tk = await invoke<string | null>('get_app_setting', { key: 'ai_tts_api_key' });
       if (tk) setAiTtsApiKey(tk);
+      const pk = await invoke<string | null>('get_app_setting', { key: 'pixabay_api_key' });
+      if (pk) setPixabayApiKey(pk);
+      const xk = await invoke<string | null>('get_app_setting', { key: 'pexels_api_key' });
+      if (xk) setPexelsApiKey(xk);
+      const ypath = await invoke<string | null>('get_app_setting', { key: 'yt_dlp_path' });
+      if (ypath) setYtDlpPath(ypath);
     } catch (e) {
       console.error(e);
     }
@@ -42,10 +62,14 @@ export const Settings: React.FC = () => {
       await invoke('save_app_setting', { key: 'ai_image_api_key', value: aiImageApiKey });
       await invoke('save_app_setting', { key: 'ai_tts_provider', value: aiTtsProvider });
       await invoke('save_app_setting', { key: 'ai_tts_api_key', value: aiTtsApiKey });
-      alert('AI Settings saved successfully!');
+      await invoke('save_app_setting', { key: 'pixabay_api_key', value: pixabayApiKey });
+      await invoke('save_app_setting', { key: 'pexels_api_key', value: pexelsApiKey });
+      await invoke('save_app_setting', { key: 'yt_dlp_path', value: ytDlpPath });
+      await checkTools();
+      alert('Settings saved successfully!');
     } catch (e) {
       console.error(e);
-      alert('Failed to save AI settings');
+      alert('Failed to save settings');
     }
   };
 
@@ -74,6 +98,7 @@ export const Settings: React.FC = () => {
   useEffect(() => {
     fetchCacheSize();
     loadAiSettings();
+    checkTools();
   }, []);
 
   return (
@@ -209,6 +234,73 @@ export const Settings: React.FC = () => {
                 </div>
               </div>
             </div>
+          </div>
+        </section>
+
+        {/* Stock Media APIs */}
+        <section className="bg-card p-6 rounded-lg border border-border shadow-sm">
+          <h3 className="text-xl font-semibold mb-4 text-card-foreground">Stock Background APIs</h3>
+          <div className="space-y-4">
+            <p className="text-xs text-muted-foreground">
+              API keys untuk fitur &quot;Fetch Background Online&quot;. Daftar gratis di{' '}
+              <a href="https://pixabay.com/api/docs/" target="_blank" rel="noreferrer" className="text-primary underline">Pixabay</a> dan{' '}
+              <a href="https://www.pexels.com/api/" target="_blank" rel="noreferrer" className="text-primary underline">Pexels</a>.
+            </p>
+            <div>
+              <label className="block text-sm text-muted-foreground mb-1">Pixabay API Key</label>
+              <Input
+                type="password"
+                value={pixabayApiKey}
+                onChange={(e) => setPixabayApiKey(e.target.value)}
+                placeholder="Pixabay API key"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-muted-foreground mb-1">Pexels API Key</label>
+              <Input
+                type="password"
+                value={pexelsApiKey}
+                onChange={(e) => setPexelsApiKey(e.target.value)}
+                placeholder="Pexels API key"
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* Video Clipper Tools */}
+        <section className="bg-card p-6 rounded-lg border border-border shadow-sm">
+          <h3 className="text-xl font-semibold mb-4 text-card-foreground">Video Clipper & YouTube Engine</h3>
+          <div className="space-y-4">
+            <div className="flex items-center gap-4">
+              <div className="flex-1">
+                <label className="block text-sm text-muted-foreground mb-1">yt-dlp Binary Path</label>
+                <Input
+                  type="text"
+                  value={ytDlpPath}
+                  onChange={(e) => setYtDlpPath(e.target.value)}
+                  placeholder="/usr/local/bin/yt-dlp"
+                />
+              </div>
+              <Button variant="secondary" className="mt-6" onClick={checkTools}>
+                Re-check Status
+              </Button>
+            </div>
+            {toolStatus && (
+              <div className="p-3 bg-muted rounded border border-border text-xs space-y-1">
+                <div className="flex items-center justify-between">
+                  <span>yt-dlp Engine:</span>
+                  <span className={toolStatus.yt_dlp_installed ? "text-green-500 font-semibold" : "text-red-500 font-semibold"}>
+                    {toolStatus.yt_dlp_installed ? `Installed (${toolStatus.yt_dlp_path})` : "Not Found"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>FFmpeg Converter:</span>
+                  <span className={toolStatus.ffmpeg_installed ? "text-green-500 font-semibold" : "text-red-500 font-semibold"}>
+                    {toolStatus.ffmpeg_installed ? `Installed (${toolStatus.ffmpeg_path})` : "Not Found"}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         </section>
 

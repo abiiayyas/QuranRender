@@ -1,4 +1,7 @@
 import { create } from 'zustand';
+import { ProjectDocument, ProjectHistoryManager, migrateToProjectDocument } from './project';
+
+const historyManager = new ProjectHistoryManager();
 
 export interface QuranAyah {
   surah: number;
@@ -14,6 +17,15 @@ export interface QuranAyah {
   }[];
   audioPath?: string | null;
   audioDurationMs?: number;
+}
+
+export interface BatchJob {
+  id: string;
+  projectDocument: any;
+  status: 'pending' | 'processing' | 'done' | 'error';
+  progress: number;
+  error?: string;
+  outputPath: string;
 }
 
 export interface Slide {
@@ -32,8 +44,8 @@ export interface Slide {
 }
 
 interface AppState {
-  currentProject: any | null;
-  setCurrentProject: (project: any) => void;
+  currentProject: ProjectDocument | null;
+  setCurrentProject: (project: ProjectDocument) => void;
   isExporting: boolean;
   setIsExporting: (isExporting: boolean) => void;
   
@@ -62,6 +74,10 @@ interface AppState {
   updateSlideAudio: (slideId: string, path: string | null) => void;
   activeSlideId: string | null;
   setActiveSlideId: (id: string | null) => void;
+  
+  globalCurrentTime: number;
+  setGlobalCurrentTime: (time: number) => void;
+  updateWordTiming: (verseIndex: number, wordIndex: number, start_ms: number, end_ms: number) => void;
   
   selectedTemplate: string;
   setSelectedTemplate: (template: string) => void;
@@ -101,9 +117,59 @@ interface AppState {
   updateCustomization: (newCust: Partial<AppState['customization']>) => void;
   clearProject: () => void;
   addVerse: (verse: QuranAyah) => void;
+  
+  commitHistory: () => void;
+  undo: () => void;
+  redo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
+
+  batchQueue: BatchJob[];
+  addBatchJob: (job: BatchJob) => void;
+  updateBatchJob: (id: string, updates: Partial<BatchJob>) => void;
+  removeBatchJob: (id: string) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
+  canUndo: false,
+  canRedo: false,
+  commitHistory: () => set((state) => {
+    const doc = migrateToProjectDocument(state);
+    historyManager.pushState(doc);
+    return { currentProject: doc, canUndo: historyManager.canUndo(), canRedo: historyManager.canRedo() };
+  }),
+  undo: () => set((state) => {
+    const prevDoc = historyManager.undo();
+    if (prevDoc) {
+      return {
+        currentProject: prevDoc,
+        verses: prevDoc.verses,
+        slides: prevDoc.slides,
+        customization: prevDoc.customization,
+        audioPath: prevDoc.assets.audioPath,
+        bgPath: prevDoc.assets.bgPath,
+        canUndo: historyManager.canUndo(),
+        canRedo: historyManager.canRedo()
+      };
+    }
+    return state;
+  }),
+  redo: () => set((state) => {
+    const nextDoc = historyManager.redo();
+    if (nextDoc) {
+      return {
+        currentProject: nextDoc,
+        verses: nextDoc.verses,
+        slides: nextDoc.slides,
+        customization: nextDoc.customization,
+        audioPath: nextDoc.assets.audioPath,
+        bgPath: nextDoc.assets.bgPath,
+        canUndo: historyManager.canUndo(),
+        canRedo: historyManager.canRedo()
+      };
+    }
+    return state;
+  }),
   isExporting: false,
   setIsExporting: (isExporting) => set({ isExporting }),
   currentProject: null,
@@ -164,6 +230,18 @@ export const useAppStore = create<AppState>((set) => ({
     if (newVerses[index]) {
       newVerses[index].audioPath = path;
       newVerses[index].audioDurationMs = durationMs;
+    }
+    return { verses: newVerses };
+  }),
+  
+  globalCurrentTime: 0,
+  setGlobalCurrentTime: (time) => set({ globalCurrentTime: time }),
+  
+  updateWordTiming: (verseIndex, wordIndex, start_ms, end_ms) => set((state) => {
+    const newVerses = [...state.verses];
+    if (newVerses[verseIndex] && newVerses[verseIndex].words[wordIndex]) {
+       newVerses[verseIndex].words[wordIndex].start_ms = start_ms;
+       newVerses[verseIndex].words[wordIndex].end_ms = end_ms;
     }
     return { verses: newVerses };
   }),
@@ -312,5 +390,14 @@ export const useAppStore = create<AppState>((set) => ({
       videoOrientation: 'vertical',
       videoDuration: null,
     }
-  })
+  }),
+  
+  batchQueue: [],
+  addBatchJob: (job) => set((state) => ({ batchQueue: [...state.batchQueue, job] })),
+  updateBatchJob: (id, updates) => set((state) => ({
+    batchQueue: state.batchQueue.map(j => j.id === id ? { ...j, ...updates } : j)
+  })),
+  removeBatchJob: (id) => set((state) => ({
+    batchQueue: state.batchQueue.filter(j => j.id !== id)
+  })),
 }));

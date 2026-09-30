@@ -121,13 +121,7 @@ pub async fn ai_summarize_tafsir(state: State<'_, AppState>, raw_text: String, l
     let lang_str = if language == "id" { "Bahasa Indonesia" } else { "English" };
     let system_prompt = format!("You are a helpful assistant for a Quran app. Summarize the following tafsir (interpretation) text into a concise 1-2 sentences maximum, suitable for a short video infographic text overlay. Output the result in {}. Do not mention the name of the tafsir book or author, just the essence of the meaning. Keep it engaging and easy to understand for general audience.", lang_str);
     
-    let result = match settings.provider.as_str() {
-        "openai" => call_openai_chat(&settings.api_key, &system_prompt, &raw_text).await?,
-        "gemini" => call_gemini_chat(&settings.api_key, &system_prompt, &raw_text).await?,
-        "claude" => call_claude_chat(&settings.api_key, &system_prompt, &raw_text).await?,
-        "deepseek" => call_deepseek_chat(&settings.api_key, &system_prompt, &raw_text).await?,
-        _ => return Err("Unsupported AI provider".to_string()),
-    };
+    let result = call_ai_completion(&state, &system_prompt, &raw_text).await?;
 
     // Save to cache
     {
@@ -139,6 +133,21 @@ pub async fn ai_summarize_tafsir(state: State<'_, AppState>, raw_text: String, l
     }
 
     Ok(result)
+}
+
+pub async fn call_ai_completion(state: &State<'_, AppState>, system_prompt: &str, user_prompt: &str) -> Result<String, String> {
+    let settings = get_ai_settings(state)?;
+    if settings.api_key.is_empty() {
+        return Err("AI API Key is not set in settings".to_string());
+    }
+
+    match settings.provider.as_str() {
+        "openai" => call_openai_chat(&settings.api_key, system_prompt, user_prompt).await,
+        "gemini" => call_gemini_chat(&settings.api_key, system_prompt, user_prompt).await,
+        "claude" => call_claude_chat(&settings.api_key, system_prompt, user_prompt).await,
+        "deepseek" => call_deepseek_chat(&settings.api_key, system_prompt, user_prompt).await,
+        _ => Err("Unsupported AI provider".to_string()),
+    }
 }
 
 #[tauri::command]

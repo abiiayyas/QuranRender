@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import { Home, Settings, ListVideo, PlaySquare, Menu } from 'lucide-react';
+import { Home, Settings, ListVideo, PlaySquare, Scissors, Menu } from 'lucide-react';
 import { listen } from '@tauri-apps/api/event';
 import { useAppStore } from '../../store';
 import { Button } from '../ui/button';
@@ -37,6 +37,9 @@ export const MainLayout: React.FC = () => {
       </Link>
       <Link to="/editor" className={`flex items-center gap-2 rounded-md px-3 py-2 transition-colors hover:bg-muted ${location.pathname === '/editor' ? 'bg-muted text-foreground' : 'text-muted-foreground'}`}>
         <PlaySquare size={16} /> <span className="hidden sm:inline">Editor</span>
+      </Link>
+      <Link to="/clipper" className={`flex items-center gap-2 rounded-md px-3 py-2 transition-colors hover:bg-muted ${location.pathname === '/clipper' ? 'bg-muted text-foreground' : 'text-muted-foreground'}`}>
+        <Scissors size={16} /> <span className="hidden sm:inline">Clipper</span>
       </Link>
       <Link to="/queue" className={`flex items-center gap-2 rounded-md px-3 py-2 transition-colors hover:bg-muted ${location.pathname === '/queue' ? 'bg-muted text-foreground' : 'text-muted-foreground'}`}>
         <ListVideo size={16} /> <span className="hidden sm:inline">Render Queue</span>
@@ -75,6 +78,9 @@ export const MainLayout: React.FC = () => {
                 </Link>
                 <Link to="/editor" className={`flex items-center gap-2 rounded-md px-3 py-2 transition-colors hover:bg-muted ${location.pathname === '/editor' ? 'bg-muted text-foreground font-medium' : 'text-muted-foreground'}`}>
                   <PlaySquare size={18} /> Editor
+                </Link>
+                <Link to="/clipper" className={`flex items-center gap-2 rounded-md px-3 py-2 transition-colors hover:bg-muted ${location.pathname === '/clipper' ? 'bg-muted text-foreground font-medium' : 'text-muted-foreground'}`}>
+                  <Scissors size={18} /> Clipper
                 </Link>
                 <Link to="/queue" className={`flex items-center gap-2 rounded-md px-3 py-2 transition-colors hover:bg-muted ${location.pathname === '/queue' ? 'bg-muted text-foreground font-medium' : 'text-muted-foreground'}`}>
                   <ListVideo size={18} /> Render Queue

@@ -40,6 +40,8 @@ export const PreviewCanvas = forwardRef<PreviewCanvasHandle, PreviewCanvasProps>
     return () => observer.disconnect();
   }, [baseW, baseH, isOffscreenRender]);
 
+  const animationRef = useRef<number>(0);
+
   // Expose methods to parent
   useImperativeHandle(ref, () => {
     const el = containerRef.current as any;
@@ -47,35 +49,47 @@ export const PreviewCanvas = forwardRef<PreviewCanvasHandle, PreviewCanvasProps>
       el.playPreview = () => {
         if (videoRef.current) videoRef.current.play();
         if (audioRef.current) {
-          // Sync audio to the first word of the slide if it's starting from the beginning
-          if (audioRef.current.currentTime < 0.1 && displayWords.length > 0 && displayWords[0].start_ms !== null) {
-            audioRef.current.currentTime = displayWords[0].start_ms / 1000;
-          }
+          // Sync audio to the global current time
+          audioRef.current.currentTime = useAppStore.getState().globalCurrentTime;
           audioRef.current.play();
-          if (customization.karaokeMode && verse && verse.words) {
-            audioRef.current.ontimeupdate = () => {
-              const timeMs = audioRef.current!.currentTime * 1000;
-              const localIndex = displayWords.findIndex(w => 
-                w.start_ms !== null && w.end_ms !== null && 
-                timeMs >= w.start_ms && timeMs <= w.end_ms
-              );
-              
-              const globalIndex = localIndex !== -1 && activeSlide ? activeSlide.wordStartIndex + localIndex : -1;
-              
-              if (globalIndex !== -1 && customization.highlightWordIndex !== globalIndex) {
-                useAppStore.getState().updateCustomization({ highlightWordIndex: globalIndex });
-              } else if (globalIndex === -1 && customization.highlightWordIndex !== null) {
-                useAppStore.getState().updateCustomization({ highlightWordIndex: null });
-              }
-            };
-          }
+          
+          const loop = () => {
+            if (!audioRef.current || audioRef.current.paused) return;
+            
+            const timeMs = audioRef.current.currentTime * 1000;
+            useAppStore.getState().setGlobalCurrentTime(audioRef.current.currentTime);
+            
+            if (customization.karaokeMode) {
+                const state = useAppStore.getState();
+                // We check globally against all verses, or just the active one?
+                // For MVP, we check the active slide's verse.
+                const verse = state.verses[activeSlide?.verseIndex || 0];
+                if (verse && verse.words) {
+                    const localWords = verse.words.slice(activeSlide?.wordStartIndex || 0, activeSlide?.wordEndIndex || verse.words.length);
+                    const localIndex = localWords.findIndex(w => 
+                      w.start_ms !== null && w.end_ms !== null && 
+                      timeMs >= w.start_ms && timeMs <= w.end_ms
+                    );
+                    
+                    const globalIndex = localIndex !== -1 && activeSlide ? activeSlide.wordStartIndex + localIndex : -1;
+                    
+                    if (globalIndex !== -1 && state.customization.highlightWordIndex !== globalIndex) {
+                      state.updateCustomization({ highlightWordIndex: globalIndex });
+                    } else if (globalIndex === -1 && state.customization.highlightWordIndex !== null) {
+                      state.updateCustomization({ highlightWordIndex: null });
+                    }
+                }
+            }
+            animationRef.current = requestAnimationFrame(loop);
+          };
+          animationRef.current = requestAnimationFrame(loop);
         }
       };
       el.pausePreview = () => {
         if (videoRef.current) videoRef.current.pause();
         if (audioRef.current) {
           audioRef.current.pause();
-          audioRef.current.ontimeupdate = null;
+          if (animationRef.current) cancelAnimationFrame(animationRef.current);
         }
         if (customization.karaokeMode) {
           useAppStore.getState().updateCustomization({ highlightWordIndex: null });

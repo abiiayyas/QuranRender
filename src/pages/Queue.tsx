@@ -2,6 +2,7 @@ import React from 'react';
 import { useAppStore } from '../store';
 import { invoke } from '@tauri-apps/api/core';
 import { Button } from '../components/ui/button';
+import { BatchQueue } from '../components/BatchQueue';
 
 // Display progress. Uses the real value from the Rust worker when available;
 // otherwise falls back to a slow estimate that never stalls at a bogus cap.
@@ -49,6 +50,10 @@ export const Queue: React.FC = () => {
 
   return (
     <div className="p-8">
+      <div className="mb-8">
+        <BatchQueue />
+      </div>
+      
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-3xl font-bold text-foreground">Render Queue</h2>
         {pendingJobs.length > 0 && (

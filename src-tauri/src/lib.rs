@@ -2,6 +2,11 @@ mod db;
 mod commands;
 mod render;
 pub mod ai;
+pub mod clipper;
+pub mod error;
+pub mod binaries;
+pub mod media;
+pub mod segmentation;
 
 use tauri::Manager;
 
@@ -37,11 +42,22 @@ pub fn run() {
             commands::clear_audio_cache,
             commands::save_app_setting,
             commands::get_app_setting,
+            commands::search_stock_media,
+            commands::download_background,
+            commands::get_system_diagnostics,
             render::enqueue_render,
             ai::fetch_tafsir,
             ai::ai_summarize_tafsir,
             ai::ai_generate_image,
-            ai::ai_generate_audio
+            ai::ai_generate_audio,
+            clipper::check_ytdlp_status,
+            clipper::fetch_yt_metadata,
+            clipper::fetch_yt_transcript,
+            clipper::ai_analyze_yt_hooks,
+            clipper::download_and_cut_clip,
+            media::get_media_info,
+            media::cut_audio,
+            segmentation::sidecar::run_alignment
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
