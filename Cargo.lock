@@ -2748,8 +2748,10 @@ name = "qr-policy"
 version = "0.1.0"
 dependencies = [
  "qr-core",
+ "qr-quran",
  "qr-render",
  "serde",
+ "serde_json",
  "thiserror 2.0.21",
 ]
 
