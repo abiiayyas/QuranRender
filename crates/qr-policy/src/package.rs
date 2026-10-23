@@ -63,7 +63,7 @@ pub fn generate_upload_text(project: &Project, surah_name: &str, ayah_range: &st
         ayah_range,
         reciter,
         chapters,
-        surah_name.replace(' ', "")
+        surah_name.replace([' ', '-'], "")
     )
 }
 

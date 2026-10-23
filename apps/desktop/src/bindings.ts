@@ -242,7 +242,7 @@ export type Track_Serialize = {
 export type ViolationSeverity = 
 /**  Peringatan non-fatal (tidak memblokir ekspor). */
 "Warning" | 
-/**  Kesalahan fatal yang memblokir ekspor sesuai PRD CNT-1..5. */
+/**  Kesalahan fatal yang memblokir ekspor sesuai PRD CNT-1..5 / EXP-6. */
 "Blocking";
 
 export type WordTiming = {
