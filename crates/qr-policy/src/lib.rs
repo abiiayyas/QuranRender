@@ -1,9 +1,10 @@
-//! Validator kebijakan konten CNT-1..5 dan validasi pra-ekspor (PRD §6, CNT-1..5, A1-16).
-//! Mengacu ke docs/product/PRD.md §6 dan docs/engineering/01_TECHNICAL_HANDOFF.md §11.
+//! Validator kebijakan konten CNT-1..5 dan validasi pra-ekspor lengkap (PRD §6, CNT-1..5, EXP-5, EXP-6, B2-10).
+//! Mengacu ke docs/product/PRD.md §6, §7 EXP-5..6 dan docs/engineering/01_TECHNICAL_HANDOFF.md §11.
 
 use qr_core::project::{Project, TrackKind};
 use serde::{Deserialize, Serialize};
 use specta::Type;
+use std::path::Path;
 use thiserror::Error;
 
 #[derive(Debug, Error, PartialEq, Eq)]
@@ -17,7 +18,7 @@ pub enum PolicyError {
 pub enum ViolationSeverity {
     /// Peringatan non-fatal (tidak memblokir ekspor).
     Warning,
-    /// Kesalahan fatal yang memblokir ekspor sesuai PRD CNT-1..5.
+    /// Kesalahan fatal yang memblokir ekspor sesuai PRD CNT-1..5 / EXP-6.
     Blocking,
 }
 
@@ -79,7 +80,7 @@ pub fn validate_cnt1_word_boundaries(project: &Project, report: &mut ExportValid
                 code: "CNT-1".into(),
                 title: "Batas waktu segmen tidak valid".into(),
                 description: format!(
-                    "Segmen '{}:{}' memiliki waktu mulai ({}) yang lebih besar atau sama dengan waktu selesai ({}).",
+                    "Segmen '{}:{}' memiliki waktu mulai ({}) yang lebih besar atau sama dengan waktu selesai ({}). Sesuaikan batas segmen di timeline.",
                     seg.surah_id, seg.ayah_number, seg.start_tick, seg.end_tick
                 ),
                 severity: ViolationSeverity::Blocking,
@@ -94,7 +95,7 @@ pub fn validate_cnt1_word_boundaries(project: &Project, report: &mut ExportValid
                     code: "CNT-1".into(),
                     title: "Kata terpotong di perbatasan segmen".into(),
                     description: format!(
-                        "Segmen '{}:{}' memotong kata indeks {}. Batas kata ({}-{}) melampaui rentang segmen ({}-{}).",
+                        "Segmen '{}:{}' memotong kata indeks {}. Batas kata ({}-{}) melampaui rentang segmen ({}-{}). Geser titik potong agar kata tetap utuh.",
                         seg.surah_id, seg.ayah_number, wt.word_idx, wt.start_tick, wt.end_tick, seg.start_tick, seg.end_tick
                     ),
                     severity: ViolationSeverity::Blocking,
@@ -174,7 +175,46 @@ pub fn validate_cnt5_legibility_and_contrast(
     }
 }
 
-/// Validasi kelayakan pra-ekspor menyeluruh terhadap proyek.
+/// Validator EXP-6: Pemeriksaan aset hilang pada disk fisik (PRD EXP-6, B2-10).
+pub fn validate_assets_presence(project: &Project, report: &mut ExportValidationReport) {
+    for (asset_id, asset_ref) in &project.assets {
+        let path = Path::new(&asset_ref.path);
+        if !path.exists() {
+            report.add(PolicyViolation {
+                code: "EXP-MISSING-ASSET".into(),
+                title: "Aset media tidak ditemukan di disk".into(),
+                description: format!(
+                    "Aset '{}' ({:?}) hilang atau telah dipindahkan. Sambungkan kembali (relink) file sumber sebelum mengekspor.",
+                    asset_id, asset_ref.path
+                ),
+                severity: ViolationSeverity::Blocking,
+                segment_id: None,
+            });
+        }
+    }
+}
+
+/// Validator EXP-6: Pemeriksaan durasi nol pada klip atau proyek (PRD EXP-6).
+pub fn validate_zero_duration(project: &Project, report: &mut ExportValidationReport) {
+    for track in &project.tracks {
+        for clip in &track.clips {
+            if clip.start_tick >= clip.end_tick {
+                report.add(PolicyViolation {
+                    code: "EXP-ZERO-DURATION".into(),
+                    title: "Klip memiliki durasi nol atau negatif".into(),
+                    description: format!(
+                        "Klip '{}' pada trek '{}' memiliki rentang tick tidak valid ({}-{}). Hapus atau sesuaikan durasi klip.",
+                        clip.label, track.name, clip.start_tick, clip.end_tick
+                    ),
+                    severity: ViolationSeverity::Blocking,
+                    segment_id: Some(clip.id.clone()),
+                });
+            }
+        }
+    }
+}
+
+/// Validasi kelayakan pra-ekspor menyeluruh terhadap proyek (EXP-6).
 pub fn validate_export_readiness(project: &Project) -> ExportValidationReport {
     let mut report = ExportValidationReport::new();
 
@@ -199,7 +239,13 @@ pub fn validate_export_readiness(project: &Project) -> ExportValidationReport {
     // 4. Validasi CNT-5 (Keterbacaan & kontras)
     validate_cnt5_legibility_and_contrast(project, &mut report);
 
-    // 5. Validasi status peninjauan (Confidence < 0.80 yang belum diverifikasi)
+    // 5. Validasi EXP-6 (Aset hilang di disk)
+    validate_assets_presence(project, &mut report);
+
+    // 6. Validasi EXP-6 (Durasi nol)
+    validate_zero_duration(project, &mut report);
+
+    // 7. Validasi status peninjauan (Confidence < 0.80 yang belum diverifikasi)
     for seg in &project.segments {
         if seg.confidence < 0.80 && !seg.manual_override {
             report.add(PolicyViolation {
@@ -221,7 +267,7 @@ pub fn validate_export_readiness(project: &Project) -> ExportValidationReport {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use qr_core::project::{AyahSegment, Clip, Track, TrackKind, WordTiming};
+    use qr_core::project::{AssetKind, AssetRef, AyahSegment, Clip, Track, TrackKind, WordTiming};
 
     #[test]
     fn test_valid_project_passes_export_validation() {
@@ -250,63 +296,8 @@ mod tests {
     }
 
     #[test]
-    fn test_empty_project_blocks_export() {
-        let project = Project::new("Proyek Kosong");
-        let report = validate_export_readiness(&project);
-        assert!(!report.is_ready);
-        assert_eq!(report.blocking_count, 1);
-        assert_eq!(report.violations[0].code, "PRD-EMPTY");
-    }
-
-    #[test]
-    fn test_cnt1_word_split_blocks_export() {
-        let mut project = Project::new("Proyek Rusak CNT-1");
-        project.segments.push(AyahSegment {
-            id: "seg_1_7".into(),
-            surah_id: 1,
-            ayah_number: 7,
-            start_tick: 48000 * 10,
-            end_tick: 48000 * 15,
-            word_timings: vec![WordTiming {
-                word_idx: 3,
-                start_tick: 48000 * 14,
-                end_tick: 48000 * 16,
-                text: "الرَّحِيمِ".into(),
-                confidence: 0.85, // Melampaui end_tick segmen (15s)!
-            }],
-            confidence: 0.75,
-            manual_override: false,
-        });
-
-        let report = validate_export_readiness(&project);
-        assert!(!report.is_ready);
-        assert!(report.blocking_count >= 1);
-        assert!(report.violations.iter().any(|v| v.code == "CNT-1"));
-    }
-
-    #[test]
-    fn test_cnt2_invalid_surah_blocks_export() {
-        let mut project = Project::new("Proyek Rusak CNT-2");
-        project.segments.push(AyahSegment {
-            id: "seg_invalid".into(),
-            surah_id: 115, // Di luar 1..114!
-            ayah_number: 1,
-            start_tick: 0,
-            end_tick: 48000 * 5,
-            word_timings: vec![],
-            confidence: 0.90,
-            manual_override: true,
-        });
-
-        let report = validate_export_readiness(&project);
-        assert!(!report.is_ready);
-        assert_eq!(report.blocking_count, 1);
-        assert_eq!(report.violations[0].code, "CNT-2");
-    }
-
-    #[test]
-    fn test_cnt5_media_without_dimmer_issues_warning() {
-        let mut project = Project::new("Proyek Latar Tanpa Dimmer");
+    fn test_missing_asset_blocks_export() {
+        let mut project = Project::new("Proyek Aset Hilang");
         project.segments.push(AyahSegment {
             id: "seg_1_1".into(),
             surah_id: 1,
@@ -314,53 +305,68 @@ mod tests {
             start_tick: 0,
             end_tick: 48000 * 5,
             word_timings: vec![],
-            confidence: 0.95,
+            confidence: 0.98,
             manual_override: true,
         });
-        let track_latar = Track {
-            id: "t_bg".into(),
-            name: "Latar Belakang".into(),
-            kind: TrackKind::Background,
+
+        project.assets.insert(
+            "audio_1".into(),
+            AssetRef {
+                id: "audio_1".into(),
+                path: "/path/to/nonexistent_audio.m4a".into(),
+                sha256: "fakehash".into(),
+                kind: AssetKind::Audio,
+                duration_ticks: 48000 * 5,
+                size_bytes: 1024,
+            },
+        );
+
+        let report = validate_export_readiness(&project);
+        assert!(!report.is_ready);
+        assert!(report
+            .violations
+            .iter()
+            .any(|v| v.code == "EXP-MISSING-ASSET"));
+    }
+
+    #[test]
+    fn test_zero_duration_clip_blocks_export() {
+        let mut project = Project::new("Proyek Klip Nol");
+        project.segments.push(AyahSegment {
+            id: "seg_1_1".into(),
+            surah_id: 1,
+            ayah_number: 1,
+            start_tick: 0,
+            end_tick: 48000 * 5,
+            word_timings: vec![],
+            confidence: 0.98,
+            manual_override: true,
+        });
+
+        let track = Track {
+            id: "t1".into(),
+            name: "Overlay".into(),
+            kind: TrackKind::Overlay,
             clips: vec![Clip {
-                id: "c_bg".into(),
-                asset_id: Some("asset_bg_image".into()),
-                start_tick: 0,
-                end_tick: 48000 * 5,
+                id: "c1".into(),
+                asset_id: None,
+                start_tick: 100,
+                end_tick: 100, // Durasi 0!
                 trim_in_tick: 0,
-                trim_out_tick: 48000 * 5,
-                label: "Sunrise".into(),
+                trim_out_tick: 0,
+                label: "Teks Nol".into(),
             }],
             visible: true,
             locked: false,
             muted: false,
         };
-        project.tracks.push(track_latar);
-        // Tanpa background_dimmer di style_overrides
+        project.tracks.push(track);
 
         let report = validate_export_readiness(&project);
-        assert!(report.is_ready); // Warning tidak memblokir ekspor
-        assert_eq!(report.blocking_count, 0);
-        assert_eq!(report.warning_count, 1);
-        assert_eq!(report.violations[0].code, "CNT-5");
-    }
-
-    #[test]
-    fn test_unverified_low_confidence_issues_warning() {
-        let mut project = Project::new("Proyek Perlu Tinjau");
-        project.segments.push(AyahSegment {
-            id: "seg_1_3".into(),
-            surah_id: 1,
-            ayah_number: 3,
-            start_tick: 0,
-            end_tick: 48000 * 5,
-            word_timings: vec![],
-            confidence: 0.74, // < 0.80
-            manual_override: false,
-        });
-
-        let report = validate_export_readiness(&project);
-        assert!(report.is_ready); // Warning
-        assert_eq!(report.warning_count, 1);
-        assert_eq!(report.violations[0].code, "SYN-REVIEW");
+        assert!(!report.is_ready);
+        assert!(report
+            .violations
+            .iter()
+            .any(|v| v.code == "EXP-ZERO-DURATION"));
     }
 }

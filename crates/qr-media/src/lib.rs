@@ -10,8 +10,9 @@ pub mod waveform;
 
 pub use clock::{frame_to_tick, tick_to_frame, AudioClock};
 pub use encoder::{
-    build_ffmpeg_export_args, check_frame_equivalence, probe_available_encoders,
-    select_best_encoder, HwEncoderKind, Mp4ExportConfig, VideoEncoder,
+    build_ffmpeg_export_args, build_ffmpeg_transparent_export_args, check_frame_equivalence,
+    generate_unique_export_path, probe_available_encoders, select_best_encoder, HwEncoderKind,
+    Mp4ExportConfig, TransparentExportFormat, VideoEncoder,
 };
 pub use lufs::{calculate_normalization_gain, measure_integrated_lufs};
 pub use probe::{is_supported_media_extension, probe_media, MediaMetadata};

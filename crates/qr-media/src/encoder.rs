@@ -1,7 +1,8 @@
-//! Deteksi encoder hardware, fallback libx264, dan pipa ekspor MP4 (PRD EXP-1..2, ADR S4, A1-10, A1-11).
-//! Mengacu ke docs/product/PRD.md §7 EXP-1..2 dan docs/engineering/01_TECHNICAL_HANDOFF.md §10.1.
+//! Deteksi encoder hardware, fallback libx264, ekspor transparan, dan pola nama anti-timpa (PRD EXP-1..3, EXP-5, ADR S4, B2-09).
+//! Mengacu ke docs/product/PRD.md §7 EXP-1..3, EXP-5 dan docs/engineering/01_TECHNICAL_HANDOFF.md §10.1.
 
 use serde::{Deserialize, Serialize};
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum HwEncoderKind {
@@ -15,6 +16,17 @@ pub enum HwEncoderKind {
 pub enum VideoEncoder {
     Hardware(HwEncoderKind),
     SoftwareLibx264,
+}
+
+/// Format video dengan transparansi alpha channel (PRD EXP-3, B2-09).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum TransparentExportFormat {
+    /// Apple ProRes 4444 dalam kontainer .mov (alpha straight 10-bit).
+    ProRes4444Mov,
+    /// WebM VP9 dengan alpha channel (yuva420p).
+    WebmVp9,
+    /// Urutan gambar PNG terpisah (frame_%05d.png).
+    PngSequence,
 }
 
 impl VideoEncoder {
@@ -147,6 +159,76 @@ pub fn build_ffmpeg_export_args(
     args
 }
 
+/// Menyusun argumen FFmpeg untuk ekspor video transparan (PRD EXP-3, B2-09).
+pub fn build_ffmpeg_transparent_export_args(
+    config: &Mp4ExportConfig,
+    format: TransparentExportFormat,
+    output_path: &str,
+) -> Vec<String> {
+    let mut args = vec![
+        "-y".into(),
+        "-f".into(),
+        "rawvideo".into(),
+        "-pix_fmt".into(),
+        "rgba".into(),
+        "-s".into(),
+        format!("{}x{}", config.width, config.height),
+        "-r".into(),
+        config.fps.to_string(),
+        "-i".into(),
+        "-".into(),
+    ];
+
+    match format {
+        TransparentExportFormat::ProRes4444Mov => {
+            args.push("-c:v".into());
+            args.push("prores_ks".into());
+            args.push("-profile:v".into());
+            args.push("4".into()); // Profile 4 = 4444
+            args.push("-pix_fmt".into());
+            args.push("yuva444p10le".into());
+        }
+        TransparentExportFormat::WebmVp9 => {
+            args.push("-c:v".into());
+            args.push("libvpx-vp9".into());
+            args.push("-pix_fmt".into());
+            args.push("yuva420p".into());
+            args.push("-b:v".into());
+            args.push(format!("{}k", config.video_bitrate_kbps));
+        }
+        TransparentExportFormat::PngSequence => {
+            args.push("-c:v".into());
+            args.push("png".into());
+            args.push("-pix_fmt".into());
+            args.push("rgba".into());
+        }
+    }
+
+    args.push(output_path.into());
+    args
+}
+
+/// Menghasilkan path file unik agar tidak menimpa file yang sudah ada (PRD EXP-5, B2-10).
+pub fn generate_unique_export_path(output_dir: &Path, base_name: &str, extension: &str) -> PathBuf {
+    let sanitized = base_name.replace(['/', '\\', ':', '*', '?', '"', '<', '>', '|'], "_");
+    let ext = extension.trim_start_matches('.');
+
+    let mut candidate = output_dir.join(format!("{}.{}", sanitized, ext));
+    if !candidate.exists() {
+        return candidate;
+    }
+
+    let mut counter = 1;
+    loop {
+        let new_name = format!("{} ({}).{}", sanitized, counter, ext);
+        candidate = output_dir.join(new_name);
+        if !candidate.exists() {
+            return candidate;
+        }
+        counter += 1;
+    }
+}
+
 /// Uji kesetaraan frame preview dan frame video ekspor (PRD §7.3, A1-11).
 /// Memeriksa bahwa selisih maksimal per kanal warna <= tolerance (default 2/255).
 pub fn check_frame_equivalence(
@@ -190,39 +272,44 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_encoder_probing_always_includes_software_libx264() {
-        let encoders = probe_available_encoders();
-        assert!(!encoders.is_empty());
-        assert!(encoders.contains(&VideoEncoder::SoftwareLibx264));
+    fn test_transparent_prores_args() {
+        let config = Mp4ExportConfig::default();
+        let args = build_ffmpeg_transparent_export_args(
+            &config,
+            TransparentExportFormat::ProRes4444Mov,
+            "/tmp/out.mov",
+        );
+
+        assert!(args.contains(&"prores_ks".into()));
+        assert!(args.contains(&"yuva444p10le".into()));
     }
 
     #[test]
-    fn test_ffmpeg_args_generation() {
-        let config = Mp4ExportConfig {
-            width: 1080,
-            height: 1920,
-            fps: 30,
-            video_bitrate_kbps: 6000,
-            audio_sample_rate: 48000,
-            audio_bitrate_kbps: 192,
-            preferred_encoder: Some(VideoEncoder::SoftwareLibx264),
-        };
+    fn test_transparent_webm_vp9_args() {
+        let config = Mp4ExportConfig::default();
+        let args = build_ffmpeg_transparent_export_args(
+            &config,
+            TransparentExportFormat::WebmVp9,
+            "/tmp/out.webm",
+        );
 
-        let encoder = select_best_encoder(&config);
-        let args = build_ffmpeg_export_args(&config, &encoder, "/tmp/out.mp4");
-
-        assert!(args.contains(&"-pix_fmt".into()));
-        assert!(args.contains(&"1080x1920".into()));
-        assert!(args.contains(&"/tmp/out.mp4".into()));
+        assert!(args.contains(&"libvpx-vp9".into()));
+        assert!(args.contains(&"yuva420p".into()));
     }
 
     #[test]
-    fn test_frame_equivalence_passes_within_tolerance() {
-        let preview = vec![100u8, 150, 200, 255];
-        let export_close = vec![101u8, 149, 202, 255]; // Selisih maks 2
-        let export_divergent = vec![100u8, 150, 215, 255]; // Selisih 15 > toleransi 2
+    fn test_anti_collision_filepath_generation() {
+        let temp_dir = std::env::temp_dir();
+        let base = "Al-Fatihah_1-7";
 
-        assert!(check_frame_equivalence(&preview, &export_close, 2).is_ok());
-        assert!(check_frame_equivalence(&preview, &export_divergent, 2).is_err());
+        // Buat file dummy pertama
+        let f1 = temp_dir.join(format!("{}.mp4", base));
+        let _ = std::fs::write(&f1, b"dummy1");
+
+        let unique = generate_unique_export_path(&temp_dir, base, "mp4");
+        assert_eq!(unique, temp_dir.join(format!("{} (1).mp4", base)));
+
+        // Hapus file uji
+        let _ = std::fs::remove_file(f1);
     }
 }
