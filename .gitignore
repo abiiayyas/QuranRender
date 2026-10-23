@@ -24,3 +24,6 @@ Thumbs.db
 # Impeccable review artifacts (heavy images)
 .impeccable/review/stage4/*.png
 build/
+
+# Sidecar worker (dibuat oleh scripts/prepare-worker-sidecar.sh)
+apps/desktop/src-tauri/binaries/

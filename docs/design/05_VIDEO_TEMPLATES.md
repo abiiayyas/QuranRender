@@ -440,14 +440,39 @@ Untuk memenuhi kriteria rilis dan gerbang kualitas teknis:
 
      | Varian | SSIM min / rata-rata | Selisih kanal maks (semua / area datar) |
      |---|---|---|
-     | Encoder default (`h264_videotoolbox`, 8000 kbps) | 0,99906 / 0,99914 | 40 / 6 |
-     | `libx264` 8000 kbps | 0,99929 / 0,99934 | 10 / 3 |
-     | `libx264 -crf 0` (lossless) | 0,99929 / 0,99935 | 7 / **2** |
+     | Encoder default (`h264_videotoolbox`, 8000 kbps) | 0,99906 / 0,99915 | 40 / 6 |
+     | `libx264` 8000 kbps | 0,99929 / 0,99934 | 12 / 5 |
+     | `libx264 -crf 0` (lossless) | 0,99929 / 0,99934 | 7 / **2** |
 
-   - **SSIM ≥ 0,995 terpenuhi di ketiga varian.** Selisih kanal ≤ 2/255 di area datar hanya terpenuhi pada varian lossless; varian lossy melampauinya (3–6/255) karena kuantisasi DCT H.264, sehingga uji lossy hanya menegakkan SSIM ≥ 0,995 dan batas atas 10/255 untuk regresi, bukan klaim RND-1 kanal. Sisa 2/255 pada lossless adalah batas fisik YCbCr 8-bit 4:2:0 rentang TV (simulasi bulat-ke-bulat: galat kanal B hingga 2).
+   - **SSIM ≥ 0,995 terpenuhi di ketiga varian.** Selisih kanal ≤ 2/255 di area datar hanya terpenuhi pada varian lossless; varian lossy melampauinya (5–6/255) karena kuantisasi DCT H.264, sehingga uji lossy hanya menegakkan SSIM ≥ 0,995 dan batas atas 10/255 untuk regresi, bukan klaim RND-1 kanal. Sisa 2/255 pada lossless adalah batas fisik YCbCr 8-bit 4:2:0 rentang TV (simulasi bulat-ke-bulat: galat kanal B hingga 2).
    - **Bug produk yang ditemukan dan diperbaiki oleh uji ini:** frame YUV420 yang sudah BT.709 dikirim sebagai rawvideo tanpa tag warna; karena keluaran ditandai `-colorspace bt709`, FFmpeg menyisipkan konversi BT.601→BT.709 sehingga luma bergeser (Y 49 → 46) dan seluruh video menjadi lebih gelap ±5/255 (SSIM 0,987, selisih area datar 7/255 bahkan pada lossless). Perbaikan: tag input `-color_range tv -colorspace bt709 -color_primaries bt709 -color_trc bt709` sebelum `-i` (`build_ffmpeg_export_args`); koefisien konversi RGB→YUV dinaikkan ke 16-bit.
    - **Uji mutasi:** membandingkan ekspor dengan preview yang digeser +1 frame menurunkan SSIM min menjadi 0,9489 (< 0,995) sehingga uji gagal bila preview dan ekspor berdivergensi (`equivalence_check_detects_one_frame_tick_offset`, permanen).
-   - Cakupan masih satu proyek 4 dtk/satu templat pada 360 px; belum 60 dtk/tick acak, belum templat/rasio lain, belum Windows/Linux (NVENC/QSV/AMF belum diukur).
+   - **Cakupan diperluas (A1-11), 50 tick tiap kasus, semua ayat dari `data/surah/*.json`:**
+     - Sorotan kata kini memakai indeks kata 1-based (sama dengan tokenizer); fixture lama keliru 0-based sehingga sorotan bergeser satu kata. Angka tabel di atas dari run terbaru.
+     - **13 kombinasi templat × rasio** (sama dengan kunci `manifest.json` golden; dijaga oleh `combos_match_golden_manifest`), lebar 270 px, dua segmen berterjemahan (1:2 dan 1:5, 3 dtk masing-masing) dengan 3 frame wajib per segmen (`start+1`, `start+6`, `end-2`: transisi masuk/keluar + sorotan) + sisanya acak xorshift berbenih; ekspor `libx264 -crf 0` (`all_13_template_ratio_combos_equivalent_on_random_ticks`):
+
+       | Templat | Rasio | Ukuran | SSIM min | SSIM rata-rata | Selisih maks (semua / datar) |
+       |---|---|---|---|---|---|
+       | subuh | 9:16 | 270×480 | 0,99906 | 0,99924 | 7 / 2 |
+       | subuh | 16:9 | 270×150 | 0,99834 | 0,99905 | 7 / 2 |
+       | subuh | 1:1 | 270×270 | 0,99873 | 0,99910 | 8 / 2 |
+       | subuh | 4:5 | 270×336 | 0,99895 | 0,99918 | 7 / 2 |
+       | hening | 9:16 | 270×480 | 0,99812 | 0,99847 | 7 / 1 |
+       | hening | 16:9 | 270×150 | 0,99769 | 0,99869 | 8 / 1 |
+       | hening | 1:1 | 270×270 | 0,99799 | 0,99857 | 8 / 1 |
+       | hening | 4:5 | 270×336 | 0,99807 | 0,99853 | 7 / 1 |
+       | terang | 9:16 | 270×480 | 0,99986 | 0,99999 | 50 / **4** |
+       | terang | 16:9 | 270×150 | 0,99949 | 0,99997 | 73 / **4** |
+       | terang | 1:1 | 270×270 | 0,99974 | 0,99998 | 70 / **4** |
+       | besar | 9:16 | 270×480 | 0,99819 | 0,99846 | 2 / 2 |
+       | besar | 1:1 | 270×270 | 0,99809 | 0,99853 | 3 / 2 |
+
+       Seluruh 13 kombinasi lolos SSIM ≥ 0,995 (ambang global tidak diturunkan). Selisih kanal area datar ≤ 2/255 terpenuhi untuk subuh/hening/besar. **`terang` terukur 4/255** (bukan 2): diselidiki per piksel — 11–40 piksel per frame, semuanya piksel latar krem (247,246,242 → 248,246,239; kanal B −3) tepat 3 px dari tepi garis biru jenuh (97,100,215). Bleeding chroma 4:2:0 menjangkau ±3 px luma (interpolasi chroma bikubik FFmpeg), lebih lebar daripada jendela tepi 5×5 (±2 px) di metrik. Ini batas fisik YCbCr 4:2:0 pada tepi kroma jenuh, bukan bug produk; uji menegakkan batas bernama 4/255 khusus `terang` (`flat_bound`), bukan melonggarkan 2/255 global.
+     - **Video 60 dtk** (1:1…1:7 × 4 dtk + 2:255 dibagi 4 rentang kata 1–13/14–26/27–39/40–51 × 8 dtk, subuh 9:16 360 px, encoder default `h264_videotoolbox`, 50 tick acak): SSIM min 0,99715 / rata-rata 0,99894, selisih kanal maks 23 / area datar 7 (batas lossy 10) — `long_60s_video_default_encoder_equivalent_on_random_ticks`.
+     - **Segmen berrentang kata** (2:255 → 3 potongan 1–17/18–34/35–51, hening 16:9 540×304, lossless, tanpa terjemahan): SSIM min 0,99799 / 0,99859, selisih 5 / 1 — `word_range_split_segments_equivalent_lossless`.
+     - **Audio ter-mux** (sinus 7 dtk → video 6 dtk, terang 1:1, lossless): SSIM min 0,99983 / 0,99999, selisih 68 / 4 (`terang`, lihat di atas); aliran audio AAC ada dan durasinya 6,000 dtk = durasi video — `export_with_audio_is_equivalent_and_has_audio_stream`.
+     - **Mutasi permanen pada harness acak** (`random_tick_harness_detects_one_frame_offset`): preview digeser +1 frame pada subuh 9:16 → SSIM min 0,98365 (< 0,995), uji gagal sebagaimana mestinya.
+     - Waktu uji (macOS, mode release, 10 uji kesetaraan paralel): ≈ 18 dtk; seluruh `cargo test --release -p qr-cli` ≈ 20 dtk (tanpa kompilasi). Belum Windows/Linux (NVENC/QSV/AMF belum diukur).
 2. **Uji Golden Render 4 Rasio:**
    - 4 templat primer (`subuh`, `hening`, `terang`, `besar`) dirender pada rasio yang **didukung masing-masing** menurut matriks §8 (subuh 4 + hening 4 + terang 3 + besar 2 = **13 frame**, bukan 16) di `tests/golden/render/`. Kombinasi yang tidak didukung ditolak oleh `SceneBuilder`, bukan dirender.
    - `tests/golden/render/manifest.json` memuat SHA-256 piksel tiap frame dan dibandingkan oleh `cargo test -p qr-render --test render_golden`; pembaruan sengaja dengan `QR_UPDATE_GOLDEN=1`.

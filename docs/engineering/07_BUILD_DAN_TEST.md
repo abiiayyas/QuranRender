@@ -55,6 +55,8 @@ Variabel lingkungan:
 |---|---|
 | `QR_RESOURCES_DIR` | akar sumber daya (berisi `assets/fonts`, `crates/qr-render/templates`, `build/dataset`) |
 | `QR_DATASET_DIR` | folder dataset (default: `<resources>/build/dataset`) |
+| `QR_WORKER_BIN` | biner worker `qurender` untuk ekspor/antrean. Urutan pencarian: variabel ini → saudara executable aplikasi (`Contents/MacOS/qurender` di bundel; `target/<profil>/qurender` saat dev, setelah `cargo build -p qr-cli`) → `qurender` di `PATH` → galat yang menyebut semua tempat yang dicari. Bila diset tetapi salah, galat (tidak jatuh diam-diam ke kandidat lain). |
+| `QR_FFMPEG_BIN`, `QR_FFPROBE_BIN` | jalur `ffmpeg`/`ffprobe`. Default: `PATH`, lalu `/opt/homebrew/bin`, `/usr/local/bin`, `/usr/bin` (aplikasi macOS yang dibuka dari Finder tidak mewarisi `PATH` Homebrew). |
 
 ## 4. Build bundel aplikasi
 
@@ -77,7 +79,22 @@ Menjalankan biner di dalam bundel dari terminal untuk melihat log:
 ```
 
 Installer Windows (NSIS) dan Linux (AppImage/.deb): didefinisikan di CI, **belum pernah dibangun**. FFmpeg belum
-dibundel; aplikasi memakai `ffmpeg`/`ffprobe` dari `PATH`.
+dibundel; aplikasi memakai `ffmpeg`/`ffprobe` dari `PATH` (atau lokasi umum di atas).
+
+### Worker ekspor sebagai sidecar (macOS, terverifikasi)
+
+Ekspor video berjalan lewat proses `qurender worker`. Agar bundel membawanya, bangun sidecar lalu bundel dengan
+konfigurasi tambahan (config terpisah agar `cargo test -p quranrender` tidak mensyaratkan biner sidecar):
+
+```bash
+scripts/prepare-worker-sidecar.sh          # build rilis qr-cli → apps/desktop/src-tauri/binaries/qurender-<triple>
+cd apps/desktop
+pnpm tauri build --bundles app --config src-tauri/tauri.sidecar.conf.json
+ls "../../target/release/bundle/macos/Quran Render.app/Contents/MacOS"   # quranrender  qurender
+```
+
+Tanpa `--config src-tauri/tauri.sidecar.conf.json`, bundel **tidak** membawa worker dan ekspor hanya jalan bila
+`QR_WORKER_BIN`/`PATH` menyediakannya. Hanya macOS x86_64 yang diuji; Windows/Linux belum.
 
 ## 5. Build dan pakai CLI/worker (`qurender`)
 
@@ -130,6 +147,18 @@ cargo test --workspace --no-fail-fast -- --ignored
 Mencakup: verifikasi dataset (`qr-quran`), subtitle/preview dari dataset (`quranrender`), antrean 50 klip dan
 pembatalan worker (`qr-cli`), dan smoke perangkat audio nyata (`qr-media`, memutar sine pada volume 0).
 
+Di `quranrender` (`cargo test -p quranrender -- --ignored`):
+
+| Tes | Syarat |
+|---|---|
+| `real_worker_exports_a_valid_mp4_*`, `real_worker_cancel_mid_export_*` | dataset bertanda tangan; `cargo build -p qr-cli` dijalankan otomatis oleh tes. Ekspor 2 dtk diverifikasi `ffprobe` (h264, 270×480, 60 frame, aac); pembatalan di tengah ekspor tidak meninggalkan berkas |
+| `bundled_app_worker_is_found_next_to_the_executable_*` | bundel `.app` dengan sidecar (lihat §4); worker dan sumber daya diambil dari bundel dengan `PATH` minimal |
+| `real_engine_plays_a_sine_at_volume_zero_through_the_service` | perangkat audio keluaran (volume 0) |
+
+Varian tanpa dataset/perangkat (jalan di `cargo test` biasa): worker palsu berbasis skrip `sh` (Unix) yang berbicara
+protokol NDJSON membuktikan alur `export_start` → event `export-progress` → `export-finished`, pembatalan,
+jeda/lanjut antrean, dan antrean batch; controller playback diuji dengan engine palsu.
+
 ### 6.3 Per area
 
 | Area | Perintah |
@@ -141,7 +170,7 @@ pembatalan worker (`qr-cli`), dan smoke perangkat audio nyata (`qr-media`, memut
 | Worker render, antrean, kesetaraan preview–ekspor | `cargo test --release -p qr-cli` |
 | Antrean job persisten | `cargo test -p qr-store -p qr-jobs` |
 | `.qrpack`, migrasi skema | `cargo test -p qr-core` |
-| Command desktop (subtitle, preview, pack, crash log) | `cargo test -p quranrender` |
+| Command desktop (subtitle, preview, pack, crash log, impor audio, align_auto, ekspor/antrean/batch, playback, settings) | `cargo test -p quranrender` |
 
 ## 7. Kunci tanda tangan (dataset dan updater)
 

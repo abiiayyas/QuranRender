@@ -1,6 +1,13 @@
+mod audio_api;
+mod batch_api;
 mod crashlog;
+mod export_api;
 mod pack_api;
+mod playback_api;
+mod project_io;
 mod render_api;
+mod settings_api;
+mod tools;
 
 use std::fs;
 use std::path::PathBuf;
@@ -31,11 +38,30 @@ pub struct AppState {
     pub projects_dir: PathBuf,
     /// Dataset terverifikasi, dibuka malas saat pertama dipakai.
     pub dataset: Mutex<Option<qr_quran::QuranDatabase>>,
+    /// Antrean job + ekspor (worker `qurender`); event dipancarkan lewat `EventSink`.
+    pub jobs: export_api::ExportService,
+    /// Playback audio pada thread engine khusus.
+    pub playback: playback_api::PlaybackService,
 }
 
 const DATASET_PUBKEY: &str = include_str!("../../../../assets/keys/dataset.pub");
 
 impl AppState {
+    pub fn new(
+        db: AppDb,
+        projects_dir: PathBuf,
+        jobs: export_api::ExportService,
+        playback: playback_api::PlaybackService,
+    ) -> Self {
+        Self {
+            db: Mutex::new(db),
+            projects_dir,
+            dataset: Mutex::new(None),
+            jobs,
+            playback,
+        }
+    }
+
     fn with_dataset<T>(
         &self,
         f: impl FnOnce(&qr_quran::QuranDatabase) -> Result<T, String>,
@@ -234,28 +260,53 @@ fn project_duplicate(
     Ok(new_proj)
 }
 
-#[tauri::command]
-#[specta::specta]
-fn project_save(mut project: Project, state: tauri::State<'_, AppState>) -> Result<bool, String> {
-    let project_dir = state.projects_dir.join(&project.id);
+/// Menyimpan proyek ke folder yang terdaftar di indeks (`*.qrproj` dari `project_create`/impor). Hanya proyek
+/// yang belum terdaftar yang mendapat folder baru `projects_dir/<id>`; menulis ke folder lain akan membuat
+/// salinan yatim dan membuat `project_delete` menolak menghapusnya.
+fn project_save_impl(
+    db: &Mutex<AppDb>,
+    projects_dir: &std::path::Path,
+    mut project: Project,
+) -> Result<bool, String> {
+    let db = db.lock().map_err(|e| e.to_string())?;
+    let existing = db
+        .get_project_index(&project.id)
+        .map_err(|e| e.to_string())?;
+    let project_dir = match &existing {
+        Some(e) => PathBuf::from(&e.path),
+        None => projects_dir.join(&project.id),
+    };
     fs::create_dir_all(&project_dir).map_err(|e| e.to_string())?;
 
     save_project_atomic(&project_dir, &mut project).map_err(|e| e.to_string())?;
 
-    let db = state.db.lock().map_err(|e| e.to_string())?;
+    let duration_ticks = project
+        .segments
+        .iter()
+        .map(|s| s.end_tick)
+        .max()
+        .or_else(|| existing.as_ref().map(|e| e.duration_ticks))
+        .unwrap_or(0);
     let entry = ProjectIndexEntry {
         id: project.id.clone(),
         path: project_dir.to_string_lossy().to_string(),
         name: project.name.clone(),
         reciter: project.reciter.clone(),
-        category: Some("Pribadi".to_string()),
+        category: existing
+            .as_ref()
+            .and_then(|e| e.category.clone())
+            .or_else(|| Some("Pribadi".to_string())),
         status: "ready".to_string(),
         aspect: project.canvas.aspect_ratio.clone(),
-        duration_ticks: project.canvas.fps_num as i64 * 48000,
-        dataset_version: "1.0.0".into(),
-        thumbnail_path: None,
+        duration_ticks,
+        dataset_version: existing
+            .as_ref()
+            .map_or_else(|| "1.0.0".to_string(), |e| e.dataset_version.clone()),
+        thumbnail_path: existing.as_ref().and_then(|e| e.thumbnail_path.clone()),
         missing: false,
-        created_at: project.created_at as i64,
+        created_at: existing
+            .as_ref()
+            .map_or(project.created_at as i64, |e| e.created_at),
         updated_at: project.updated_at as i64,
         opened_at: Some(project.updated_at as i64),
     };
@@ -263,6 +314,12 @@ fn project_save(mut project: Project, state: tauri::State<'_, AppState>) -> Resu
     db.upsert_project_index(&entry).map_err(|e| e.to_string())?;
 
     Ok(true)
+}
+
+#[tauri::command]
+#[specta::specta]
+fn project_save(project: Project, state: tauri::State<'_, AppState>) -> Result<bool, String> {
+    project_save_impl(&state.db, &state.projects_dir, project)
 }
 
 #[tauri::command]
@@ -342,23 +399,45 @@ fn project_delete(id: String, state: tauri::State<'_, AppState>) -> Result<bool,
 }
 
 fn create_specta_builder() -> Builder<tauri::Wry> {
-    Builder::<tauri::Wry>::new().commands(collect_commands![
-        greet,
-        get_app_info,
-        project_create,
-        project_list,
-        project_open,
-        project_save,
-        project_duplicate,
-        project_delete,
-        project_validate,
-        subtitle_export,
-        preview_frame,
-        pack_api::project_export_pack,
-        pack_api::project_import_pack,
-        crashlog::telemetry_status,
-        crashlog::telemetry_set_opt_in
-    ])
+    Builder::<tauri::Wry>::new()
+        .commands(collect_commands![
+            greet,
+            get_app_info,
+            project_create,
+            project_list,
+            project_open,
+            project_save,
+            project_duplicate,
+            project_delete,
+            project_validate,
+            subtitle_export,
+            preview_frame,
+            pack_api::project_export_pack,
+            pack_api::project_import_pack,
+            crashlog::telemetry_status,
+            crashlog::telemetry_set_opt_in,
+            audio_api::audio_import,
+            audio_api::align_auto,
+            export_api::export_start,
+            export_api::export_cancel,
+            export_api::export_status,
+            export_api::queue_list,
+            export_api::queue_cancel,
+            export_api::queue_pause,
+            export_api::queue_resume,
+            batch_api::batch_split,
+            batch_api::queue_enqueue_batch,
+            playback_api::playback_load,
+            playback_api::playback_play,
+            playback_api::playback_pause,
+            playback_api::playback_seek,
+            playback_api::playback_status,
+            settings_api::settings_get,
+            settings_api::settings_set
+        ])
+        // Payload event Tauri `export-progress` / `export-finished` (dipancarkan lewat `EventSink`).
+        .typ::<export_api::ExportProgressEvent>()
+        .typ::<export_api::ExportFinishedEvent>()
 }
 
 fn main() {
@@ -375,15 +454,24 @@ fn main() {
     let db = AppDb::open(&db_path).expect("Gagal menginisialisasi app.db");
     let projects_dir = get_default_projects_dir();
     let _ = fs::create_dir_all(&projects_dir);
+    // Antrean job persisten memakai koneksi app.db sendiri; job `running` yatim dikembalikan ke `queued`.
+    let supervisor = qr_jobs::JobSupervisor::open(&db_path).expect("Gagal membuka antrean job");
+    let jobs = export_api::ExportService::new(supervisor, export_api::default_resolver());
 
     tauri::Builder::default()
-        .manage(AppState {
-            db: Mutex::new(db),
+        .manage(AppState::new(
+            db,
             projects_dir,
-            dataset: Mutex::new(None),
-        })
+            jobs,
+            playback_api::PlaybackService::real(),
+        ))
         .setup(|app| {
             use tauri::Manager;
+            app.state::<AppState>()
+                .jobs
+                .set_sink(std::sync::Arc::new(export_api::TauriSink(
+                    app.handle().clone(),
+                )));
             if let Ok(dir) = app.path().resource_dir() {
                 render_api::set_bundled_resources(dir);
             }
@@ -468,11 +556,15 @@ mod tests {
         fs::create_dir_all(&temp_dir).unwrap();
 
         let db = AppDb::open_in_memory().unwrap();
-        let state = AppState {
-            db: Mutex::new(db),
-            projects_dir: temp_dir.clone(),
-            dataset: Mutex::new(None),
-        };
+        let state = AppState::new(
+            db,
+            temp_dir.clone(),
+            export_api::ExportService::new(
+                qr_jobs::JobSupervisor::in_memory().unwrap(),
+                std::sync::Arc::new(|| Err("tanpa worker".to_string())),
+            ),
+            playback_api::PlaybackService::real(),
+        );
 
         // Tauri state wrapper test
         // 1. Create project
@@ -510,5 +602,65 @@ mod tests {
         assert_eq!(list[0].name, "Proyek Baru Alpha");
 
         let _ = fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn project_save_writes_to_the_registered_folder_not_a_new_id_folder() {
+        let tmp = project_io::test_support::TempDir::new("save");
+        let db = Mutex::new(AppDb::open_in_memory().unwrap());
+        let mut p = Project::new("Simpan Aku");
+        let dir = project_io::test_support::register_project(&db, tmp.path(), &mut p);
+        assert_eq!(dir.extension().unwrap(), "qrproj");
+
+        let mut edited = load_project(&dir).unwrap();
+        edited.reciter = Some("Qari Baru".into());
+        edited.segments.push(qr_core::project::AyahSegment {
+            id: "s".into(),
+            surah_id: 1,
+            ayah_number: 1,
+            start_tick: 0,
+            end_tick: 96_000,
+            word_timings: vec![],
+            confidence: 1.0,
+            manual_override: false,
+            word_range: None,
+        });
+        assert!(project_save_impl(&db, tmp.path(), edited).unwrap());
+
+        // Tersimpan di folder terdaftar; tidak ada folder `<id>` baru.
+        assert_eq!(
+            load_project(&dir).unwrap().reciter.as_deref(),
+            Some("Qari Baru")
+        );
+        assert!(!tmp.path().join(&p.id).exists());
+        let entry = db
+            .lock()
+            .unwrap()
+            .get_project_index(&p.id)
+            .unwrap()
+            .unwrap();
+        assert_eq!(entry.path, dir.to_string_lossy());
+        assert_eq!(entry.duration_ticks, 96_000);
+        assert_eq!(
+            entry.category.as_deref(),
+            Some("Studio"),
+            "kategori lama dipertahankan"
+        );
+        assert!(
+            remove_project_folder(&dir).is_ok(),
+            "folder *.qrproj masih bisa dihapus"
+        );
+
+        // Proyek yang belum terdaftar mendapat folder baru dan entri indeks.
+        let fresh = Project::new("Baru");
+        let fid = fresh.id.clone();
+        assert!(project_save_impl(&db, tmp.path(), fresh).unwrap());
+        assert!(tmp.path().join(&fid).join("project.json").is_file());
+        assert!(db
+            .lock()
+            .unwrap()
+            .get_project_index(&fid)
+            .unwrap()
+            .is_some());
     }
 }

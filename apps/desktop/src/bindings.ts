@@ -27,9 +27,106 @@ export const commands = {
 	telemetryStatus: () => typedError<TelemetryStatus, string>(__TAURI_INVOKE("telemetry_status")),
 	/**  Mengubah persetujuan telemetri (default mati). Tidak memicu pengiriman apa pun. */
 	telemetrySetOptIn: (enabled: boolean) => typedError<boolean, string>(__TAURI_INVOKE("telemetry_set_opt_in", { enabled })),
+	/**
+	 *  Mengimpor audio ke proyek terdaftar (probe, hash, daftarkan aset, simpan atomik) dan mengembalikan
+	 *  waveform ≈1000 titik. Proyek di memori UI harus dimuat ulang (`project_open`) karena aset/klip berubah.
+	 */
+	audioImport: (projectId: string, path: string) => typedError<AudioInfo, string>(__TAURI_INVOKE("audio_import", { projectId, path })),
+	/**
+	 *  Penjajaran otomatis audio proyek terhadap ayat `surah_id:from_ayah..=to_ayah` dari dataset terverifikasi.
+	 *  Tidak menyimpan; UI meninjau hasilnya lalu menyimpan lewat `project_save`. Lihat [`AlignOutcomeDto`]:
+	 *  ini VAD + timing proporsional, bukan forced alignment akustik.
+	 */
+	alignAuto: (projectId: string, surahId: number, fromAyah: number, toAyah: number) => typedError<AlignOutcomeDto_Serialize, string>(__TAURI_INVOKE("align_auto", { projectId, surahId, fromAyah, toAyah })),
+	/**
+	 *  Memulai ekspor MP4 lewat antrean job persisten dan worker `qurender`. Mengembalikan `job_id`.
+	 *  Kemajuan: event `export-progress` {job_id, fraction, message}; hasil: `export-finished`
+	 *  {job_id, ok, output_path, error_code, message}.
+	 */
+	exportStart: (projectId: string, outputPath: string, width: number | null, overwrite: boolean) => typedError<string, string>(__TAURI_INVOKE("export_start", { projectId, outputPath, width, overwrite })),
+	/**
+	 *  Membatalkan ekspor (juga job antrean). Keluaran parsial dibersihkan; `export-finished` dengan
+	 *  `error_code = "CANCELED"` menyusul.
+	 */
+	exportCancel: (jobId: string) => typedError<null, string>(__TAURI_INVOKE("export_cancel", { jobId })),
+	/**  Status satu job (ekspor atau batch). */
+	exportStatus: (jobId: string) => typedError<JobDto_Serialize, string>(__TAURI_INVOKE("export_status", { jobId })),
+	/**  Seluruh job antrean (prioritas turun, lalu urutan masuk). */
+	queueList: () => typedError<JobDto_Serialize[], string>(__TAURI_INVOKE("queue_list")),
+	/**  Membatalkan job antrean/berjalan/dijeda. */
+	queueCancel: (jobId: string) => typedError<null, string>(__TAURI_INVOKE("queue_cancel", { jobId })),
+	/**  Menjeda job yang masih antre. Job yang sedang berjalan ditolak (worker belum mendukung jeda). */
+	queuePause: (jobId: string) => typedError<null, string>(__TAURI_INVOKE("queue_pause", { jobId })),
+	/**  Melanjutkan job yang dijeda dan memastikan antrean berjalan. */
+	queueResume: (jobId: string) => typedError<null, string>(__TAURI_INVOKE("queue_resume", { jobId })),
+	/**  Pratinjau pemecahan proyek menjadi klip batch (tanpa efek samping). Mode: `by_ayah_count`, `by_max_duration_sec`. */
+	batchSplit: (projectId: string, mode: BatchMode) => typedError<BatchClipDto[], string>(__TAURI_INVOKE("batch_split", { projectId, mode })),
+	/**
+	 *  Memecah proyek lalu mengantre satu job render per klip ke `output_dir` (`NN-judul.mp4`). Antrean langsung
+	 *  berjalan; pantau lewat `queue_list`. Semua-atau-tidak-sama-sekali.
+	 */
+	queueEnqueueBatch: (projectId: string, mode: BatchMode, outputDir: string, width: number | null, overwrite: boolean) => typedError<JobDto_Serialize[], string>(__TAURI_INVOKE("queue_enqueue_batch", { projectId, mode, outputDir, width, overwrite })),
+	/**
+	 *  Memuat audio proyek ke engine playback (didekode pada sample rate perangkat). `Err` bila tidak ada
+	 *  perangkat audio, proyek belum punya audio, atau berkas hilang.
+	 */
+	playbackLoad: (projectId: string) => typedError<null, string>(__TAURI_INVOKE("playback_load", { projectId })),
+	playbackPlay: () => typedError<null, string>(__TAURI_INVOKE("playback_play")),
+	playbackPause: () => typedError<null, string>(__TAURI_INVOKE("playback_pause")),
+	/**  Seek ke `tick` (48 kHz); di-clamp ke [0, durasi]. */
+	playbackSeek: (tick: number | null) => typedError<null, string>(__TAURI_INVOKE("playback_seek", { tick })),
+	/**  Status playback; `tick` dibaca dari jam audio (48 kHz). Aman dipanggil berkala (mis. tiap frame). */
+	playbackStatus: () => __TAURI_INVOKE<PlaybackStatus_Serialize>("playback_status"),
+	/**  Membaca pengaturan non-rahasia; `null` bila belum diset. Kunci bergaya rahasia ditolak. */
+	settingsGet: (key: string) => typedError<SettingValue | null, string>(__TAURI_INVOKE("settings_get", { key })),
+	/**  Menyimpan pengaturan non-rahasia (boolean/angka/teks). Kunci memuat key/token/secret/password ditolak. */
+	settingsSet: (key: string, value: SettingValue) => typedError<null, string>(__TAURI_INVOKE("settings_set", { key, value })),
 };
 
 /* Types */
+/**
+ *  Hasil penjajaran otomatis; belum disimpan ke proyek (UI meninjau lalu menyimpan lewat `project_save`).
+ * 
+ *  **Bukan forced alignment akustik.** Segmentasi memakai deteksi suara berbasis energi (VAD) dan memetakan
+ *  wilayah suara ke-i ke ayat ke-i secara berurutan; timing per kata proporsional terhadap panjang kata, dan
+ *  `confidence` berasal dari heuristik (kewajaran durasi + kontras energi), bukan dari model akustik.
+ *  Bila `speech_regions != verses_expected`, pemetaan tidak dapat dipercaya: `warnings` memuat peringatan
+ *  aligner apa adanya dan semua segmen wajib ditinjau.
+ */
+export type AlignOutcomeDto = AlignOutcomeDto_Serialize | AlignOutcomeDto_Deserialize;
+
+/**
+ *  Hasil penjajaran otomatis; belum disimpan ke proyek (UI meninjau lalu menyimpan lewat `project_save`).
+ * 
+ *  **Bukan forced alignment akustik.** Segmentasi memakai deteksi suara berbasis energi (VAD) dan memetakan
+ *  wilayah suara ke-i ke ayat ke-i secara berurutan; timing per kata proporsional terhadap panjang kata, dan
+ *  `confidence` berasal dari heuristik (kewajaran durasi + kontras energi), bukan dari model akustik.
+ *  Bila `speech_regions != verses_expected`, pemetaan tidak dapat dipercaya: `warnings` memuat peringatan
+ *  aligner apa adanya dan semua segmen wajib ditinjau.
+ */
+export type AlignOutcomeDto_Deserialize = {
+	segments: AyahSegment_Deserialize[],
+	speech_regions: number,
+	verses_expected: number,
+	warnings: string[],
+};
+
+/**
+ *  Hasil penjajaran otomatis; belum disimpan ke proyek (UI meninjau lalu menyimpan lewat `project_save`).
+ * 
+ *  **Bukan forced alignment akustik.** Segmentasi memakai deteksi suara berbasis energi (VAD) dan memetakan
+ *  wilayah suara ke-i ke ayat ke-i secara berurutan; timing per kata proporsional terhadap panjang kata, dan
+ *  `confidence` berasal dari heuristik (kewajaran durasi + kontras energi), bukan dari model akustik.
+ *  Bila `speech_regions != verses_expected`, pemetaan tidak dapat dipercaya: `warnings` memuat peringatan
+ *  aligner apa adanya dan semua segmen wajib ditinjau.
+ */
+export type AlignOutcomeDto_Serialize = {
+	segments: AyahSegment_Serialize[],
+	speech_regions: number,
+	verses_expected: number,
+	warnings: string[],
+};
+
 export type AppInfo = {
 	name: string,
 	version: string,
@@ -45,6 +142,21 @@ export type AssetRef = {
 	kind: AssetKind,
 	duration_ticks: number | null,
 	size_bytes: number | null,
+};
+
+/**
+ *  Hasil impor audio. `peaks` berisi amplitudo puncak 0..1 (nilai mutlak maksimum per ember waktu), ≈1000 titik
+ *  merata di seluruh durasi.
+ */
+export type AudioInfo = {
+	asset_id: string,
+	duration_sec: number | null,
+	/**  Durasi dalam tick 48 kHz. */
+	duration_ticks: number | null,
+	/**  Sample rate berkas sumber. */
+	sample_rate: number,
+	channels: number,
+	peaks: (number | null)[],
 };
 
 export type AyahSegment = AyahSegment_Serialize | AyahSegment_Deserialize;
@@ -81,6 +193,29 @@ export type AyahSegment_Serialize = {
 	word_range?: number[],
 };
 
+/**  Satu klip hasil pemecahan. */
+export type BatchClipDto = {
+	/**  Mulai dari 1. */
+	clip_index: number,
+	title: string,
+	surah_id: number,
+	start_ayah: number,
+	end_ayah: number,
+	/**  Tick 48 kHz pada garis waktu proyek asal. */
+	start_tick: number | null,
+	end_tick: number | null,
+	duration_seconds: number | null,
+	/**  Ada segmen berkeyakinan < 0,8 yang belum dikonfirmasi manual. */
+	has_low_confidence: boolean,
+};
+
+/**  Mode pemecahan batch yang benar-benar didukung. */
+export type BatchMode = 
+/**  Satu klip per `count` ayat berurutan. */
+{ method: "by_ayah_count"; count: number } | 
+/**  Klip sepanjang mungkin tanpa melebihi `max_seconds` (satu ayat yang lebih panjang tetap satu klip). */
+{ method: "by_max_duration_sec"; max_seconds: number };
+
 export type CanvasConfig = {
 	width: number,
 	height: number,
@@ -111,6 +246,39 @@ export type Clip_Serialize = {
 	label: string,
 };
 
+/**  Payload event `export-finished` (sekali per job; `ok=false` untuk gagal maupun dibatalkan). */
+export type ExportFinishedEvent = ExportFinishedEvent_Serialize | ExportFinishedEvent_Deserialize;
+
+/**  Payload event `export-finished` (sekali per job; `ok=false` untuk gagal maupun dibatalkan). */
+export type ExportFinishedEvent_Deserialize = {
+	job_id: string,
+	ok: boolean,
+	/**  Berkas hasil; hanya terisi bila `ok`. */
+	output_path?: string | null,
+	/**  Kode galat worker (mis. `OUTPUT_EXISTS`, `CNT-5-OVERFLOW`, `CANCELED`); `None` bila `ok`. */
+	error_code?: string | null,
+	message: string,
+};
+
+/**  Payload event `export-finished` (sekali per job; `ok=false` untuk gagal maupun dibatalkan). */
+export type ExportFinishedEvent_Serialize = {
+	job_id: string,
+	ok: boolean,
+	/**  Berkas hasil; hanya terisi bila `ok`. */
+	output_path: string | null,
+	/**  Kode galat worker (mis. `OUTPUT_EXISTS`, `CNT-5-OVERFLOW`, `CANCELED`); `None` bila `ok`. */
+	error_code: string | null,
+	message: string,
+};
+
+/**  Payload event `export-progress`. */
+export type ExportProgressEvent = {
+	job_id: string,
+	/**  0.0..=1.0. */
+	fraction: number | null,
+	message: string,
+};
+
 /**  Laporan hasil validasi pra-ekspor. */
 export type ExportValidationReport = ExportValidationReport_Serialize | ExportValidationReport_Deserialize;
 
@@ -130,6 +298,59 @@ export type ExportValidationReport_Serialize = {
 	violations: PolicyViolation_Serialize[],
 };
 
+/**  Satu baris antrean untuk UI. */
+export type JobDto = JobDto_Serialize | JobDto_Deserialize;
+
+/**  Satu baris antrean untuk UI. */
+export type JobDto_Deserialize = {
+	id: string,
+	/**  `render`, `align`, `batch_split`, `download_edition`, `download_model`. */
+	kind: string,
+	project_id?: string | null,
+	batch_id?: string | null,
+	/**  Judul tampilan (judul klip batch atau nama berkas keluaran). */
+	title?: string | null,
+	/**  `queued`, `running`, `paused`, `succeeded`, `failed`, `canceled`. */
+	state: string,
+	priority: number,
+	/**  0.0..=1.0. */
+	progress: number | null,
+	progress_label?: string | null,
+	output_path?: string | null,
+	error_code?: string | null,
+	error_detail?: string | null,
+	attempts: number,
+	/**  Unix ms. */
+	created_at: number | null,
+	started_at?: number | null,
+	finished_at?: number | null,
+};
+
+/**  Satu baris antrean untuk UI. */
+export type JobDto_Serialize = {
+	id: string,
+	/**  `render`, `align`, `batch_split`, `download_edition`, `download_model`. */
+	kind: string,
+	project_id: string | null,
+	batch_id: string | null,
+	/**  Judul tampilan (judul klip batch atau nama berkas keluaran). */
+	title: string | null,
+	/**  `queued`, `running`, `paused`, `succeeded`, `failed`, `canceled`. */
+	state: string,
+	priority: number,
+	/**  0.0..=1.0. */
+	progress: number | null,
+	progress_label: string | null,
+	output_path: string | null,
+	error_code: string | null,
+	error_detail: string | null,
+	attempts: number,
+	/**  Unix ms. */
+	created_at: number | null,
+	started_at: number | null,
+	finished_at: number | null,
+};
+
 export type PackSummary = {
 	project_id: string,
 	project_name: string,
@@ -138,6 +359,27 @@ export type PackSummary = {
 	/**  Jumlah berkas di dalam arsip (project.json + aset, tanpa manifest). */
 	files: number,
 	total_bytes: number | null,
+};
+
+/**  Status playback. `tick` dalam tick 48 kHz. */
+export type PlaybackStatus = PlaybackStatus_Serialize | PlaybackStatus_Deserialize;
+
+/**  Status playback. `tick` dalam tick 48 kHz. */
+export type PlaybackStatus_Deserialize = {
+	loaded: boolean,
+	playing: boolean,
+	tick: number | null,
+	finished: boolean,
+	error?: string | null,
+};
+
+/**  Status playback. `tick` dalam tick 48 kHz. */
+export type PlaybackStatus_Serialize = {
+	loaded: boolean,
+	playing: boolean,
+	tick: number | null,
+	finished: boolean,
+	error: string | null,
 };
 
 /**  Pelanggaran atau peringatan kebijakan konten. */
@@ -241,6 +483,9 @@ export type Project_Serialize = {
 	segments: AyahSegment_Serialize[],
 	style_overrides: { [key in string]: string },
 };
+
+/**  Nilai pengaturan skalar. Objek/array/null tidak didukung. */
+export type SettingValue = boolean | number | null | string;
 
 export type SubtitleExportOptions = {
 	format: SubtitleFormat,
