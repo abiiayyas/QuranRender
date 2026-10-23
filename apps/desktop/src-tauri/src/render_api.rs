@@ -28,19 +28,53 @@ pub struct PreviewFrame {
     pub digest: String,
 }
 
-/// Lokasi sumber daya (font, template, dataset). Mode dev: akar repositori; dapat ditimpa dengan
-/// `QR_RESOURCES_DIR`. Pengemasan sumber daya ke dalam bundel installer BELUM dikonfigurasi.
+static BUNDLED_RESOURCES: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
+
+/// Dipanggil sekali saat start aplikasi dengan folder resource bundel Tauri (`resource_dir`).
+pub fn set_bundled_resources(dir: PathBuf) {
+    let _ = BUNDLED_RESOURCES.set(dir);
+}
+
+/// Lokasi sumber daya (font, template, dataset). Urutan: `QR_RESOURCES_DIR` → resource bundel Tauri bila
+/// berisi `assets/fonts` → akar repositori (hanya build debug/dev).
 pub fn resources_root() -> PathBuf {
     if let Ok(p) = std::env::var("QR_RESOURCES_DIR") {
         return PathBuf::from(p);
     }
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../..")
+    if let Some(dir) = BUNDLED_RESOURCES.get() {
+        if dir.join("assets/fonts").is_dir() {
+            return dir.clone();
+        }
+    }
+    if cfg!(debug_assertions) {
+        return Path::new(env!("CARGO_MANIFEST_DIR")).join("../../..");
+    }
+    // Rilis tanpa resource: jalur yang jelas-jelas tidak ada agar galatnya menyebut lokasi yang dicari.
+    BUNDLED_RESOURCES
+        .get()
+        .cloned()
+        .unwrap_or_else(|| PathBuf::from("resources-tidak-ditemukan"))
 }
 
 pub fn dataset_dir() -> PathBuf {
     std::env::var("QR_DATASET_DIR")
         .map(PathBuf::from)
         .unwrap_or_else(|_| resources_root().join("build/dataset"))
+}
+
+/// Pemeriksaan start-up: font dimuat dan dataset lolos verifikasi tanda tangan + hash dari lokasi
+/// sumber daya yang berlaku. Mengembalikan ringkasan satu baris untuk log.
+pub fn self_check(pubkey: &str) -> Result<String, String> {
+    let root = resources_root();
+    FontSet::load(&root.join("assets"))
+        .map_err(|e| format!("font tidak dapat dimuat dari {}: {e}", root.display()))?;
+    let db = open_dataset(&dataset_dir(), pubkey)?;
+    let info = db.get_dataset_info().map_err(|e| e.to_string())?;
+    Ok(format!(
+        "sumber daya OK di {} (dataset {} terverifikasi)",
+        root.display(),
+        info.dataset_id
+    ))
 }
 
 /// Membuka `quran.db` dengan verifikasi tanda tangan + SHA-256 (CNT-2). Tidak ada jalur tanpa verifikasi.
@@ -240,6 +274,20 @@ mod tests {
         assert_eq!(a.digest, b.digest);
         assert!(a.data_url.starts_with("data:image/png;base64,"));
         assert!(!a.text_overflow);
+    }
+
+    #[test]
+    fn bundled_resource_dir_is_used_only_when_it_contains_fonts() {
+        // Satu-satunya tes yang memakai OnceLock global; QR_RESOURCES_DIR tidak boleh diset.
+        assert!(std::env::var("QR_RESOURCES_DIR").is_err());
+        let tmp = std::env::temp_dir().join(format!("qr_res_{}", std::process::id()));
+        std::fs::create_dir_all(&tmp).unwrap();
+        set_bundled_resources(tmp.clone());
+        // Tanpa assets/fonts: jatuh ke akar repositori (build debug).
+        assert_ne!(resources_root(), tmp);
+        std::fs::create_dir_all(tmp.join("assets/fonts")).unwrap();
+        assert_eq!(resources_root(), tmp);
+        let _ = std::fs::remove_dir_all(&tmp);
     }
 
     #[test]

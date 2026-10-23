@@ -60,7 +60,7 @@ fn execute_render(
     payload: &RenderPayload,
     cancel: &AtomicBool,
     emit: &dyn Fn(&WorkerEvent),
-    verses: &dyn qr_render::VerseSource,
+    verses: &(dyn qr_render::VerseSource + Sync),
 ) {
     let fail = |code: &str, message: String| {
         emit(&WorkerEvent::Failed {
@@ -243,7 +243,7 @@ fn main() -> Result<()> {
             }
         }
         "render" => {
-            // qurender render <folder_proyek.qrproj> <keluaran.mp4> [--audio f] [--width N] [--max-seconds S]
+            // qurender render <folder_proyek.qrproj> <keluaran.mp4> [--audio f] [--width N] [--max-seconds S] [--threads N] [--overwrite]
             if args.len() < 4 {
                 eprintln!("Penggunaan: qurender render <folder_proyek> <keluaran.mp4> [--audio f] [--width N] [--max-seconds S]");
                 std::process::exit(1);
@@ -261,6 +261,8 @@ fn main() -> Result<()> {
                 width: opt("--width").and_then(|v| v.parse().ok()),
                 max_seconds: opt("--max-seconds").and_then(|v| v.parse().ok()),
                 ffmpeg_bin: None,
+                overwrite: args.iter().any(|a| a == "--overwrite"),
+                threads: opt("--threads").and_then(|v| v.parse().ok()),
             };
             let db = open_verses().map_err(anyhow::Error::msg)?;
             let verses = DbVerses(Mutex::new(db));
@@ -305,6 +307,7 @@ mod tests {
     use qr_render::VerseContent;
     use std::collections::HashMap;
     use std::io::{BufReader, Cursor, Read};
+    use std::sync::atomic::AtomicUsize;
 
     type Events = Arc<Mutex<Vec<WorkerEvent>>>;
 
@@ -340,8 +343,12 @@ mod tests {
     }
 
     fn make_project(seconds: i64) -> PathBuf {
-        let dir =
-            std::env::temp_dir().join(format!("qr_cli_{}_{seconds}.qrproj", std::process::id()));
+        static NONCE: AtomicUsize = AtomicUsize::new(0);
+        let n = NONCE.fetch_add(1, Ordering::Relaxed);
+        let dir = std::env::temp_dir().join(format!(
+            "qr_cli_{}_{seconds}_{n}.qrproj",
+            std::process::id()
+        ));
         let mut p = Project::new("Uji Worker");
         p.template_id = "subuh".into();
         p.segments.push(AyahSegment {
@@ -595,5 +602,162 @@ mod tests {
         );
         assert!(!out.exists());
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    fn frame_hashes(path: &Path) -> String {
+        let o = std::process::Command::new("ffmpeg")
+            .args(["-v", "error", "-i"])
+            .arg(path)
+            .args(["-f", "framemd5", "-"])
+            .output()
+            .unwrap();
+        String::from_utf8_lossy(&o.stdout)
+            .lines()
+            .filter(|l| !l.starts_with('#'))
+            .map(|l| l.rsplit(',').next().unwrap_or("").trim().to_string())
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
+
+    #[test]
+    fn parallel_render_produces_same_frames_in_same_order_as_serial() {
+        let proj = make_project(2);
+        let mut hashes = Vec::new();
+        for threads in [1, 4] {
+            let out = std::env::temp_dir()
+                .join(format!("qr_cli_par_{}_{threads}.mp4", std::process::id()));
+            let (emit, events) = collector();
+            run_worker_loop(
+                Cursor::new(start_line(
+                    "p",
+                    &proj,
+                    &out,
+                    serde_json::json!({"threads": threads}),
+                )),
+                emit,
+                fatiha_1(),
+            )
+            .unwrap();
+            let last = events.lock().unwrap().last().cloned();
+            assert!(
+                matches!(last, Some(WorkerEvent::Succeeded { .. })),
+                "{last:?}"
+            );
+            hashes.push(frame_hashes(&out));
+            let _ = std::fs::remove_file(&out);
+        }
+        assert_eq!(hashes[0].lines().count(), 60);
+        assert_eq!(
+            hashes[0], hashes[1],
+            "urutan/isi frame berbeda antara 1 dan 4 thread"
+        );
+        let _ = std::fs::remove_dir_all(&proj);
+    }
+
+    fn run_one(proj: &Path, out: &Path, extra: serde_json::Value) -> Option<WorkerEvent> {
+        let (emit, events) = collector();
+        run_worker_loop(
+            Cursor::new(start_line("x", proj, out, extra)),
+            emit,
+            fatiha_1(),
+        )
+        .unwrap();
+        let last = events.lock().unwrap().last().cloned();
+        last
+    }
+
+    fn code(e: &Option<WorkerEvent>) -> String {
+        match e {
+            Some(WorkerEvent::Failed { error_code, .. }) => error_code.clone(),
+            Some(WorkerEvent::Succeeded { .. }) => "OK".into(),
+            other => format!("{other:?}"),
+        }
+    }
+
+    #[test]
+    fn bug_bash_regressions_output_exists_audio_missing_width_and_missing_dirs() {
+        let proj = make_project(2);
+        let base = std::env::temp_dir().join(format!("qr_cli_bb_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&base);
+
+        // Folder keluaran yang belum ada dibuat otomatis.
+        let out = base.join("a/b/hasil.mp4");
+        assert_eq!(code(&run_one(&proj, &out, serde_json::json!({}))), "OK");
+        assert!(out.exists());
+
+        // Tidak menimpa berkas yang ada, kecuali diizinkan eksplisit.
+        let before = std::fs::metadata(&out).unwrap().modified().unwrap();
+        assert_eq!(
+            code(&run_one(&proj, &out, serde_json::json!({}))),
+            "OUTPUT_EXISTS"
+        );
+        assert_eq!(std::fs::metadata(&out).unwrap().modified().unwrap(), before);
+        assert_eq!(
+            code(&run_one(
+                &proj,
+                &out,
+                serde_json::json!({"overwrite": true})
+            )),
+            "OK"
+        );
+
+        // Audio hilang: galat jelas, bukan galat mentah encoder; tidak ada keluaran.
+        let out2 = base.join("noaudio.mp4");
+        let e = run_one(
+            &proj,
+            &out2,
+            serde_json::json!({"audio_path": base.join("tidak-ada.wav")}),
+        );
+        assert_eq!(code(&e), "AUDIO_MISSING");
+        assert!(!out2.exists());
+
+        // Lebar di luar rentang ditolak (sebelumnya 0 → 2×2 diam-diam).
+        for w in [0, 63, 100_000] {
+            assert_eq!(
+                code(&run_one(
+                    &proj,
+                    &base.join("w.mp4"),
+                    serde_json::json!({"width": w})
+                )),
+                "INVALID_PAYLOAD",
+                "w={w}"
+            );
+        }
+
+        // Audio lebih pendek dari video tidak memotong video (2 dtk video, 0,5 dtk audio).
+        let wav = base.join("short.wav");
+        let st = std::process::Command::new("ffmpeg")
+            .args([
+                "-v",
+                "error",
+                "-y",
+                "-f",
+                "lavfi",
+                "-i",
+                "sine=frequency=440:duration=0.5",
+                "-ar",
+                "48000",
+            ])
+            .arg(&wav)
+            .status()
+            .unwrap();
+        assert!(st.success());
+        let out3 = base.join("padded.mp4");
+        assert_eq!(
+            code(&run_one(
+                &proj,
+                &out3,
+                serde_json::json!({"audio_path": wav})
+            )),
+            "OK"
+        );
+        let d: f64 = probe(&out3, "format=duration")
+            .trim()
+            .trim_start_matches("duration=")
+            .parse()
+            .unwrap();
+        assert!((d - 2.0).abs() < 0.1, "durasi {d}");
+        let _ = std::fs::remove_dir_all(&base);
+        let _ = std::fs::remove_dir_all(&proj);
     }
 }

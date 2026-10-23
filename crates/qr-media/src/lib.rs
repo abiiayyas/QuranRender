@@ -15,7 +15,8 @@ pub use decode::decode_audio_mono_f32;
 pub use encoder::{
     build_ffmpeg_export_args, build_ffmpeg_transparent_export_args, check_frame_equivalence,
     generate_unique_export_path, parse_ffmpeg_encoders, probe_available_encoders,
-    select_best_encoder, HwEncoderKind, Mp4ExportConfig, TransparentExportFormat, VideoEncoder,
+    rgba_to_yuv420_bt709, select_best_encoder, HwEncoderKind, Mp4ExportConfig, RawFrameFormat,
+    TransparentExportFormat, VideoEncoder,
 };
 pub use export::{export_mp4, ExportError, ExportStats};
 pub use lufs::{calculate_normalization_gain, measure_integrated_lufs};

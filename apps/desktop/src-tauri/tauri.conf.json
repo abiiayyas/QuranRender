@@ -34,6 +34,13 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "resources": {
+      "../../../assets/fonts": "assets/fonts",
+      "../../../crates/qr-render/templates": "crates/qr-render/templates",
+      "../../../build/dataset/quran.db": "build/dataset/quran.db",
+      "../../../build/dataset/dataset-manifest.json": "build/dataset/dataset-manifest.json",
+      "../../../build/dataset/dataset-manifest.json.minisig": "build/dataset/dataset-manifest.json.minisig"
+    }
   }
 }

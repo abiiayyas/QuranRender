@@ -292,6 +292,11 @@ const MAX_ENTRY_BYTES: u64 = 16 * 1024 * 1024;
 const MAX_ENTRIES: usize = 64;
 
 fn safe_relative(name: &str) -> Option<PathBuf> {
+    // Aturan independen platform: nama arsip tidak boleh memuat pemisah Windows, awalan drive, NUL,
+    // atau segmen `..`/kosong (arsip dari Windows/Linux dibuka di mana saja).
+    if name.contains(['\\', ':', '\0']) || name.split('/').any(|s| s == "..") {
+        return None;
+    }
     let p = Path::new(name);
     if p.is_absolute() {
         return None;

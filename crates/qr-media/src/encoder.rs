@@ -41,6 +41,64 @@ impl VideoEncoder {
     }
 }
 
+/// Format piksel frame mentah yang dialirkan ke FFmpeg.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub enum RawFrameFormat {
+    /// RGBA 8-bit (4 byte/piksel); FFmpeg yang mengonversi ke YUV (BT.709 lewat filter scale).
+    #[default]
+    Rgba,
+    /// YUV 4:2:0 planar BT.709 rentang TV (1,5 byte/piksel); dikonversi pengirim, FFmpeg tidak mengubah warna.
+    Yuv420p,
+}
+
+impl RawFrameFormat {
+    pub fn frame_bytes(self, width: u32, height: u32) -> usize {
+        let px = width as usize * height as usize;
+        match self {
+            RawFrameFormat::Rgba => px * 4,
+            RawFrameFormat::Yuv420p => px * 3 / 2,
+        }
+    }
+}
+
+/// Konversi RGBA (alpha diabaikan; frame ekspor opak) → YUV 4:2:0 planar BT.709 rentang TV.
+/// Chroma = rata-rata blok 2×2. `width` dan `height` harus genap.
+pub fn rgba_to_yuv420_bt709(rgba: &[u8], width: u32, height: u32) -> Vec<u8> {
+    let (w, h) = (width as usize, height as usize);
+    debug_assert!(w % 2 == 0 && h % 2 == 0 && rgba.len() == w * h * 4);
+    let mut out = vec![0u8; w * h * 3 / 2];
+    let (yp, rest) = out.split_at_mut(w * h);
+    let (up, vp) = rest.split_at_mut(w * h / 4);
+    for y in 0..h {
+        for x in 0..w {
+            let i = (y * w + x) * 4;
+            let (r, g, b) = (
+                i32::from(rgba[i]),
+                i32::from(rgba[i + 1]),
+                i32::from(rgba[i + 2]),
+            );
+            yp[y * w + x] = (((47 * r + 157 * g + 16 * b + 128) >> 8) + 16) as u8;
+        }
+    }
+    for cy in 0..h / 2 {
+        for cx in 0..w / 2 {
+            let (mut r, mut g, mut b) = (0i32, 0i32, 0i32);
+            for (dy, dx) in [(0, 0), (0, 1), (1, 0), (1, 1)] {
+                let i = ((cy * 2 + dy) * w + cx * 2 + dx) * 4;
+                r += i32::from(rgba[i]);
+                g += i32::from(rgba[i + 1]);
+                b += i32::from(rgba[i + 2]);
+            }
+            let (r, g, b) = ((r + 2) >> 2, (g + 2) >> 2, (b + 2) >> 2);
+            let u = ((-26 * r - 87 * g + 112 * b + 128) >> 8) + 128;
+            let v = ((112 * r - 102 * g - 10 * b + 128) >> 8) + 128;
+            up[cy * (w / 2) + cx] = u.clamp(0, 255) as u8;
+            vp[cy * (w / 2) + cx] = v.clamp(0, 255) as u8;
+        }
+    }
+    out
+}
+
 /// Konfigurasi ekspor MP4 (H.264/AAC).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Mp4ExportConfig {
@@ -51,6 +109,12 @@ pub struct Mp4ExportConfig {
     pub audio_sample_rate: u32,
     pub audio_bitrate_kbps: u32,
     pub preferred_encoder: Option<VideoEncoder>,
+    #[serde(default)]
+    pub raw_format: RawFrameFormat,
+    /// Durasi keluaran (detik). Bila ada audio: audio di-pad senyap dan keluaran dikunci ke durasi ini,
+    /// sehingga video tidak terpotong oleh audio yang lebih pendek. `None` = ikuti stream terpendek.
+    #[serde(default)]
+    pub duration_sec: Option<f64>,
 }
 
 impl Default for Mp4ExportConfig {
@@ -63,6 +127,8 @@ impl Default for Mp4ExportConfig {
             audio_sample_rate: 48000,
             audio_bitrate_kbps: 192,
             preferred_encoder: None,
+            raw_format: RawFrameFormat::default(),
+            duration_sec: None,
         }
     }
 }
@@ -140,7 +206,10 @@ pub fn build_ffmpeg_export_args(
         "-f",
         "rawvideo",
         "-pix_fmt",
-        "rgba",
+        match config.raw_format {
+            RawFrameFormat::Rgba => "rgba",
+            RawFrameFormat::Yuv420p => "yuv420p",
+        },
     ]
     .iter()
     .map(|s| (*s).to_string())
@@ -154,9 +223,14 @@ pub fn build_ffmpeg_export_args(
     if audio_path.is_some() {
         args.extend(["-map".into(), "1:a:0".into()]);
     }
+    // Frame RGBA dikonversi FFmpeg (BT.709, rentang TV); frame YUV sudah dikonversi pengirim.
+    if config.raw_format == RawFrameFormat::Rgba {
+        args.extend([
+            "-vf".into(),
+            "scale=out_color_matrix=bt709:out_range=tv,format=yuv420p".into(),
+        ]);
+    }
     args.extend([
-        "-vf".into(),
-        "scale=out_color_matrix=bt709:out_range=tv,format=yuv420p".into(),
         "-c:v".into(),
         encoder.ffmpeg_codec_name().into(),
         "-b:v".into(),
@@ -181,8 +255,11 @@ pub fn build_ffmpeg_export_args(
             format!("{}k", config.audio_bitrate_kbps),
             "-ar".into(),
             config.audio_sample_rate.to_string(),
-            "-shortest".into(),
         ]);
+        match config.duration_sec {
+            Some(d) => args.extend(["-af".into(), "apad".into(), "-t".into(), format!("{d:.3}")]),
+            None => args.push("-shortest".into()),
+        }
     }
     args.extend(["-movflags".into(), "+faststart".into(), output_path.into()]);
     args

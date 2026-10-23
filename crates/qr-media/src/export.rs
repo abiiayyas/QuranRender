@@ -79,7 +79,7 @@ where
         s
     });
 
-    let want = config.width as usize * config.height as usize * 4;
+    let want = config.raw_format.frame_bytes(config.width, config.height);
     let mut result: Result<(), ExportError> = Ok(());
     for i in 0..total_frames {
         if cancel.load(Ordering::Relaxed) {
@@ -140,6 +140,10 @@ where
     F: FnMut(u64) -> Result<Vec<u8>, String>,
     P: FnMut(u64, u64),
 {
+    // Durasi keluaran dikunci ke jumlah frame agar audio yang lebih pendek tidak memotong video.
+    let mut locked = config.clone();
+    locked.duration_sec = Some(total_frames as f64 / f64::from(config.fps.max(1)));
+    let config = &locked;
     let available = probe_available_encoders(ffmpeg_bin)
         .map_err(|e| ExportError::FfmpegUnavailable(ffmpeg_bin.to_string(), e))?;
     let chosen = select_best_encoder(config, &available).ok_or(ExportError::NoEncoder)?;
@@ -315,6 +319,135 @@ mod tests {
         );
         assert!(matches!(r, Err(ExportError::Cancelled)));
         assert!(!out.exists());
+    }
+
+    #[test]
+    fn yuv_conversion_matches_ffmpeg_bt709_within_rounding() {
+        use crate::encoder::rgba_to_yuv420_bt709;
+        let (w, h) = (64u32, 48u32);
+        // Gradien + blok warna jenuh agar luma dan kedua chroma teruji.
+        let mut rgba = Vec::new();
+        for y in 0..h {
+            for x in 0..w {
+                let (r, g, b) = if x < 32 {
+                    ((x * 8) as u8, (y * 5) as u8, 200u8)
+                } else {
+                    (220u8, (y * 4) as u8, (x * 3) as u8)
+                };
+                rgba.extend([r, g, b, 255]);
+            }
+        }
+        let mine = rgba_to_yuv420_bt709(&rgba, w, h);
+        let raw = tmp("in.rgba");
+        std::fs::write(&raw, &rgba).unwrap();
+        let o = Command::new("ffmpeg")
+            .args([
+                "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgba", "-s", "64x48", "-i",
+            ])
+            .arg(&raw)
+            .args([
+                "-vf",
+                "scale=out_color_matrix=bt709:out_range=tv,format=yuv420p",
+                "-f",
+                "rawvideo",
+                "-pix_fmt",
+                "yuv420p",
+                "-",
+            ])
+            .output()
+            .unwrap();
+        assert_eq!(o.stdout.len(), mine.len());
+        let maxd = mine
+            .iter()
+            .zip(&o.stdout)
+            .map(|(a, b)| (i32::from(*a) - i32::from(*b)).abs())
+            .max()
+            .unwrap();
+        let mean = mine
+            .iter()
+            .zip(&o.stdout)
+            .map(|(a, b)| (i32::from(*a) - i32::from(*b)).abs() as f64)
+            .sum::<f64>()
+            / mine.len() as f64;
+        assert!(
+            mean < 1.0 && maxd <= 6,
+            "selisih rata-rata {mean}, maks {maxd}"
+        );
+        let _ = std::fs::remove_file(&raw);
+    }
+
+    #[test]
+    fn yuv_export_produces_bt709_mp4_with_correct_frame_count() {
+        use crate::encoder::{rgba_to_yuv420_bt709, RawFrameFormat};
+        let out = tmp("yuv.mp4");
+        let mut c = cfg(160, 288);
+        c.raw_format = RawFrameFormat::Yuv420p;
+        let cancel = AtomicBool::new(false);
+        let r = export_mp4(
+            "ffmpeg",
+            &c,
+            None,
+            &out,
+            12,
+            |i| Ok(rgba_to_yuv420_bt709(&solid(160, 288, i), 160, 288)),
+            |_, _| {},
+            &cancel,
+        )
+        .unwrap();
+        assert_eq!(r.frames, 12);
+        let v = ffprobe(&out, "stream=nb_frames,color_space,pix_fmt");
+        assert!(
+            v.contains("nb_frames=12")
+                && v.contains("color_space=bt709")
+                && v.contains("pix_fmt=yuv420p"),
+            "{v}"
+        );
+        let _ = std::fs::remove_file(&out);
+    }
+
+    #[test]
+    fn shorter_audio_is_padded_and_does_not_truncate_video() {
+        let wav = tmp("short.wav");
+        let ok = Command::new("ffmpeg")
+            .args([
+                "-v",
+                "error",
+                "-y",
+                "-f",
+                "lavfi",
+                "-i",
+                "sine=frequency=440:duration=1",
+                "-ar",
+                "48000",
+            ])
+            .arg(&wav)
+            .status()
+            .unwrap();
+        assert!(ok.success());
+        let out = tmp("pad.mp4");
+        let cancel = AtomicBool::new(false);
+        export_mp4(
+            "ffmpeg",
+            &cfg(64, 64),
+            Some(&wav),
+            &out,
+            40,
+            |i| Ok(solid(64, 64, i)),
+            |_, _| {},
+            &cancel,
+        )
+        .unwrap();
+        let d: f64 = ffprobe(&out, "format=duration")
+            .trim()
+            .trim_start_matches("duration=")
+            .parse()
+            .unwrap();
+        assert!(
+            (d - 4.0).abs() < 0.15,
+            "40 frame @10fps = 4 dtk, keluaran {d} dtk"
+        );
+        let _ = std::fs::remove_file(&wav);
+        let _ = std::fs::remove_file(&out);
     }
 
     #[test]

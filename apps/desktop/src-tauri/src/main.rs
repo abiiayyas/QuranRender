@@ -11,6 +11,7 @@ use qr_render::{export_subtitles, QuranDbVerses, SubtitleExportOptions};
 use qr_store::{duplicate_project_folder, AppDb, ProjectIndexEntry};
 use serde::Serialize;
 use specta::Type;
+#[cfg(any(debug_assertions, test))]
 use specta_typescript::Typescript;
 use tauri_specta::{collect_commands, Builder};
 use ulid::Ulid;
@@ -309,15 +310,28 @@ fn preview_frame(
     })
 }
 
+/// Menghapus folder proyek hanya bila benar-benar folder proyek (`*.qrproj` berisi `project.json`).
+/// Entri indeks yang rusak atau dimanipulasi tidak boleh bisa menghapus folder sembarang.
+fn remove_project_folder(path: &std::path::Path) -> Result<(), String> {
+    if !path.exists() {
+        return Ok(());
+    }
+    let is_qrproj = path.extension().is_some_and(|e| e == "qrproj");
+    if !is_qrproj || !path.join("project.json").is_file() || path.is_symlink() {
+        return Err(format!(
+            "Menolak menghapus '{}': bukan folder proyek QuranRender (*.qrproj dengan project.json)",
+            path.display()
+        ));
+    }
+    fs::remove_dir_all(path).map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 #[specta::specta]
 fn project_delete(id: String, state: tauri::State<'_, AppState>) -> Result<bool, String> {
     let db = state.db.lock().map_err(|e| e.to_string())?;
     if let Some(entry) = db.get_project_index(&id).map_err(|e| e.to_string())? {
-        let p = PathBuf::from(&entry.path);
-        if p.exists() {
-            let _ = fs::remove_dir_all(&p);
-        }
+        remove_project_folder(&PathBuf::from(&entry.path))?;
         db.delete_project_index(&id).map_err(|e| e.to_string())?;
         Ok(true)
     } else {
@@ -360,6 +374,17 @@ fn main() {
             projects_dir,
             dataset: Mutex::new(None),
         })
+        .setup(|app| {
+            use tauri::Manager;
+            if let Ok(dir) = app.path().resource_dir() {
+                render_api::set_bundled_resources(dir);
+            }
+            match render_api::self_check(DATASET_PUBKEY) {
+                Ok(msg) => eprintln!("[QuranRender] {msg}"),
+                Err(e) => eprintln!("[QuranRender] PERINGATAN sumber daya: {e}"),
+            }
+            Ok(())
+        })
         .invoke_handler(builder.invoke_handler())
         .run(tauri::generate_context!())
         .expect("galat saat menjalankan aplikasi tauri");
@@ -379,6 +404,33 @@ mod tests {
         fs::create_dir_all(&a).unwrap();
         let b = unique_project_dir(&tmp, "Kajian/Subuh");
         assert_eq!(b.file_name().unwrap(), "Kajian-Subuh-2.qrproj");
+        let _ = fs::remove_dir_all(&tmp);
+    }
+
+    #[test]
+    fn remove_project_folder_refuses_anything_that_is_not_a_project() {
+        let tmp = std::env::temp_dir().join(format!("qr_del_{}", Ulid::generate()));
+        let proj = tmp.join("Uji.qrproj");
+        let other = tmp.join("dokumen-penting");
+        fs::create_dir_all(&proj).unwrap();
+        fs::create_dir_all(&other).unwrap();
+        fs::write(other.join("rahasia.txt"), "x").unwrap();
+        fs::write(proj.join("project.json"), "{}").unwrap();
+
+        assert!(remove_project_folder(&other).is_err());
+        assert!(other.join("rahasia.txt").exists());
+        // `.qrproj` tanpa project.json juga ditolak.
+        let fake = tmp.join("Palsu.qrproj");
+        fs::create_dir_all(&fake).unwrap();
+        assert!(remove_project_folder(&fake).is_err());
+        assert!(fake.exists());
+
+        assert!(remove_project_folder(&proj).is_ok());
+        assert!(!proj.exists());
+        assert!(
+            remove_project_folder(&proj).is_ok(),
+            "sudah hilang: bukan galat"
+        );
         let _ = fs::remove_dir_all(&tmp);
     }
 
