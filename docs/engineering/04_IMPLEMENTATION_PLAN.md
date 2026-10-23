@@ -158,7 +158,10 @@ dan mengekspor MP4 + SRT dengan 4 template.
 | H-04 | Paket model tingkat Kecil/Akurat yang bisa diunduh + verifikasi tanda tangan | SYN-8 (P1, boleh menyusul bila belum siap) |
 | H-05 | Bug bash lintas OS + perbaikan semua bug berat | Nol bug berat terbuka |
 
-Gerbang v1.0: seluruh kriteria P0 terpenuhi (PRD §14).
+**Status (lihat `06_V1_HARDENING.md`):** H-01 sebagian (2,9× pada satu mesin dev, target 3× belum terbukti), H-02 sebagian
+(fuzzing mutasi; migrasi dan `.qrpack` belum ada), H-03 selesai (sesuai kondisi nyata), H-04 belum, H-05 hanya macOS.
+
+Gerbang v1.0: seluruh kriteria P0 terpenuhi (PRD §14). **Belum terpenuhi** (gerbang Fase 1 dan 2 masih terbuka).
 
 ---
 
