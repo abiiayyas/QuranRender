@@ -1,0 +1,32 @@
+{
+  "$schema": "https://schema.quranrender.app/template/v1.json",
+  "id": "subuh",
+  "version": "1.0.0",
+  "name": "Subuh",
+  "description": "Latar panorama fajar dengan peredup gradien lembut dan terjemahan di bawah ayat.",
+  "author": "QuranRender Team",
+  "license": "GPL-3.0-or-later",
+  "categories": ["nature", "cinematic"],
+  "supported_ratios": ["9:16", "16:9", "1:1", "4:5"],
+  "default_ratio": "9:16",
+  "safe_area": {
+    "9:16": { "top": 0.08, "bottom": 0.14, "left": 0.10, "right": 0.10 },
+    "16:9": { "top": 0.08, "bottom": 0.08, "left": 0.08, "right": 0.08 },
+    "1:1":  { "top": 0.06, "bottom": 0.06, "left": 0.06, "right": 0.06 },
+    "4:5":  { "top": 0.08, "bottom": 0.10, "left": 0.08, "right": 0.08 }
+  },
+  "background": {
+    "default_color": "#111317",
+    "dimmer_opacity": 0.55
+  },
+  "typography": {
+    "ayah_font": "LPMQ",
+    "ayah_size_cw": 0.092,
+    "ayah_color": "#F4F5F7",
+    "translation_font": "Inter",
+    "translation_size_cw": 0.040,
+    "translation_color": "#E5E7EB",
+    "translation_opacity": 0.88,
+    "highlight_style": "smooth_fade"
+  }
+}

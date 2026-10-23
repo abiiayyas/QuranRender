@@ -1,0 +1,31 @@
+{
+  "$schema": "https://schema.quranrender.app/template/v1.json",
+  "id": "terang",
+  "version": "1.0.0",
+  "name": "Kertas Terang",
+  "description": "Mensimulasikan halaman mushaf cetak terang dengan latar kertas krem gading hangat dan teks hitam pekat.",
+  "author": "QuranRender Team",
+  "license": "GPL-3.0-or-later",
+  "categories": ["traditional", "mushaf"],
+  "supported_ratios": ["9:16", "16:9", "1:1"],
+  "default_ratio": "9:16",
+  "safe_area": {
+    "9:16": { "top": 0.08, "bottom": 0.14, "left": 0.10, "right": 0.10 },
+    "16:9": { "top": 0.08, "bottom": 0.08, "left": 0.08, "right": 0.08 },
+    "1:1":  { "top": 0.06, "bottom": 0.06, "left": 0.06, "right": 0.06 }
+  },
+  "background": {
+    "default_color": "#F7F6F2",
+    "dimmer_opacity": 0.0
+  },
+  "typography": {
+    "ayah_font": "LPMQ",
+    "ayah_size_cw": 0.092,
+    "ayah_color": "#1A1C20",
+    "translation_font": "Inter",
+    "translation_size_cw": 0.040,
+    "translation_color": "#374151",
+    "translation_opacity": 0.90,
+    "highlight_style": "underline"
+  }
+}

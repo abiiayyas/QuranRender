@@ -1,0 +1,30 @@
+{
+  "$schema": "https://schema.quranrender.app/template/v1.json",
+  "id": "besar",
+  "version": "1.0.0",
+  "name": "Besar (Hafalan)",
+  "description": "Dirancang khusus untuk hafalan dan tadabbur. Teks ayat berukuran sangat besar di tengah layar tanpa terjemahan.",
+  "author": "QuranRender Team",
+  "license": "GPL-3.0-or-later",
+  "categories": ["modern", "hafalan"],
+  "supported_ratios": ["9:16", "1:1"],
+  "default_ratio": "9:16",
+  "safe_area": {
+    "9:16": { "top": 0.08, "bottom": 0.14, "left": 0.10, "right": 0.10 },
+    "1:1":  { "top": 0.06, "bottom": 0.06, "left": 0.06, "right": 0.06 }
+  },
+  "background": {
+    "default_color": "#111317",
+    "dimmer_opacity": 0.60
+  },
+  "typography": {
+    "ayah_font": "LPMQ",
+    "ayah_size_cw": 0.135,
+    "ayah_color": "#FFFFFF",
+    "translation_font": "Inter",
+    "translation_size_cw": 0.0,
+    "translation_color": "transparent",
+    "translation_opacity": 0.0,
+    "highlight_style": "smooth_fade"
+  }
+}

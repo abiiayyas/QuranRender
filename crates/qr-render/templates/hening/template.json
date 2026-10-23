@@ -1,0 +1,32 @@
+{
+  "$schema": "https://schema.quranrender.app/template/v1.json",
+  "id": "hening",
+  "version": "1.0.0",
+  "name": "Hening Grafit",
+  "description": "Latar polos warna grafit pekat tanpa foto latar. Pilihan terbaik untuk tilawah khusyuk dan murottal malam hari.",
+  "author": "QuranRender Team",
+  "license": "GPL-3.0-or-later",
+  "categories": ["minimalist", "focus"],
+  "supported_ratios": ["9:16", "16:9", "1:1", "4:5"],
+  "default_ratio": "9:16",
+  "safe_area": {
+    "9:16": { "top": 0.08, "bottom": 0.14, "left": 0.10, "right": 0.10 },
+    "16:9": { "top": 0.08, "bottom": 0.08, "left": 0.08, "right": 0.08 },
+    "1:1":  { "top": 0.06, "bottom": 0.06, "left": 0.06, "right": 0.06 },
+    "4:5":  { "top": 0.08, "bottom": 0.10, "left": 0.08, "right": 0.08 }
+  },
+  "background": {
+    "default_color": "#101114",
+    "dimmer_opacity": 0.0
+  },
+  "typography": {
+    "ayah_font": "LPMQ",
+    "ayah_size_cw": 0.098,
+    "ayah_color": "#E5E7EB",
+    "translation_font": "Inter",
+    "translation_size_cw": 0.040,
+    "translation_color": "#9CA3AF",
+    "translation_opacity": 0.80,
+    "highlight_style": "smooth_fade"
+  }
+}
