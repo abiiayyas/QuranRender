@@ -2731,6 +2731,7 @@ dependencies = [
 name = "qr-jobs"
 version = "0.1.0"
 dependencies = [
+ "qr-core",
  "qr-store",
  "serde",
  "serde_json",

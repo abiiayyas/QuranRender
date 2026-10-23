@@ -1,6 +1,10 @@
 //! Validator kebijakan konten CNT-1..5 dan validasi pra-ekspor lengkap (PRD §6, CNT-1..5, EXP-5, EXP-6, B2-10).
 //! Mengacu ke docs/product/PRD.md §6, §7 EXP-5..6 dan docs/engineering/01_TECHNICAL_HANDOFF.md §11.
 
+pub mod package;
+
+pub use package::{generate_credits_text, generate_upload_text, validate_cnt3_cnt4_metadata};
+
 use qr_core::project::{Project, TrackKind};
 use serde::{Deserialize, Serialize};
 use specta::Type;

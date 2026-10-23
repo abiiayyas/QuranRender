@@ -1,8 +1,12 @@
-//! Antrean job persisten dan supervisor eksekusi worker (PRD EXP-7, BAT-2, A1-09).
-//! Mengacu ke docs/product/PRD.md §7 EXP-7 dan docs/engineering/01_TECHNICAL_HANDOFF.md §10.4.
+//! Antrean job persisten dan supervisor eksekusi worker (PRD EXP-7, BAT-1..3, A1-09, B2-12).
+//! Mengacu ke docs/product/PRD.md §7 EXP-7, BAT-1..3 dan docs/engineering/01_TECHNICAL_HANDOFF.md §10.4.
 
+pub mod batch;
 pub mod protocol;
 
+pub use batch::{
+    enqueue_batch_jobs, split_project_into_batch_clips, BatchClipItem, BatchSplitMethod,
+};
 pub use protocol::{WorkerCommand, WorkerEvent};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
