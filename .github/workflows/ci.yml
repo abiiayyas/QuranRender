@@ -63,8 +63,11 @@ jobs:
       - name: Run cargo-deny
         run: cargo deny check
 
-      - name: Run Rust unit tests
+      - name: Run Rust unit tests (termasuk verifikasi tanda tangan minisign F0-05)
         run: cargo test --all-targets
+
+      - name: Run linkage check (F0-04)
+        run: ./third_party/ffmpeg/check-linkage.sh target/debug
 
       - name: Build frontend packages
         run: pnpm -r build

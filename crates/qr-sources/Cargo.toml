@@ -14,3 +14,4 @@ workspace = true
 qr-quran.workspace = true
 thiserror.workspace = true
 serde.workspace = true
+minisign-verify.workspace = true
