@@ -1,9 +1,13 @@
 //! Manajemen penyimpanan lokal QuranRender: app.db, project_index, pengaturan, dan migrasi.
 //! Mengacu ke PRD SET-2 dan docs/engineering/02_DATABASE_SPECIFICATION.md §5.
 
+pub mod project_index;
+
 use rusqlite::Connection;
 use std::path::Path;
 use thiserror::Error;
+
+pub use project_index::{duplicate_project_folder, ProjectIndexEntry};
 
 #[derive(Error, Debug)]
 pub enum StoreError {
@@ -11,6 +15,8 @@ pub enum StoreError {
     Sqlite(#[from] rusqlite::Error),
     #[error("JSON serialization error: {0}")]
     Json(#[from] serde_json::Error),
+    #[error("I/O error: {0}")]
+    Io(#[from] std::io::Error),
     #[error("Kunci rahasia '{0}' dilarang disimpan di tabel setting (PRD SET-2)")]
     SecretRejected(String),
     #[error("Versi migrasi tidak valid atau lebih baru dari yang didukung aplikasi")]
@@ -42,8 +48,7 @@ impl AppDb {
     /// Membuka atau membuat database pada path file yang ditentukan.
     pub fn open(path: &Path) -> Result<Self, StoreError> {
         if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent)
-                .map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))?;
+            std::fs::create_dir_all(parent)?;
         }
         let conn = Connection::open(path)?;
         let mut db = Self { conn };
@@ -170,19 +175,16 @@ mod tests {
     fn test_setting_store_and_retrieve() {
         let db = AppDb::open_in_memory().unwrap();
 
-        // 1. Simpan pengaturan normal
         let lang = serde_json::json!("id");
         db.set_setting("ui.language", &lang).unwrap();
 
         let retrieved = db.get_setting("ui.language").unwrap().unwrap();
         assert_eq!(retrieved, "id");
 
-        // 2. Timpa pengaturan
         let lang_en = serde_json::json!("en");
         db.set_setting("ui.language", &lang_en).unwrap();
         assert_eq!(db.get_setting("ui.language").unwrap().unwrap(), "en");
 
-        // 3. Hapus pengaturan
         assert!(db.remove_setting("ui.language").unwrap());
         assert_eq!(db.get_setting("ui.language").unwrap(), None);
     }
@@ -192,7 +194,6 @@ mod tests {
         let db = AppDb::open_in_memory().unwrap();
         let val = serde_json::json!("super_secret_val");
 
-        // Semua variasi kunci rahasia harus ditolak (PRD SET-2)
         assert!(matches!(
             db.set_setting("llm.api_key", &val),
             Err(StoreError::SecretRejected(_))
@@ -214,7 +215,6 @@ mod tests {
             Err(StoreError::SecretRejected(_))
         ));
 
-        // Kunci normal yang tidak memuat substring rahasia harus diizinkan
         assert!(db
             .set_setting("export.default_folder", &serde_json::json!("/path"))
             .is_ok());

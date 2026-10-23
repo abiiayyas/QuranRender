@@ -9,6 +9,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use specta::Type;
 use thiserror::Error;
 use ulid::Ulid;
 
@@ -31,13 +32,16 @@ pub enum ProjectError {
 pub const CURRENT_SCHEMA_VERSION: u32 = 1;
 pub const MAX_SNAPSHOTS: usize = 20;
 
-#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, JsonSchema, Type, Debug, Clone, PartialEq)]
 pub struct Project {
     pub schema_version: u32,
     pub id: String,
     pub name: String,
+    #[specta(type = f64)]
     pub created_at: u64,
+    #[specta(type = f64)]
     pub updated_at: u64,
+    #[specta(type = f64)]
     pub revision: u64,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reciter: Option<String>,
@@ -50,10 +54,11 @@ pub struct Project {
     #[serde(default)]
     pub segments: Vec<AyahSegment>,
     #[serde(default)]
+    #[specta(type = std::collections::HashMap<String, String>)]
     pub style_overrides: HashMap<String, serde_json::Value>,
 }
 
-#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, JsonSchema, Type, Debug, Clone, PartialEq, Eq)]
 pub struct CanvasConfig {
     pub width: u32,
     pub height: u32,
@@ -74,7 +79,7 @@ impl Default for CanvasConfig {
     }
 }
 
-#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, JsonSchema, Type, Debug, Clone, PartialEq, Eq)]
 pub enum AssetKind {
     Audio,
     Video,
@@ -83,17 +88,19 @@ pub enum AssetKind {
     Subtitle,
 }
 
-#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, JsonSchema, Type, Debug, Clone, PartialEq, Eq)]
 pub struct AssetRef {
     pub id: String,
     pub path: String,
     pub sha256: String,
     pub kind: AssetKind,
+    #[specta(type = f64)]
     pub duration_ticks: i64,
+    #[specta(type = f64)]
     pub size_bytes: u64,
 }
 
-#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, JsonSchema, Type, Debug, Clone, PartialEq, Eq)]
 pub enum TrackKind {
     Background,
     Audio,
@@ -102,7 +109,7 @@ pub enum TrackKind {
     Overlay,
 }
 
-#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, JsonSchema, Type, Debug, Clone, PartialEq, Eq)]
 pub struct Track {
     pub id: String,
     pub name: String,
@@ -114,24 +121,30 @@ pub struct Track {
     pub muted: bool,
 }
 
-#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, JsonSchema, Type, Debug, Clone, PartialEq, Eq)]
 pub struct Clip {
     pub id: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub asset_id: Option<String>,
+    #[specta(type = f64)]
     pub start_tick: i64,
+    #[specta(type = f64)]
     pub end_tick: i64,
+    #[specta(type = f64)]
     pub trim_in_tick: i64,
+    #[specta(type = f64)]
     pub trim_out_tick: i64,
     pub label: String,
 }
 
-#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, JsonSchema, Type, Debug, Clone, PartialEq)]
 pub struct AyahSegment {
     pub id: String,
     pub surah_id: u32,
     pub ayah_number: u32,
+    #[specta(type = f64)]
     pub start_tick: i64,
+    #[specta(type = f64)]
     pub end_tick: i64,
     #[serde(default)]
     pub word_timings: Vec<WordTiming>,
@@ -139,10 +152,12 @@ pub struct AyahSegment {
     pub manual_override: bool,
 }
 
-#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, JsonSchema, Type, Debug, Clone, PartialEq)]
 pub struct WordTiming {
     pub word_idx: u32,
+    #[specta(type = f64)]
     pub start_tick: i64,
+    #[specta(type = f64)]
     pub end_tick: i64,
     pub text: String,
     pub confidence: f32,

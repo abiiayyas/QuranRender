@@ -6,6 +6,11 @@ import { invoke as __TAURI_INVOKE } from "@tauri-apps/api/core";
 export const commands = {
 	greet: (name: string) => __TAURI_INVOKE<string>("greet", { name }),
 	getAppInfo: () => __TAURI_INVOKE<AppInfo>("get_app_info"),
+	projectCreate: (name: string, reciter: string | null, aspect: string | null) => typedError<Project_Serialize, string>(__TAURI_INVOKE("project_create", { name, reciter, aspect })),
+	projectList: () => typedError<ProjectIndexEntry_Serialize[], string>(__TAURI_INVOKE("project_list")),
+	projectOpen: (id: string) => typedError<Project_Serialize, string>(__TAURI_INVOKE("project_open", { id })),
+	projectDuplicate: (id: string, newName: string) => typedError<Project_Serialize, string>(__TAURI_INVOKE("project_duplicate", { id, newName })),
+	projectDelete: (id: string) => typedError<boolean, string>(__TAURI_INVOKE("project_delete", { id })),
 };
 
 /* Types */
@@ -14,4 +19,181 @@ export type AppInfo = {
 	version: string,
 	status: string,
 };
+
+export type AssetKind = "Audio" | "Video" | "Image" | "Font" | "Subtitle";
+
+export type AssetRef = {
+	id: string,
+	path: string,
+	sha256: string,
+	kind: AssetKind,
+	duration_ticks: number | null,
+	size_bytes: number | null,
+};
+
+export type AyahSegment = AyahSegment_Serialize | AyahSegment_Deserialize;
+
+export type AyahSegment_Deserialize = {
+	id: string,
+	surah_id: number,
+	ayah_number: number,
+	start_tick: number | null,
+	end_tick: number | null,
+	word_timings?: WordTiming[],
+	confidence: number | null,
+	manual_override: boolean,
+};
+
+export type AyahSegment_Serialize = {
+	id: string,
+	surah_id: number,
+	ayah_number: number,
+	start_tick: number | null,
+	end_tick: number | null,
+	word_timings: WordTiming[],
+	confidence: number | null,
+	manual_override: boolean,
+};
+
+export type CanvasConfig = {
+	width: number,
+	height: number,
+	fps_num: number,
+	fps_den: number,
+	aspect_ratio: string,
+};
+
+export type Clip = Clip_Serialize | Clip_Deserialize;
+
+export type Clip_Deserialize = {
+	id: string,
+	asset_id?: string | null,
+	start_tick: number | null,
+	end_tick: number | null,
+	trim_in_tick: number | null,
+	trim_out_tick: number | null,
+	label: string,
+};
+
+export type Clip_Serialize = {
+	id: string,
+	asset_id?: string,
+	start_tick: number | null,
+	end_tick: number | null,
+	trim_in_tick: number | null,
+	trim_out_tick: number | null,
+	label: string,
+};
+
+export type Project = Project_Serialize | Project_Deserialize;
+
+export type ProjectIndexEntry = ProjectIndexEntry_Serialize | ProjectIndexEntry_Deserialize;
+
+export type ProjectIndexEntry_Deserialize = {
+	id: string,
+	path: string,
+	name: string,
+	reciter?: string | null,
+	category?: string | null,
+	status: string,
+	aspect: string,
+	duration_ticks: number | null,
+	dataset_version: string,
+	thumbnail_path?: string | null,
+	missing: boolean,
+	created_at: number | null,
+	updated_at: number | null,
+	opened_at?: number | null,
+};
+
+export type ProjectIndexEntry_Serialize = {
+	id: string,
+	path: string,
+	name: string,
+	reciter: string | null,
+	category: string | null,
+	status: string,
+	aspect: string,
+	duration_ticks: number | null,
+	dataset_version: string,
+	thumbnail_path: string | null,
+	missing: boolean,
+	created_at: number | null,
+	updated_at: number | null,
+	opened_at: number | null,
+};
+
+export type Project_Deserialize = {
+	schema_version: number,
+	id: string,
+	name: string,
+	created_at: number | null,
+	updated_at: number | null,
+	revision: number | null,
+	reciter?: string | null,
+	canvas: CanvasConfig,
+	template_id: string,
+	assets?: { [key in string]: AssetRef },
+	tracks?: Track_Deserialize[],
+	segments?: AyahSegment_Deserialize[],
+	style_overrides?: { [key in string]: string },
+};
+
+export type Project_Serialize = {
+	schema_version: number,
+	id: string,
+	name: string,
+	created_at: number | null,
+	updated_at: number | null,
+	revision: number | null,
+	reciter?: string,
+	canvas: CanvasConfig,
+	template_id: string,
+	assets: { [key in string]: AssetRef },
+	tracks: Track_Serialize[],
+	segments: AyahSegment_Serialize[],
+	style_overrides: { [key in string]: string },
+};
+
+export type Track = Track_Serialize | Track_Deserialize;
+
+export type TrackKind = "Background" | "Audio" | "Ayah" | "Translation" | "Overlay";
+
+export type Track_Deserialize = {
+	id: string,
+	name: string,
+	kind: TrackKind,
+	clips?: Clip_Deserialize[],
+	visible: boolean,
+	locked: boolean,
+	muted: boolean,
+};
+
+export type Track_Serialize = {
+	id: string,
+	name: string,
+	kind: TrackKind,
+	clips: Clip_Serialize[],
+	visible: boolean,
+	locked: boolean,
+	muted: boolean,
+};
+
+export type WordTiming = {
+	word_idx: number,
+	start_tick: number | null,
+	end_tick: number | null,
+	text: string,
+	confidence: number | null,
+};
+
+/* Tauri Specta runtime */
+async function typedError<T, E>(result: Promise<T>): Promise<{ status: "ok"; data: T } | { status: "error"; error: E }> {
+    try {
+        return { status: "ok", data: await result };
+    } catch (e) {
+        if (e instanceof Error) throw e;
+        return { status: "error", error: e as any };
+    }
+}
 
