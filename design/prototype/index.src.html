@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="google" content="notranslate">
+<title>QuranRender: Prototipe tahap 4</title>
+<link rel="icon" href="../brand/logo/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../system/tokens.css">
+<link rel="stylesheet" href="../system/components.css">
+<link rel="stylesheet" href="prototype.css">
+</head>
+<body>
+<!--SPRITE-->
+<div class="proto-bar" role="toolbar" aria-label="Kontrol prototipe">
+  <strong>Prototipe</strong>
+  <label>Skenario <select id="scenario" aria-label="Skenario"></select></label>
+  <span class="seg" role="radiogroup" aria-label="Tema">
+    <button role="radio" aria-checked="true" data-theme-set="system">Sistem</button>
+    <button role="radio" aria-checked="false" data-theme-set="light">Terang</button>
+    <button role="radio" aria-checked="false" data-theme-set="dark">Gelap</button>
+  </span>
+  <span class="spacer"></span>
+  <span class="credit">Semua isi adalah data contoh. Teks ayat dari dataset Kemenag. Foto latar: “Sunrise 008”, Wikibongmon, CC BY-SA 4.0.</span>
+</div>
+<div id="app"></div>
+<div id="layer"></div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

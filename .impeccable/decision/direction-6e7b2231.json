@@ -1,0 +1,115 @@
+{
+  "title": "Pilih dunia visual QuranRender",
+  "question": "Arah \"tenang & editorial\" sudah Anda kunci. Pilih dunia visual yang mengisi arah itu: pakai hasil undian, ambil alternatif, atau undi ulang.",
+  "options": [
+    {
+      "id": "assigned",
+      "label": "Studio Siaran Tilawah",
+      "kicker": "THE ROLL",
+      "lineage": "Siaran tilawah menjelang Maghrib di TVRI/RRI: naskah rundown, jam studio, lampu ON AIR",
+      "thesis": "Setiap video tilawah disiapkan seperti siaran: rundown ayat yang rapi, jam studio yang presisi sampai detik, dan satu lampu yang menyala hanya saat benar-benar mengudara (render). Dunia ini menolak editor video gelap penuh panel yang menjadi kebiasaan kategori ini.",
+      "palette": ["#EEF0EC", "#1A2230", "#5E6B78", "#D9A21B", "#12161C"],
+      "materials": ["kertas rundown stensil (abu dingin, bukan krem)", "tinta biru-hitam", "jam studio dengan cincin 60 titik", "lampu siaran kuning sawo"],
+      "viewport": "Studio: kanvas preview di tengah dengan bingkai tipis. Di kanan ada lembar rundown: setiap baris berisi kode ayat (2:255), durasi, dan tanda tinjau. Di bawah ada timeline. Di kiri atas jam studio kecil yang cincin detiknya menyala saat play. Tombol Ekspor berada di ujung kanan header, berlabel \"Siarkan\", dan lampunya menyala hanya ketika render berjalan.",
+      "risk": "Bisa terasa nostalgia/retro bila metafora siaran dipakai sebagai kostum (font mesin ketik, noise). Metafora ini harus tetap fungsional: rundown = daftar segmen, jam = waktu, lampu = status render.",
+      "raised": [
+        {"from": "challenger-acetate", "raise": "Lapisan gaya (Template → Proyek → Klip) ditampilkan sebagai lembar bertumpuk. Lembar teratas yang mengatur sebuah nilai menjadi satu-satunya tanda asal nilai itu."},
+        {"from": "challenger-ticket", "raise": "Status job dicap di baris rundown (Siap, Mengudara, Selesai, Dibatalkan). Job yang dibatalkan tidak hilang, tetapi tetap terlihat dengan cap batal."},
+        {"from": "challenger-metro", "raise": "Satu warna aksen (kuning lampu siaran) hanya dipakai untuk keadaan live: playhead, render berjalan, fokus. Selain itu, UI netral."},
+        {"from": "challenger-catalog", "raise": "Antrean batch berupa kisi sel utuh yang masing-masing diberi kode ayat (18:1–10), seperti indeks naskah siaran."},
+        {"from": "challenger-specimen", "raise": "Hierarki dibentuk hanya oleh kontras skala. Panel gaya mengubah seluruh kanvas secara langsung saat slider digeser."}
+      ]
+    },
+    {
+      "id": "model-pick",
+      "label": "Makna Gandul",
+      "kicker": "IMPECCABLE’S PICK",
+      "lineage": "Kitab kuning pesantren dengan terjemahan per kata yang menggantung miring di bawah setiap kata Arab",
+      "thesis": "Mekanisme inti produk ini, yaitu timing dan arti per kata, sudah punya bentuk yang dikenal setiap santri: makna gandul. UI menampilkan setiap kata dengan keterangannya yang menggantung, sedangkan panel dan kontrol mengikuti tata letak halaman kitab yang punya matan dan hasyiyah (catatan pinggir).",
+      "palette": ["#F2F1EA", "#202020", "#6B6455", "#2F5D50", "#141615"],
+      "materials": ["kertas kitab (dinetralkan, tidak kuning)", "tinta hitam", "garis hasyiyah tipis", "aksen hijau tinta pesantren"],
+      "viewport": "Kanvas preview di tengah seperti matan. Detail segmen dan terjemahan berada di 'hasyiyah' kanan dan kiri. Di tinjauan sinkron, setiap kata ayat menampilkan waktunya yang menggantung miring di bawah kata itu. Timeline di bawah.",
+      "risk": "Ini kandidat terkuat saya, tetapi kertas dan tinta editorial adalah wilayah yang paling sering dituju desain sejenis. Dunia ini juga bisa terasa terlalu 'pesantren' bagi kreator konten pendek."
+    },
+    {
+      "id": "challenger-laban",
+      "label": "Partitur Waktu",
+      "verdict": "competitive",
+      "lineage": "Notasi gerak Labanotation: staf vertikal, panjang blok = durasi persis",
+      "thesis": "Waktu mengalir naik di staf tengah. Ayat Arab berada di kolom kanan dan terjemahan di kolom kiri, dan panjang setiap blok sama dengan durasinya.",
+      "palette": ["#FAFAF8", "#111111", "#9A9A94", "#2E6F8E"],
+      "materials": ["kertas partitur putih", "blok hitam padat/arsir/titik"],
+      "viewport": "Panel sinkron berupa staf vertikal simetris dengan kanvas di sampingnya.",
+      "case": "Unggul di kejelasan produk karena durasi tampil apa adanya. Kalah di identifikasi audiens: notasi ini asing bagi kreator dakwah Indonesia, dan timeline vertikal menyalahi kebiasaan editor.",
+      "risk": "Timeline vertikal menyulitkan pengguna yang terbiasa dengan editor horizontal. Asal-usulnya dari notasi tari juga perlu dijaga agar tidak melanggar batas kepekaan.",
+      "hero": "https://impeccable.style/worlds/cards/notation-diagram-systems-labanotation-hero.webp",
+      "board": "https://impeccable.style/worlds/cards/notation-diagram-systems-labanotation.webp"
+    },
+    {
+      "id": "challenger-acetate",
+      "label": "Manual Bertab & Asetat",
+      "verdict": "declined",
+      "lineage": "Manual perangkat lunak kotak, divider berwarna, lembar asetat",
+      "palette": ["#F4C430", "#E8E6DF", "#1E1E1E"],
+      "materials": ["asetat susu", "divider berwarna"],
+      "case": "Kalah di kedua sumbu: audiens tidak mengenalnya, dan rail tab lebih cocok untuk dokumen daripada editor.",
+      "kept": "Lembar teratas sebagai satu-satunya tanda asal nilai gaya.",
+      "hero": "https://impeccable.style/worlds/cards/rw-manual-acetate-tab-board-hero.webp"
+    },
+    {
+      "id": "challenger-ticket",
+      "label": "Dompet Tiket Jet-Age",
+      "verdict": "declined",
+      "lineage": "Kupon tiket pesawat karbon",
+      "palette": ["#1B2A52", "#C8102E", "#FFFFFF"],
+      "materials": ["kupon karbon", "cap VOID"],
+      "case": "Kalah di kedua sumbu: perjalanan udara tidak bermakna bagi alur tilawah.",
+      "kept": "Status dicap; tidak ada yang hilang, yang ada dibatalkan.",
+      "hero": "https://impeccable.style/worlds/cards/vernacular-ephemera-jet-age-ticket-wallet-hero.webp"
+    },
+    {
+      "id": "challenger-metro",
+      "label": "Ubin Metro",
+      "verdict": "declined",
+      "lineage": "Antarmuka Metro: ubin datar, huruf kecil raksasa",
+      "palette": ["#000000", "#00ABA9", "#FFFFFF"],
+      "materials": ["ubin warna datar"],
+      "case": "Kalah di kedua sumbu: terlalu keras untuk arah tenang dan memotong teks di tepi.",
+      "kept": "Satu aksen menguasai semua keadaan live.",
+      "hero": "https://impeccable.style/worlds/cards/digital-design-canon-metro-typographic-tiles-hero.webp"
+    },
+    {
+      "id": "challenger-catalog",
+      "label": "Katalog Sel",
+      "verdict": "declined",
+      "lineage": "Katalog acara dengan ribuan sel thumbnail berkode",
+      "palette": ["#E9E6DE", "#111111", "#3A6EA5"],
+      "materials": ["kertas koran", "satu tinta"],
+      "case": "Kalah di kedua sumbu: terlalu padat dan bernuansa budaya pop.",
+      "kept": "Kisi sel utuh berkode untuk antrean batch.",
+      "hero": "https://impeccable.style/worlds/cards/pop-culture-shelf-doujin-event-catalog-hero.webp"
+    },
+    {
+      "id": "challenger-specimen",
+      "label": "Spesimen Huruf Variabel",
+      "verdict": "declined",
+      "lineage": "Spesimen font interaktif",
+      "palette": ["#FAFAFA", "#000000", "#FF4F00"],
+      "materials": ["kertas putih", "kisi glyph"],
+      "case": "Kalah di kedua sumbu: berfokus pada huruf Latin, sedangkan teks Arab di produk ini tidak boleh jadi tontonan dekoratif.",
+      "kept": "Hierarki hanya lewat kontras skala; slider memetakan ulang seluruh kanvas secara langsung.",
+      "hero": "https://impeccable.style/worlds/cards/variable-font-specimen-hero.webp"
+    }
+  ],
+  "reroll": {"registers": ["safer", "bolder"]},
+  "canon": true,
+  "canonCard": {
+    "label": "Standar kategori: editor video pro",
+    "thesis": "Editor video gelap ala Premiere/CapCut, dikerjakan dengan sangat rapi.",
+    "palette": ["#1E1F22", "#2B2D31", "#E6E6E6", "#3B82F6"],
+    "materials": ["panel gelap", "ikon garis", "timeline multi-track"],
+    "viewport": "Panel media di kiri, preview di tengah, properti di kanan, timeline lebar di bawah, semua di atas latar gelap.",
+    "risk": "Sengaja sulit dibedakan dari pesaing, dan paling dekat dengan Quran Caption yang harus kita hindari."
+  },
+  "steer": true
+}

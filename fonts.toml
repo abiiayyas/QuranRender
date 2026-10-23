@@ -1,0 +1,28 @@
+# fonts.toml — Registri font terbundel QuranRender
+# Mengacu ke docs/engineering/03_DATASET_PIPELINE.md §5.8
+
+[[font]]
+key = "lpmq"
+file = "assets/fonts/quran/LPMQ.ttf"
+roles = ["ayah"]
+required_for_dataset = true     # wajib lulus cakupan penuh
+
+[[font]]
+key = "amiri-regular"
+file = "assets/fonts/quran/Amiri-Regular.ttf"
+roles = ["surah_name", "ui_arabic"]
+
+[[font]]
+key = "amiri-bold"
+file = "assets/fonts/quran/Amiri-Bold.ttf"
+roles = ["surah_name", "ui_arabic"]
+
+[[font]]
+key = "me-quran"
+file = "assets/fonts/quran/Uthmanic.ttf"
+roles = ["reserved_uthmani"]
+
+[[font]]
+key = "indopak"
+file = "assets/fonts/quran/IndoPak.ttf"
+roles = ["style_indopak_non_ayah"]

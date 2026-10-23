@@ -1,0 +1,9 @@
+packages:
+  - "apps/*"
+  - "design/tools"
+
+allowBuilds:
+  esbuild: true
+
+onlyBuiltDependencies:
+  - esbuild

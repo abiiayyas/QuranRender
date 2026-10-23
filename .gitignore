@@ -1,0 +1,25 @@
+# Rust
+target/
+**/*.rs.bk
+Cargo.lock.backup
+
+# Node
+node_modules/
+dist/
+.pnpm-store/
+
+# Tauri
+apps/desktop/src-tauri/target/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE & editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Impeccable review artifacts (heavy images)
+.impeccable/review/stage4/*.png

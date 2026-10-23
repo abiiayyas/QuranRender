@@ -1,0 +1,18 @@
+{
+  "name": "quranrender-brand-tools",
+  "private": true,
+  "type": "module",
+  "description": "Generator identitas dan sistem desain: logo SVG, brand-board, galeri komponen, prototipe",
+  "scripts": {
+    "logos": "node gen-logos.mjs",
+    "board": "node build-board.mjs",
+    "build": "node gen-logos.mjs && node build-board.mjs && node build-gallery.mjs && node build-prototype.mjs",
+    "gallery": "node build-gallery.mjs",
+    "prototype": "node build-prototype.mjs"
+  },
+  "dependencies": {
+    "@fontsource/schibsted-grotesk": "^5.0.0",
+    "lucide-static": "*",
+    "opentype.js": "^1.3.4"
+  }
+}

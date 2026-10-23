@@ -1,0 +1,269 @@
+/* QuranRender design tokens, draf tahap 1.
+   Lapisan: primitif → semantik (terang/gelap). Komponen menyusul di tahap design system. */
+
+@font-face {
+  font-family: "Inter";
+  src: url("fonts/inter-latin-wght-normal.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Inter";
+  src: url("fonts/inter-latin-ext-wght-normal.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "LPMQ";
+  src: url("../../assets/fonts/quran/LPMQ.ttf") format("truetype");
+  font-display: block;
+}
+@font-face {
+  font-family: "Amiri";
+  src: url("../../assets/fonts/quran/Amiri-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Amiri";
+  src: url("../../assets/fonts/quran/Amiri-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-display: swap;
+}
+
+:root {
+  /* Primitif: grafit dingin */
+  --gray-0: #ffffff;
+  --gray-25: #f7f8fa;
+  --gray-50: #f2f3f5;
+  --gray-100: #e9ebef;
+  --gray-150: #e0e3e8;
+  --gray-200: #cbd0d7;
+  --gray-400: #9aa1ad;
+  --gray-500: #646b77;
+  --gray-600: #4a505c;
+  --gray-ink: #15171c;
+  --gray-d-text: #e9eaee;
+  --gray-d-text2: #a9aeb8;
+  --gray-d-text3: #8a909b;
+  --gray-d-border2: #3a3f48;
+  --gray-d-border: #2a2e35;
+  --gray-850: #1e2126;
+  --gray-900: #17191d;
+  --gray-950: #101114;
+  --gray-975: #0b0c0e;
+
+  /* Primitif: nila */
+  --nila-50: #edeffc;
+  --nila-300: #a9b0f5;
+  --nila-400: #8e97f2;
+  --nila-500: #6772e0;
+  --nila-600: #4652c8;
+  --nila-700: #3a45b0;
+  --nila-800: #303a96;
+  --nila-900: #232846;
+
+  /* Primitif: status */
+  --green-600: #2a7f50;
+  --green-300: #5bc48a;
+  --amber-700: #8a5d0c;
+  --amber-300: #e3b341;
+  --red-600: #b93535;
+  --red-300: #f07373;
+
+  /* Tipografi */
+  /* UI memakai font sistem, seperti editor desktop profesional (SF Pro, Segoe UI Variable).
+     Inter dibundel sebagai cadangan untuk Linux yang font sistemnya tidak memiliki angka tabular. */
+  --font-ui: system-ui, -apple-system, "Segoe UI Variable Text", "Segoe UI", "Inter", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace; /* hanya untuk kode/path */
+  --num: tabular-nums; /* waktu dan angka memakai Inter dengan angka tabular */
+  --font-ayah: "LPMQ", serif;
+  --font-ar-ui: "Amiri", serif;
+  --fs-11: 0.6875rem;
+  --fs-12: 0.75rem;
+  --fs-13: 0.8125rem;
+  --fs-14: 0.875rem;
+  --fs-16: 1rem;
+  --fs-20: 1.25rem;
+  --fs-28: 1.75rem;
+
+  /* Ruang, radius, gerak */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-12: 48px;
+  --r-2xs: 2px; /* rel slider, isian progres, sudut kecil geometri */
+  --r-xs: 4px; /* kotak centang, tombol pintasan */
+  --r-ctl: 6px;
+  --r-seg: 8px; /* wadah segmented = r-ctl + 2, konsentris */
+  --r-panel: 10px;
+  --r-overlay: 12px; /* dialog, palet perintah */
+  --r-pill: 999px;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-1: 120ms; /* hover, tekan */
+  --dur-2: 220ms; /* buka popover, sorotan */
+  --dur-3: 320ms; /* dialog, toast masuk */
+
+  /* Lapisan tumpukan */
+  --z-sticky: 10;
+  --z-popover: 40;
+  --z-dialog: 60;
+  --z-toast: 80;
+  --z-tooltip: 90;
+}
+
+/* Semantik: terang */
+:root,
+.t-light {
+  --bg-app: var(--gray-50);
+  --bg-panel: var(--gray-0);
+  --bg-sunken: var(--gray-25);
+  --bg-hover: var(--gray-100);
+  --border: var(--gray-150);
+  --border-strong: var(--gray-200);
+  --border-control: #878e9a;
+  --text: var(--gray-ink);
+  --text-2: var(--gray-600);
+  --text-3: var(--gray-500);
+  --accent: var(--nila-600);
+  --accent-hover: var(--nila-700);
+  --accent-active: var(--nila-800);
+  --accent-subtle: var(--nila-50);
+  --on-accent: #ffffff;
+  --focus: var(--nila-500);
+  --success: var(--green-600);
+  --warning: var(--amber-700);
+  --danger: var(--red-600);
+  --viewer: #e6e8ec;
+  --shadow-pop: 0 8px 24px -8px rgb(21 23 28 / 0.18), 0 2px 6px -2px rgb(21 23 28 / 0.08);
+  --shadow-lift: 0 1px 2px rgb(21 23 28 / 0.08);
+  --scrim: rgb(21 23 28 / 0.32);
+  --bg-raised: var(--gray-0); /* permukaan terangkat di atas cekung: opsi segmen terpilih */
+  --overlay-ring: transparent; /* terang: bayangan saja sudah cukup */
+  color-scheme: light;
+}
+
+/* Semantik: gelap */
+[data-theme="dark"],
+.t-dark {
+  --bg-app: var(--gray-950);
+  --bg-panel: var(--gray-900);
+  --bg-sunken: var(--gray-975);
+  --bg-hover: var(--gray-850);
+  --border: var(--gray-d-border);
+  --border-strong: var(--gray-d-border2);
+  --border-control: #646b77;
+  --text: var(--gray-d-text);
+  --text-2: var(--gray-d-text2);
+  --text-3: var(--gray-d-text3);
+  --accent: var(--nila-400);
+  --accent-hover: var(--nila-300);
+  --accent-active: var(--nila-500);
+  --accent-subtle: var(--nila-900);
+  --on-accent: #0f1230;
+  --focus: var(--nila-400);
+  --success: var(--green-300);
+  --warning: var(--amber-300);
+  --danger: var(--red-300);
+  --viewer: #08090b;
+  --shadow-pop: 0 8px 24px -8px rgb(0 0 0 / 0.6), 0 2px 6px -2px rgb(0 0 0 / 0.4);
+  --shadow-lift: 0 1px 2px rgb(0 0 0 / 0.4);
+  --scrim: rgb(0 0 0 / 0.55);
+  --bg-raised: #262a31;
+  --overlay-ring: var(--gray-d-border); /* gelap: bayangan nyaris tak terlihat, cincin 1 px memberi tepi */
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg-app: var(--gray-950);
+    --bg-panel: var(--gray-900);
+    --bg-sunken: var(--gray-975);
+    --bg-hover: var(--gray-850);
+    --border: var(--gray-d-border);
+    --border-strong: var(--gray-d-border2);
+    --border-control: #646b77;
+    --text: var(--gray-d-text);
+    --text-2: var(--gray-d-text2);
+    --text-3: var(--gray-d-text3);
+    --accent: var(--nila-400);
+    --accent-hover: var(--nila-300);
+    --accent-active: var(--nila-500);
+    --accent-subtle: var(--nila-900);
+    --on-accent: #0f1230;
+    --focus: var(--nila-400);
+    --success: var(--green-300);
+    --warning: var(--amber-300);
+    --danger: var(--red-300);
+    --viewer: #08090b;
+    --shadow-pop: 0 8px 24px -8px rgb(0 0 0 / 0.6), 0 2px 6px -2px rgb(0 0 0 / 0.4);
+    --shadow-lift: 0 1px 2px rgb(0 0 0 / 0.4);
+    --scrim: rgb(0 0 0 / 0.55);
+    --bg-raised: #262a31;
+    --overlay-ring: var(--gray-d-border); /* gelap: bayangan nyaris tak terlihat, cincin 1 px memberi tepi */
+    color-scheme: dark;
+  }
+}
+
+/* Komponen: hanya merujuk token semantik. Dideklarasikan juga di wadah tema (.t-light/.t-dark)
+   supaya var() dihitung ulang di dalam wadah yang temanya dipaksa. */
+:root,
+.t-light,
+.t-dark {
+  /* Kontrol */
+  --ctl-h-sm: 24px;
+  --ctl-h-md: 28px; /* default di studio */
+  --ctl-h-lg: 32px;
+  --ctl-px-sm: 8px;
+  --ctl-px-md: 10px;
+  --ctl-px-lg: 14px;
+  --ctl-gap: 6px;
+  --ctl-radius: var(--r-ctl);
+
+  /* Tombol */
+  --btn-primary-bg: var(--accent);
+  --btn-primary-bg-hover: var(--accent-hover);
+  --btn-primary-bg-active: var(--accent-active);
+  --btn-primary-fg: var(--on-accent);
+  --btn-secondary-bg: var(--bg-panel);
+  --btn-secondary-bg-hover: var(--bg-hover);
+  --btn-secondary-border: var(--border-control);
+  --btn-ghost-bg-hover: var(--bg-hover);
+  --btn-danger-fg: var(--danger);
+
+  /* Isian */
+  --field-bg: var(--bg-sunken);
+  --field-border: var(--border-control);
+  --field-border-hover: var(--text-3);
+  --field-border-focus: var(--accent);
+  --field-border-error: var(--danger);
+  --field-fg: var(--text);
+  --field-placeholder: var(--text-3);
+
+  /* Lapisan mengapung */
+  --overlay-bg: var(--bg-panel);
+  --overlay-shadow: 0 0 0 1px var(--overlay-ring), var(--shadow-pop); /* satu deklarasi elevasi: cincin 1px + bayangan */
+  --menu-item-h: 28px;
+
+  /* Timeline */
+  --track-label-w: 132px;
+  --track-h: 34px;
+  --seg-h: 26px;
+  --seg-radius: var(--r-ctl);
+  --seg-bg: var(--bg-panel);
+  --seg-border: var(--border-control);
+  --seg-selected-bg: var(--accent-subtle);
+  --seg-selected-border: var(--accent);
+  --playhead-w: 2px;
+  --playhead: var(--accent);
+
+  /* Fokus */
+  --focus-ring-w: 2px;
+  --focus-ring-offset: 2px;
+}

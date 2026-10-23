@@ -1,0 +1,57 @@
+[workspace]
+resolver = "2"
+members = [
+  "crates/qr-core",
+  "crates/qr-quran",
+  "crates/qr-render",
+  "crates/qr-media",
+  "crates/qr-align",
+  "crates/qr-policy",
+  "crates/qr-jobs",
+  "crates/qr-store",
+  "crates/qr-sources",
+  "crates/qr-cli",
+  "crates/qr-dataset",
+  "apps/desktop/src-tauri",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85.0"
+license = "GPL-3.0-or-later"
+authors = ["QuranRender Contributors"]
+repository = "https://github.com/quranrender/quranrender"
+
+[workspace.lints.rust]
+unsafe_code = "deny"
+missing_debug_implementations = "warn"
+
+[workspace.lints.clippy]
+all = "warn"
+unwrap_used = "warn"
+
+[workspace.dependencies]
+# Internal crates
+qr-core = { path = "crates/qr-core", version = "0.1.0" }
+qr-quran = { path = "crates/qr-quran", version = "0.1.0" }
+qr-render = { path = "crates/qr-render", version = "0.1.0" }
+qr-media = { path = "crates/qr-media", version = "0.1.0" }
+qr-align = { path = "crates/qr-align", version = "0.1.0" }
+qr-policy = { path = "crates/qr-policy", version = "0.1.0" }
+qr-jobs = { path = "crates/qr-jobs", version = "0.1.0" }
+qr-store = { path = "crates/qr-store", version = "0.1.0" }
+qr-sources = { path = "crates/qr-sources", version = "0.1.0" }
+
+# Error handling
+thiserror = "2.0"
+anyhow = "1.0"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Logging / Diagnostics
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+rusqlite = { version = "0.40", features = ["bundled"] }
