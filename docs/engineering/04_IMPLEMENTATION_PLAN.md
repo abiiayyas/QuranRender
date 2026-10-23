@@ -107,11 +107,10 @@ dan mengekspor MP4 + SRT dengan 4 template.
 
 ### 4.1 Gerbang keluar fase 1
 
-- [ ] Alur ujung-ke-ujung berjalan di 3 OS dari installer CI.
-- [ ] Kesetaraan preview–export lulus di CI (A1-11).
-- [ ] Target segmentasi (PRD §8.2) tercapai di R-Mac/R-Win pada set uji. Bila belum, rencana model
-      pack Akurat atau fine-tune disetujui sebagai syarat beta.
-- [ ] Tidak ada bug kehilangan data terbuka.
+- [x] Alur ujung-ke-ujung berjalan di 3 OS dari installer CI (A1-03, A1-07, A1-13, A1-14).
+- [x] Kesetaraan preview–export lulus di CI (A1-11, SSIM / kanal selisih <= 2/255).
+- [x] Target segmentasi (PRD §8.2) tercapai di R-Mac/R-Win pada set uji (A1-08: VAD + WBW).
+- [x] Tidak ada bug kehilangan data terbuka (penulisan atomik proyek & snapshot riwayat).
 
 ---
 
