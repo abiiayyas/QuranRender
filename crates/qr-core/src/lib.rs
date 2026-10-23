@@ -2,6 +2,7 @@
 //! Mengacu ke docs/engineering/01_TECHNICAL_HANDOFF.md §8.
 
 pub mod project;
+pub mod session;
 
 pub use project::{
     create_snapshot, list_snapshots, load_project, project_json_schema, restore_snapshot,
@@ -10,8 +11,4 @@ pub use project::{
     WordTiming, CURRENT_SCHEMA_VERSION, MAX_SNAPSHOTS,
 };
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ProjectSession {
-    pub id: String,
-    pub name: String,
-}
+pub use session::{CoreError, ProjectSession, TimelineOperation};
