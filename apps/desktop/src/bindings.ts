@@ -16,6 +16,17 @@ export const commands = {
 	subtitleExport: (project: Project_Deserialize, options: SubtitleExportOptions) => typedError<string, string>(__TAURI_INVOKE("subtitle_export", { project, options })),
 	/**  Satu frame preview dari renderer Rust yang sama dengan ekspor (prinsip #3: tanpa preview DOM). */
 	previewFrame: (project: Project_Deserialize, tick: number | null, maxWidth: number) => typedError<PreviewFrame, string>(__TAURI_INVOKE("preview_frame", { project, tick, maxWidth })),
+	/**  Mengekspor proyek terdaftar ke berkas `.qrpack` di `dest` (tidak menimpa berkas yang ada). */
+	projectExportPack: (id: string, dest: string) => typedError<PackSummary, string>(__TAURI_INVOKE("project_export_pack", { id, dest })),
+	/**
+	 *  Mengimpor `.qrpack` dari `src` menjadi proyek baru yang terdaftar. Tidak pernah menimpa folder
+	 *  atau proyek yang ada.
+	 */
+	projectImportPack: (src: string) => typedError<Project_Serialize, string>(__TAURI_INVOKE("project_import_pack", { src })),
+	/**  Status telemetri dan pratinjau data yang akan dikirim (crash log lokal). */
+	telemetryStatus: () => typedError<TelemetryStatus, string>(__TAURI_INVOKE("telemetry_status")),
+	/**  Mengubah persetujuan telemetri (default mati). Tidak memicu pengiriman apa pun. */
+	telemetrySetOptIn: (enabled: boolean) => typedError<boolean, string>(__TAURI_INVOKE("telemetry_set_opt_in", { enabled })),
 };
 
 /* Types */
@@ -117,6 +128,16 @@ export type ExportValidationReport_Serialize = {
 	blocking_count: number | null,
 	warning_count: number | null,
 	violations: PolicyViolation_Serialize[],
+};
+
+export type PackSummary = {
+	project_id: string,
+	project_name: string,
+	/**  Path berkas `.qrpack` yang ditulis. */
+	path: string,
+	/**  Jumlah berkas di dalam arsip (project.json + aset, tanpa manifest). */
+	files: number,
+	total_bytes: number | null,
 };
 
 /**  Pelanggaran atau peringatan kebijakan konten. */
@@ -236,6 +257,19 @@ export type SubtitleExportOptions = {
 export type SubtitleFormat = "Srt" | "Vtt" | "Ass";
 
 export type SubtitleTrackSelection = "AyahOnly" | "TranslationOnly" | "Bilingual";
+
+export type TelemetryStatus = {
+	/**  Persetujuan pengguna; default `false`. */
+	opt_in: boolean,
+	/**  Selalu `false` saat ini: tidak ada kode pengiriman. Data hanya tersimpan lokal. */
+	upload_implemented: boolean,
+	crash_log_path: string,
+	/**  Jumlah entri (baris) pada crash log lokal. */
+	entries: number,
+	/**  Teks persis yang akan dikirim jika pengunggahan ada: isi `crash.log` (ekor bila sangat panjang). */
+	preview: string,
+	preview_truncated: boolean,
+};
 
 export type Track = Track_Serialize | Track_Deserialize;
 

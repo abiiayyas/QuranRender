@@ -108,7 +108,7 @@ dan mengekspor MP4 + SRT dengan 4 template.
 ### 4.1 Gerbang keluar fase 1
 
 - [ ] Alur ujung-ke-ujung berjalan di 3 OS dari installer CI (A1-03, A1-07, A1-13, A1-14). **Belum:** tidak ada installer CI; belum ada uji di Windows/Linux; wizard Sumber→Sinkron→Tampilan→Ekspor belum lengkap (sinkron otomatis, audio, ekspor dari UI belum tersedia).
-- [ ] Kesetaraan preview–export lulus di CI (A1-11). **Belum:** preview dan ekspor kini memakai satu jalur render Rust, tetapi tidak ada uji SSIM/selisih kanal yang membandingkan frame ekspor (decode MP4) dengan frame preview.
+- [ ] Kesetaraan preview–export lulus di CI (A1-11). **Sebagian:** uji SSIM 50 tick lulus lokal (min 0,999; ≥ 0,995), selisih kanal ≤ 2/255 hanya pada varian lossless; belum dijalankan di CI/3 OS dan cakupan baru satu proyek/template.
 - [ ] Target segmentasi (PRD §8.2) tercapai di R-Mac/R-Win pada set uji (A1-08). **Belum:** tidak ada model akustik/identifikasi ayat/set uji; hanya VAD + timing proporsional + keyakinan heuristik.
 - [x] Tidak ada bug kehilangan data terbuka (penulisan atomik proyek & snapshot riwayat). *Tidak ada yang diketahui; bukan bukti ketiadaan.*
 

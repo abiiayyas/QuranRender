@@ -1,12 +1,14 @@
 //! Manajemen penyimpanan lokal QuranRender: app.db, project_index, pengaturan, dan migrasi.
 //! Mengacu ke PRD SET-2 dan docs/engineering/02_DATABASE_SPECIFICATION.md §5.
 
+pub mod job_queue;
 pub mod project_index;
 
 use rusqlite::Connection;
 use std::path::Path;
 use thiserror::Error;
 
+pub use job_queue::{JobRow, NewJobRow};
 pub use project_index::{duplicate_project_folder, ProjectIndexEntry};
 
 #[derive(Error, Debug)]
@@ -21,6 +23,8 @@ pub enum StoreError {
     SecretRejected(String),
     #[error("Versi migrasi tidak valid atau lebih baru dari yang didukung aplikasi")]
     InvalidMigrationVersion,
+    #[error("Job '{0}' sudah ada di antrean")]
+    JobExists(String),
 }
 
 const INITIAL_MIGRATION: &str = include_str!("../migrations/0001_initial.sql");

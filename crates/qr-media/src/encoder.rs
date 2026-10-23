@@ -62,7 +62,7 @@ impl RawFrameFormat {
 }
 
 /// Konversi RGBA (alpha diabaikan; frame ekspor opak) → YUV 4:2:0 planar BT.709 rentang TV.
-/// Chroma = rata-rata blok 2×2. `width` dan `height` harus genap.
+/// Koefisien 16-bit (galat kuantisasi ≤ ½ level, vs. ±1 pada 8-bit). Chroma = rata-rata blok 2×2. `width` dan `height` harus genap.
 pub fn rgba_to_yuv420_bt709(rgba: &[u8], width: u32, height: u32) -> Vec<u8> {
     let (w, h) = (width as usize, height as usize);
     debug_assert!(w % 2 == 0 && h % 2 == 0 && rgba.len() == w * h * 4);
@@ -77,7 +77,7 @@ pub fn rgba_to_yuv420_bt709(rgba: &[u8], width: u32, height: u32) -> Vec<u8> {
                 i32::from(rgba[i + 1]),
                 i32::from(rgba[i + 2]),
             );
-            yp[y * w + x] = (((47 * r + 157 * g + 16 * b + 128) >> 8) + 16) as u8;
+            yp[y * w + x] = (((11_966 * r + 40_254 * g + 4_064 * b + 32_768) >> 16) + 16) as u8;
         }
     }
     for cy in 0..h / 2 {
@@ -89,9 +89,9 @@ pub fn rgba_to_yuv420_bt709(rgba: &[u8], width: u32, height: u32) -> Vec<u8> {
                 g += i32::from(rgba[i + 1]);
                 b += i32::from(rgba[i + 2]);
             }
-            let (r, g, b) = ((r + 2) >> 2, (g + 2) >> 2, (b + 2) >> 2);
-            let u = ((-26 * r - 87 * g + 112 * b + 128) >> 8) + 128;
-            let v = ((112 * r - 102 * g - 10 * b + 128) >> 8) + 128;
+            // Jumlah 4 piksel (tanpa pembulatan perantara): koefisien 16-bit dibagi 4 → geser 18.
+            let u = ((-6_596 * r - 22_189 * g + 28_784 * b + (1 << 17)) >> 18) + 128;
+            let v = ((28_784 * r - 26_145 * g - 2_639 * b + (1 << 17)) >> 18) + 128;
             up[cy * (w / 2) + cx] = u.clamp(0, 255) as u8;
             vp[cy * (w / 2) + cx] = v.clamp(0, 255) as u8;
         }
@@ -115,6 +115,10 @@ pub struct Mp4ExportConfig {
     /// sehingga video tidak terpotong oleh audio yang lebih pendek. `None` = ikuti stream terpendek.
     #[serde(default)]
     pub duration_sec: Option<f64>,
+    /// Kualitas konstan libx264 (`-crf`, 0 = lossless). Bila diisi dan encoder libx264, menggantikan
+    /// `video_bitrate_kbps`; encoder hardware mengabaikannya.
+    #[serde(default)]
+    pub crf: Option<u8>,
 }
 
 impl Default for Mp4ExportConfig {
@@ -129,6 +133,7 @@ impl Default for Mp4ExportConfig {
             preferred_encoder: None,
             raw_format: RawFrameFormat::default(),
             duration_sec: None,
+            crf: None,
         }
     }
 }
@@ -214,6 +219,24 @@ pub fn build_ffmpeg_export_args(
     .iter()
     .map(|s| (*s).to_string())
     .collect();
+    // Frame YUV sudah BT.709 TV dari pengirim. Tanpa tag *input* ini FFmpeg menganggap rawvideo
+    // tak bertanda (BT.601) dan, karena keluaran ditandai BT.709, menyisipkan konversi warna yang
+    // menggeser luma (terukur: Y 49 -> 46). Tag input membuat jalur ini identitas.
+    if config.raw_format == RawFrameFormat::Yuv420p {
+        args.extend(
+            [
+                "-color_range",
+                "tv",
+                "-colorspace",
+                "bt709",
+                "-color_primaries",
+                "bt709",
+                "-color_trc",
+                "bt709",
+            ]
+            .map(String::from),
+        );
+    }
     args.extend(["-s".into(), format!("{}x{}", config.width, config.height)]);
     args.extend(["-r".into(), config.fps.to_string(), "-i".into(), "-".into()]);
     if let Some(a) = audio_path {
@@ -230,11 +253,14 @@ pub fn build_ffmpeg_export_args(
             "scale=out_color_matrix=bt709:out_range=tv,format=yuv420p".into(),
         ]);
     }
+    args.extend(["-c:v".into(), encoder.ffmpeg_codec_name().into()]);
+    match (config.crf, encoder) {
+        (Some(crf), VideoEncoder::SoftwareLibx264) => {
+            args.extend(["-crf".into(), crf.to_string()]);
+        }
+        _ => args.extend(["-b:v".into(), format!("{}k", config.video_bitrate_kbps)]),
+    }
     args.extend([
-        "-c:v".into(),
-        encoder.ffmpeg_codec_name().into(),
-        "-b:v".into(),
-        format!("{}k", config.video_bitrate_kbps),
         "-colorspace".into(),
         "bt709".into(),
         "-color_primaries".into(),
@@ -375,6 +401,49 @@ pub fn check_frame_equivalence(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    #[allow(clippy::unwrap_used)]
+    fn yuv_input_is_tagged_bt709_tv_before_input_flag() {
+        let cfg = Mp4ExportConfig {
+            raw_format: RawFrameFormat::Yuv420p,
+            ..Mp4ExportConfig::default()
+        };
+        let a = build_ffmpeg_export_args(&cfg, &VideoEncoder::SoftwareLibx264, None, "o.mp4");
+        let input = a.iter().position(|x| x == "-i").unwrap();
+        let cs = a.iter().position(|x| x == "-colorspace").unwrap();
+        assert!(cs < input && a[cs + 1] == "bt709", "{a:?}");
+        let rgba = build_ffmpeg_export_args(
+            &Mp4ExportConfig::default(),
+            &VideoEncoder::SoftwareLibx264,
+            None,
+            "o.mp4",
+        );
+        assert!(rgba.iter().position(|x| x == "-colorspace").unwrap() > input_pos(&rgba));
+    }
+
+    #[allow(clippy::unwrap_used)]
+    fn input_pos(a: &[String]) -> usize {
+        a.iter().position(|x| x == "-i").unwrap()
+    }
+
+    #[test]
+    fn crf_replaces_bitrate_only_for_libx264() {
+        let cfg = Mp4ExportConfig {
+            crf: Some(0),
+            ..Mp4ExportConfig::default()
+        };
+        let sw = build_ffmpeg_export_args(&cfg, &VideoEncoder::SoftwareLibx264, None, "o.mp4");
+        assert!(sw.windows(2).any(|w| w[0] == "-crf" && w[1] == "0"));
+        assert!(!sw.contains(&"-b:v".to_string()));
+        let hw = build_ffmpeg_export_args(
+            &cfg,
+            &VideoEncoder::Hardware(HwEncoderKind::VideoToolbox),
+            None,
+            "o.mp4",
+        );
+        assert!(!hw.contains(&"-crf".to_string()) && hw.contains(&"-b:v".to_string()));
+    }
+
     use super::*;
 
     #[test]

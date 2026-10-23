@@ -77,3 +77,16 @@ Bukti positif: encoder hardware VideoToolbox gagal pada 100×176 dan fallback ke
 Masih terbuka (rincian di `05_AUDIT_FASE_0_2.md` §5): CI 3 OS belum pernah dijalankan; S1/S3/S4/S5; alignment nyata;
 audio engine `cpal`; preview tersinkron; kesetaraan preview–ekspor (SSIM); wizard UI penuh; B2-07/08/12/14..20; isi
 catatan kaki Quran.com; Q5/Q8 (keputusan pemilik); kunci minisign harus dibuat ulang.
+
+## Tambahan setelah hardening awal (penutupan item Fase 1/2)
+
+| Item | Hasil terukur |
+|---|---|
+| A1-05 audio engine | drift 0 tick pada 60 menit audio ekuivalen; smoke perangkat nyata lulus 5× |
+| A1-11 kesetaraan | SSIM min 0,99906 (HW) / 0,99929 (libx264); **bug produk ditemukan**: video lebih gelap ~5/255 (tag warna input hilang) — diperbaiki |
+| B2-12 / A1-09 antrean | persisten; 50 klip 44,8 dtk (release); isolasi kegagalan; pemulihan yatim |
+| B2-14 `.qrpack` | roundtrip, hash, tampered/hostile ditolak, fuzz tanpa panic |
+| B2-17 backup migrasi | backup sebelum menulis hasil migrasi; kegagalan tidak menyentuh asli |
+| B2-20 crash log | lokal, dibersihkan, opt-in default mati; tanpa jaringan |
+
+Sisa terbuka tetap seperti di `05_AUDIT_FASE_0_2.md` §5 (CI/3 OS, S1/S3/S4/S5, alignment, UI untuk fitur baru, dll.).

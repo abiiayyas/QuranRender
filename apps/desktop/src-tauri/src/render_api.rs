@@ -46,7 +46,7 @@ pub fn resources_root() -> PathBuf {
             return dir.clone();
         }
     }
-    if cfg!(debug_assertions) {
+    if cfg!(any(debug_assertions, test)) {
         return Path::new(env!("CARGO_MANIFEST_DIR")).join("../../..");
     }
     // Rilis tanpa resource: jalur yang jelas-jelas tidak ada agar galatnya menyebut lokasi yang dicari.

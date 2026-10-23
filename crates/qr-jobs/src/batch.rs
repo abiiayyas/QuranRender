@@ -1,7 +1,7 @@
 //! Pemecahan proyek menjadi klip batch dan pengelolaan antrean batch (PRD BAT-1..3, B2-12).
 //! Mengacu ke docs/product/PRD.md §7 BAT-1..3 dan docs/design/03_INFORMATION_ARCHITECTURE.md §4.
 
-use crate::{JobKind, JobRecord, JobSupervisor};
+use crate::{JobError, JobKind, JobRecord, JobSupervisor, NewJob};
 use qr_core::project::Project;
 use serde::{Deserialize, Serialize};
 
@@ -162,14 +162,15 @@ pub fn split_project_into_batch_clips(
 }
 
 /// Memasukkan seluruh sub-job batch ke antrean supervisor dengan batch_id bersama (PRD BAT-2).
+/// Menghentikan pada galat pertama (mis. id ganda); job yang sudah masuk tetap di antrean.
 pub fn enqueue_batch_jobs(
     supervisor: &JobSupervisor,
     project: &Project,
     batch_id: &str,
     clips: &[BatchClipItem],
     template_id: &str,
-) -> Vec<JobRecord> {
-    let mut jobs = Vec::new();
+) -> Result<Vec<JobRecord>, JobError> {
+    let mut jobs = Vec::with_capacity(clips.len());
     for clip in clips {
         let job_id = format!("{}_{}", batch_id, clip.clip_index);
         let payload = serde_json::json!({
@@ -184,17 +185,16 @@ pub fn enqueue_batch_jobs(
             "template_id": template_id,
         });
 
-        let mut job = supervisor.enqueue(
-            job_id,
-            JobKind::Render,
-            Some(project.id.clone()),
+        jobs.push(supervisor.enqueue_job(NewJob {
+            id: job_id,
+            kind: JobKind::Render,
+            project_id: Some(project.id.clone()),
+            batch_id: Some(batch_id.to_string()),
             payload,
-            5, // Prioritas batch default 5
-        );
-        job.batch_id = Some(batch_id.to_string());
-        jobs.push(job);
+            priority: 5, // Prioritas batch default 5
+        })?);
     }
-    jobs
+    Ok(jobs)
 }
 
 #[cfg(test)]
@@ -242,12 +242,16 @@ mod tests {
         let proj = sample_fatihah_project();
         let clips =
             split_project_into_batch_clips(&proj, &BatchSplitMethod::ByAyahCount { count: 3 });
-        let supervisor = JobSupervisor::new();
+        let supervisor = JobSupervisor::in_memory().expect("antrean memori");
 
-        let batch_jobs = enqueue_batch_jobs(&supervisor, &proj, "batch_test_01", &clips, "subuh");
+        let batch_jobs = enqueue_batch_jobs(&supervisor, &proj, "batch_test_01", &clips, "subuh")
+            .expect("enqueue batch");
         assert_eq!(batch_jobs.len(), 3);
         for j in &batch_jobs {
             assert_eq!(j.batch_id.as_deref(), Some("batch_test_01"));
+            // batch_id harus tersimpan di app.db, bukan hanya di nilai kembalian
+            let stored = supervisor.get_job(&j.id).expect("get").expect("ada");
+            assert_eq!(stored.batch_id.as_deref(), Some("batch_test_01"));
         }
     }
 }

@@ -2714,9 +2714,11 @@ dependencies = [
  "schemars 0.8.22",
  "serde",
  "serde_json",
+ "sha2",
  "specta",
  "thiserror 2.0.21",
  "ulid",
+ "zip",
 ]
 
 [[package]]

@@ -64,8 +64,10 @@ qurender render <folder.qrproj> <output.mp4> [--audio file] [--width N] [--max-s
 
 ## 5. Batch and upload package
 
-- Splitting a project per N verses/duration/marker exists as a library. A batch queue in the UI, and a
-  queue that survives closing the app: **Not available**.
+- Splitting a project per N verses/duration/marker and a job queue that survives closing the app
+  (interrupted jobs return to the queue on start) exist as a library. A batch/queue UI: **Not available**.
+- `.qrpack` archives (project + assets + SHA-256 fingerprints, openable on another OS) are available via app
+  commands; UI buttons: **Not available**. Corrupted or hostile archives are rejected.
 - The credits file (`*.credits.txt`) and upload text (`*.upload.txt`) generators exist as a library. The
   *Ready to upload* panel: **Not available**.
 

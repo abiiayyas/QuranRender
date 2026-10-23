@@ -9,6 +9,8 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
+#[cfg(test)]
+mod preview_export_equivalence;
 mod render_job;
 
 use render_job::{run_render_job, RenderPayload};
@@ -263,6 +265,8 @@ fn main() -> Result<()> {
                 ffmpeg_bin: None,
                 overwrite: args.iter().any(|a| a == "--overwrite"),
                 threads: opt("--threads").and_then(|v| v.parse().ok()),
+                encoder: opt("--encoder").cloned(),
+                crf: opt("--crf").and_then(|v| v.parse().ok()),
             };
             let db = open_verses().map_err(anyhow::Error::msg)?;
             let verses = DbVerses(Mutex::new(db));

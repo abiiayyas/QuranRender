@@ -3,7 +3,9 @@
 use std::path::{Path, PathBuf};
 use std::sync::atomic::AtomicBool;
 
-use qr_media::{export_mp4, rgba_to_yuv420_bt709, ExportError, Mp4ExportConfig, RawFrameFormat};
+use qr_media::{
+    export_mp4, rgba_to_yuv420_bt709, ExportError, Mp4ExportConfig, RawFrameFormat, VideoEncoder,
+};
 use qr_render::{load_builtin_template, FontSet, SceneBuilder, SoftwareRenderer, VerseSource};
 use serde::Deserialize;
 
@@ -34,6 +36,12 @@ pub struct RenderPayload {
     /// Jumlah thread render frame. Default: jumlah inti (maks 8, batas memori buffer frame).
     #[serde(default)]
     pub threads: Option<usize>,
+    /// Paksa libx264 (`"libx264"`); default: encoder terbaik (hardware bila ada). Nilai lain ditolak.
+    #[serde(default)]
+    pub encoder: Option<String>,
+    /// Kualitas konstan libx264 (`-crf`, 0 = lossless); menggantikan bitrate. Hanya untuk `encoder = "libx264"`.
+    #[serde(default)]
+    pub crf: Option<u8>,
 }
 
 #[derive(Debug)]
@@ -180,10 +188,28 @@ pub fn run_render_job(
         }
     }
 
+    let preferred_encoder = match payload.encoder.as_deref() {
+        None => None,
+        Some("libx264") => Some(VideoEncoder::SoftwareLibx264),
+        Some(other) => {
+            return Err(JobError::new(
+                "INVALID_PAYLOAD",
+                format!("Encoder '{other}' tidak dikenal (hanya \"libx264\")"),
+            ))
+        }
+    };
+    if payload.crf.is_some() && preferred_encoder.is_none() {
+        return Err(JobError::new(
+            "INVALID_PAYLOAD",
+            "crf hanya berlaku bersama encoder = \"libx264\"",
+        ));
+    }
     let config = Mp4ExportConfig {
         width,
         height,
         fps,
+        preferred_encoder,
+        crf: payload.crf,
         raw_format: RawFrameFormat::Yuv420p,
         ..Mp4ExportConfig::default()
     };

@@ -51,13 +51,13 @@ Legenda: ✅ terbukti dengan uji/pengukuran nyata · ⚠️ sebagian (rincian di
 | A1-02 model domain | ⚠️ | Undo/redo 10.000 operasi ✅. Cascade gaya STY-1 baru ditambahkan (`qr-core::style`). `AyahSegment.word_range` baru ditambahkan. |
 | A1-03 indeks + beranda | ⚠️ | Create/list/open/duplicate/delete ada. Dua cacat diperbaiki: nama sama menimpa proyek; rasio tidak mengatur ukuran kanvas. |
 | A1-04 impor media | ⚠️ | `probe_media` (sebelumnya palsu) kini memakai `ffprobe`; `decode_audio_mono_f32` baru. Target "waveform awal ≤ 2 dtk untuk file 60 menit" belum diukur pada file nyata (benchmark lama memakai sampel sintetis). |
-| A1-05 audio engine `cpal` | ❌ | `AudioClock` murni simulasi; tidak ada output audio. Uji drift memakai simulasi. |
+| A1-05 audio engine `cpal` | ⚠️ | `AudioEngine` (cpal) + jam master: tes 60 menit audio ekuivalen (173 juta frame, buffer 441/480/1021/…, seek dan pause) → **drift 0 tick persis**; smoke perangkat nyata di Mac ini lulus 5× (jam maju 1,003–1,013 dtk untuk 1,005–1,009 dtk dinding). Belum dipasang ke Tauri/Studio; `cpal::Stream` belum diperiksa `Send`. Windows/Linux belum diuji. |
 | A1-06 scene builder + teks | ✅ | Ditulis ulang: teks ayat/terjemahan nyata dari dataset, shaping `harfrust`, auto-fit, karaoke, 13 golden dengan perbandingan hash. Backend wgpu/vello ❌ (CPU `tiny-skia`). |
 | A1-07 panel preview | ⚠️ | `preview_frame` merender frame dengan renderer yang sama. Tidak disinkronkan dengan jam audio, belum diukur 30 fps. |
 | A1-08 alignment | ⚠️ | VAD + timing proporsional + konfidensi heuristik (tidak lagi hardcode). Tidak ada model akustik, identifikasi ayat, atau forced alignment. Target PRD §8.2 tidak tercapai. |
-| A1-09 worker + supervisor | ⚠️ | Worker kini menjalankan render sungguhan di thread terpisah; `cancel` menghentikan ffmpeg dan menghapus berkas parsial. Antrean `qr-jobs` hanya di memori; jeda/lanjut ditolak jujur (`UNSUPPORTED`). |
+| A1-09 worker + supervisor | ✅ | Worker render nyata dengan pembatalan. Antrean kini **persisten di `app.db`**, job yatim kembali `queued`, `QueueRunner` menjalankan `qurender worker` sungguhan, kegagalan satu job tidak menghentikan antrean. Jeda job yang sedang berjalan ditolak jujur (worker belum mendukung). |
 | A1-10 export MP4 | ⚠️ | Nyata: MP4 H.264+AAC, BT.709, jumlah frame tepat (diverifikasi `ffprobe`), fallback HW→libx264 (jalur error teruji, kegagalan HW nyata belum dipicu). **1,5× real-time, target 3× belum tercapai.** |
-| A1-11 kesetaraan preview–export | ❌ | Preview dan ekspor memakai satu jalur kode, tetapi tidak ada uji SSIM/selisih kanal yang membandingkan frame MP4 dengan frame preview. |
+| A1-11 kesetaraan preview–export | ⚠️ | SSIM implementasi sendiri + 50 tick diuji: **SSIM min 0,99906 (VideoToolbox), 0,99929 (libx264)**; selisih kanal ≤ 2/255 di area datar hanya pada varian lossless (lossy 3–6/255). Tes mutasi (geser 1 frame) turun ke 0,9489. **Menemukan bug produk:** seluruh video lebih gelap ~5/255 (frame BT.709 tanpa tag warna masuk ke ffmpeg) — diperbaiki. Cakupan: satu proyek 4 dtk, satu template, 360 px; belum 60 dtk/tick acak/template lain/Windows/Linux. |
 | A1-12 SRT/VTT | ⚠️ | Format teruji. Perintah desktop kini mengisi teks dari dataset (sebelumnya kosong) dan gagal keras bila ayat tidak ada. Validator format SRT/VTT eksternal ❌. |
 | A1-13 UI studio | ⚠️ | Ditulis ulang di atas sistem desain, preview dari renderer Rust. Timeline hasil S5 ❌; "alur penuh dengan keyboard saja" belum diaudit. |
 | A1-14 wizard | ❌ | Langkah Sinkron/Ekspor tidak dapat dijalankan dari UI (ditandai "Belum tersedia"). |
@@ -79,15 +79,15 @@ Legenda: ✅ terbukti dengan uji/pengukuran nyata · ⚠️ sebagian (rincian di
 | B2-09 transparan + ASS | ⚠️ | Penyusun argumen ffmpeg + ASS teruji; ekspor transparan belum dijalankan. |
 | B2-10 validasi pra-ekspor | ⚠️ | Validator + nama anti-timpa ✅. "Semua masalah dilaporkan sebelum job" sebagian. |
 | B2-11 kredit/unggah | ⚠️ | Pembuat `*.credits.txt`/`*.upload.txt` ✅; panel "Siap unggah" ❌. |
-| B2-12 batch | ⚠️ | Pemecahan per N ayat/durasi/marker/manual ✅. Antrean persisten di `app.db`, jeda/lanjut, prioritas, uji "50 klip" ❌. |
+| B2-12 batch | ⚠️ | Pemecahan ✅. Antrean persisten, prioritas, pause/resume (hanya job antre), cancel, isolasi kegagalan ✅; uji 50 klip: 49 sukses + 1 gagal disengaja, **44,8 dtk (release)**. UI batch/antrean ❌. |
 | B2-13 Quran.com | ⚠️ | Parser kini memvalidasi 03 §6.2 (sebelumnya default diam-diam ke 1:1 dan angka catatan kaki bocor ke teks). Isi catatan kaki tidak diambil; UI catatan kaki dan penguncian edisi ❌. Pengunduhan nyata ❌ (allowlist tidak tersambung ke HTTP client). |
-| B2-14 snapshot UI + `.qrpack` | ⚠️ | Snapshot di disk ✅; UI pemulihan dan `.qrpack` lintas OS ❌. |
+| B2-14 snapshot UI + `.qrpack` | ⚠️ | `.qrpack` (zip + manifest SHA-256, aset, path relatif, hardening setara impor template, fuzz) ✅ dan perintah desktop ekspor/impor ✅. UI pemulihan/ekspor/impor ❌. Uji buka lintas OS ❌ (hanya macOS). |
 | B2-15 keychain + allowlist | ⚠️ | Penolakan rahasia di `app.db` ✅, allowlist sebagai fungsi ✅. Integrasi keychain OS ❌. |
 | B2-16 i18n/a11y | ❌ | Tidak ada. |
-| B2-17 updater/backup | ❌ | Tidak ada. |
+| B2-17 updater/backup | ⚠️ | Backup otomatis saat migrasi skema ✅ (mekanisme diuji dengan migrasi sintetis; daftar migrasi produksi kosong karena skema masih v1). Auto-update bertanda tangan ❌. |
 | B2-18 uji instalasi + Flatpak | ❌ | Tidak ada. |
 | B2-19 panduan buka pertama | ❌ | Tidak ada. |
-| B2-20 telemetri/crash log | ❌ | Tidak ada. |
+| B2-20 telemetri/crash log | ⚠️ | Crash log lokal (pesan dibersihkan, tanpa teks Arab/path pengguna), opt-in default mati, pratinjau data ✅. Pengiriman telemetri tidak ada (tidak ada kode jaringan). UI pengaturan ❌. |
 
 ### Doc 05 (desain video)
 

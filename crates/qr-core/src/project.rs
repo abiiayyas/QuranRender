@@ -29,6 +29,8 @@ pub enum ProjectError {
     InjectedFault,
     #[error("Format arsip .qrpack rusak atau tidak valid: {0}")]
     Corrupted(String),
+    #[error("Migrasi skema proyek gagal: {0}")]
+    Migration(String),
 }
 
 pub const CURRENT_SCHEMA_VERSION: u32 = 1;
@@ -333,24 +335,142 @@ where
     Ok(())
 }
 
-/// Membaca project.json dari direktori proyek.
+/// Satu langkah migrasi skema: mengubah dokumen `project.json` dari versi `from` ke `from + 1`.
+/// Fungsi tidak perlu mengubah `schema_version`; kerangka migrasi menaikkannya setelah langkah sukses.
+#[derive(Clone, Copy, Debug)]
+pub struct Migration {
+    pub from: u32,
+    pub apply: fn(serde_json::Value) -> Result<serde_json::Value, ProjectError>,
+}
+
+/// Daftar migrasi produksi. Kosong karena `CURRENT_SCHEMA_VERSION` masih 1 (belum ada skema lama yang
+/// pernah dirilis). Saat skema naik ke v2, tambahkan `Migration { from: 1, apply: ... }` di sini.
+pub const MIGRATIONS: &[Migration] = &[];
+
+/// Membaca project.json dari direktori proyek, memigrasikan skema lama bila perlu (dengan cadangan).
 pub fn load_project(project_dir: &Path) -> Result<Project, ProjectError> {
+    load_project_with(project_dir, CURRENT_SCHEMA_VERSION, MIGRATIONS)
+}
+
+/// Seperti [`load_project`] dengan versi target dan rantai migrasi yang dapat disuntikkan (untuk uji).
+///
+/// Skema lebih baru dari `target` ditolak. Skema lebih lama dimigrasikan berurutan; rantai yang
+/// tidak lengkap ditolak sebelum menyentuh disk. Migrasi dijalankan di memori; hanya setelah hasilnya
+/// valid, `project.json` lama disalin utuh ke `backups/project.v{N}.{timestamp}.json` lalu diganti
+/// secara atomik. Kegagalan di tahap mana pun membiarkan `project.json` asli tidak berubah.
+pub fn load_project_with(
+    project_dir: &Path,
+    target: u32,
+    migrations: &[Migration],
+) -> Result<Project, ProjectError> {
     let target_file = project_dir.join("project.json");
     if !target_file.exists() {
         return Err(ProjectError::NotFound(target_file));
     }
 
-    let content = fs::read_to_string(&target_file)?;
-    let project: Project = serde_json::from_str(&content)?;
+    let original = fs::read(&target_file)?;
+    let doc: serde_json::Value = serde_json::from_slice(&original)?;
+    let version = doc
+        .get("schema_version")
+        .and_then(serde_json::Value::as_u64)
+        .ok_or_else(|| {
+            ProjectError::Corrupted("project.json tidak memiliki schema_version yang valid".into())
+        })?;
+    let version = u32::try_from(version)
+        .map_err(|_| ProjectError::UnsupportedSchemaVersion(u32::MAX, target))?;
 
-    if project.schema_version != CURRENT_SCHEMA_VERSION {
-        return Err(ProjectError::UnsupportedSchemaVersion(
-            project.schema_version,
-            CURRENT_SCHEMA_VERSION,
-        ));
+    if version > target {
+        return Err(ProjectError::UnsupportedSchemaVersion(version, target));
+    }
+    if version == target {
+        return Ok(serde_json::from_value(doc)?);
     }
 
+    // Rantai harus lengkap sebelum apa pun dijalankan.
+    let mut steps = Vec::new();
+    for from in version..target {
+        let m = migrations.iter().find(|m| m.from == from).ok_or_else(|| {
+            ProjectError::Migration(format!(
+                "tidak ada migrasi dari skema v{from} ke v{} (proyek v{version}, aplikasi v{target})",
+                from + 1
+            ))
+        })?;
+        steps.push(m);
+    }
+    let mut doc = doc;
+    for m in steps {
+        doc = (m.apply)(doc)?;
+        match doc.as_object_mut() {
+            Some(obj) => {
+                obj.insert("schema_version".into(), serde_json::json!(m.from + 1));
+            }
+            None => {
+                return Err(ProjectError::Migration(format!(
+                    "migrasi v{} menghasilkan dokumen yang bukan objek JSON",
+                    m.from
+                )))
+            }
+        }
+    }
+    let project: Project = serde_json::from_value(doc).map_err(|e| {
+        ProjectError::Migration(format!(
+            "hasil migrasi tidak valid sebagai proyek v{target}: {e}"
+        ))
+    })?;
+
+    backup_raw_project(project_dir, version, &original)?;
+    write_bytes_atomic(
+        project_dir,
+        "project.json",
+        &serde_json::to_vec_pretty(&project)?,
+    )?;
     Ok(project)
+}
+
+/// Menyalin `project.json` lama apa adanya ke `backups/project.v{N}.{timestamp}.json`.
+fn backup_raw_project(
+    project_dir: &Path,
+    version: u32,
+    bytes: &[u8],
+) -> Result<PathBuf, ProjectError> {
+    let dir = project_dir.join("backups");
+    fs::create_dir_all(&dir)?;
+    let mut ts = now_ms();
+    loop {
+        let path = dir.join(format!("project.v{version}.{ts}.json"));
+        match fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&path)
+        {
+            Ok(mut f) => {
+                let res = f.write_all(bytes).and_then(|()| f.sync_all());
+                if let Err(e) = res {
+                    let _ = fs::remove_file(&path);
+                    return Err(e.into());
+                }
+                return Ok(path);
+            }
+            Err(e) if e.kind() == io::ErrorKind::AlreadyExists => ts += 1,
+            Err(e) => return Err(e.into()),
+        }
+    }
+}
+
+/// Menulis berkas di `dir` secara atomik (tulis sementara + fsync + rename) tanpa mengubah revisi.
+fn write_bytes_atomic(dir: &Path, name: &str, bytes: &[u8]) -> Result<(), ProjectError> {
+    let tmp = dir.join(format!("{name}.tmp.{}", Ulid::generate()));
+    let res = (|| -> io::Result<()> {
+        let mut f = File::create(&tmp)?;
+        f.write_all(bytes)?;
+        f.sync_all()?;
+        fs::rename(&tmp, dir.join(name))
+    })();
+    if let Err(e) = res {
+        let _ = fs::remove_file(&tmp);
+        return Err(e.into());
+    }
+    Ok(())
 }
 
 /// Pengelola lock file proyek (.project.lock).
@@ -694,5 +814,142 @@ mod tests {
         );
 
         let _ = fs::remove_dir_all(&temp_dir);
+    }
+
+    // ---- Migrasi skema (kerangka dapat disuntikkan; rantai produksi kosong) ----
+
+    fn migrate_judul_to_name(
+        mut doc: serde_json::Value,
+    ) -> Result<serde_json::Value, ProjectError> {
+        let obj = doc
+            .as_object_mut()
+            .ok_or_else(|| ProjectError::Migration("bukan objek".into()))?;
+        let judul = obj
+            .remove("judul")
+            .ok_or_else(|| ProjectError::Migration("kunci 'judul' tidak ada".into()))?;
+        obj.insert("name".into(), judul);
+        Ok(doc)
+    }
+
+    fn migrate_always_fails(_: serde_json::Value) -> Result<serde_json::Value, ProjectError> {
+        Err(ProjectError::Migration("sengaja gagal".into()))
+    }
+
+    fn migrate_garbage(_: serde_json::Value) -> Result<serde_json::Value, ProjectError> {
+        Ok(serde_json::json!({"bukan": "proyek"}))
+    }
+
+    /// Menulis `project.json` skema "lama" (v1) dengan kunci lama `judul` menggantikan `name`.
+    fn write_legacy_v1(dir: &Path) -> Vec<u8> {
+        let mut v = serde_json::to_value(Project::new("x")).unwrap();
+        let obj = v.as_object_mut().unwrap();
+        obj.remove("name");
+        obj.insert("judul".into(), serde_json::json!("Judul Lama"));
+        fs::create_dir_all(dir).unwrap();
+        let bytes = serde_json::to_vec_pretty(&v).unwrap();
+        fs::write(dir.join("project.json"), &bytes).unwrap();
+        bytes
+    }
+
+    fn tmp_dir(tag: &str) -> PathBuf {
+        std::env::temp_dir().join(format!("qr_mig_{tag}_{}", Ulid::generate()))
+    }
+
+    #[test]
+    fn production_migration_chain_is_empty_for_schema_v1() {
+        assert_eq!(CURRENT_SCHEMA_VERSION, 1);
+        assert!(MIGRATIONS.is_empty());
+    }
+
+    #[test]
+    fn injected_migration_backs_up_original_and_result_loads() {
+        let dir = tmp_dir("ok");
+        let original = write_legacy_v1(&dir);
+        let chain = [Migration {
+            from: 1,
+            apply: migrate_judul_to_name,
+        }];
+
+        let p = load_project_with(&dir, 2, &chain).unwrap();
+        assert_eq!(p.name, "Judul Lama");
+        assert_eq!(p.schema_version, 2);
+
+        // Cadangan berisi byte asli versi lama.
+        let backups: Vec<_> = fs::read_dir(dir.join("backups"))
+            .unwrap()
+            .map(|e| e.unwrap().path())
+            .collect();
+        assert_eq!(backups.len(), 1);
+        let fname = backups[0]
+            .file_name()
+            .unwrap()
+            .to_string_lossy()
+            .to_string();
+        assert!(
+            fname.starts_with("project.v1.") && fname.ends_with(".json"),
+            "{fname}"
+        );
+        assert_eq!(fs::read(&backups[0]).unwrap(), original);
+
+        // project.json di disk sudah v2 dan dapat dimuat ulang tanpa migrasi lagi.
+        let again = load_project_with(&dir, 2, &chain).unwrap();
+        assert_eq!(again, p);
+        assert_eq!(fs::read_dir(dir.join("backups")).unwrap().count(), 1);
+        assert!(
+            fs::read_dir(&dir).unwrap().all(|e| !e
+                .unwrap()
+                .file_name()
+                .to_string_lossy()
+                .contains(".tmp.")),
+            "tidak boleh ada berkas sementara"
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn failed_migration_leaves_original_untouched() {
+        for (tag, apply) in [
+            ("gagal", migrate_always_fails as fn(_) -> _),
+            ("sampah", migrate_garbage),
+        ] {
+            let dir = tmp_dir(tag);
+            let original = write_legacy_v1(&dir);
+            let chain = [Migration { from: 1, apply }];
+            let err = load_project_with(&dir, 2, &chain).unwrap_err();
+            assert!(matches!(err, ProjectError::Migration(_)), "{tag}: {err}");
+            assert_eq!(fs::read(dir.join("project.json")).unwrap(), original);
+            assert!(!dir.join("backups").exists(), "{tag}: tidak ada cadangan");
+            let _ = fs::remove_dir_all(&dir);
+        }
+    }
+
+    #[test]
+    fn incomplete_chain_newer_and_unversioned_documents_are_clear_errors() {
+        let dir = tmp_dir("rantai");
+        let original = write_legacy_v1(&dir);
+        // v1 -> v3 hanya punya langkah 1 -> 2: ditolak sebelum menyentuh disk.
+        let chain = [Migration {
+            from: 1,
+            apply: migrate_judul_to_name,
+        }];
+        let e = load_project_with(&dir, 3, &chain).unwrap_err().to_string();
+        assert!(e.contains("v2") && e.contains("v3"), "{e}");
+        assert_eq!(fs::read(dir.join("project.json")).unwrap(), original);
+        assert!(!dir.join("backups").exists());
+        // Tanpa migrasi sama sekali.
+        assert!(load_project_with(&dir, 2, &[]).is_err());
+        // Versi lebih baru dari aplikasi.
+        let e = load_project_with(&dir, 0, &chain).unwrap_err();
+        assert!(
+            matches!(e, ProjectError::UnsupportedSchemaVersion(1, 0)),
+            "{e}"
+        );
+        // Tanpa schema_version.
+        fs::write(dir.join("project.json"), br#"{"id":"x"}"#).unwrap();
+        assert!(matches!(
+            load_project(&dir).unwrap_err(),
+            ProjectError::Corrupted(_)
+        ));
+        let _ = fs::remove_dir_all(&dir);
     }
 }

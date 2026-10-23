@@ -433,10 +433,21 @@ mindmap
 
 Untuk memenuhi kriteria rilis dan gerbang kualitas teknis:
 
-1. **Uji Kesetaraan Preview–Export (RND-1):**
-   - Renderer mengevaluasi 50 tick acak pada video uji berdurasi 60 detik.
-   - Frame jalur pratinjau (Surface Native / Texture Streaming) dan frame jalur ekspor (Readback NV12 → Encode Lossless) wajib memiliki nilai **SSIM ≥ 0,995**.
-   - Deviasi kanal warna maksimum $\le 2/255$ di luar antialiasing tepi font.
+1. **Uji Kesetaraan Preview–Export (RND-1) — terimplementasi** (`crates/qr-cli/src/preview_export_equivalence.rs`, `cargo test -p qr-cli equivalence`):
+   - Proyek nyata (Al-Fatihah 1:1, templat `subuh`, 4 dtk @30 fps, 360×640, sorotan kata aktif) diekspor lewat `run_render_job` (jalur produk: RGBA → YUV420 BT.709 di Rust → FFmpeg). 50 frame dipilih deterministik (25 frame beruntun pertama + 25 tersebar), didekode kembali ke RGB (BT.709 rentang TV, `qr_media::extract_rgb24_frames`) dan dibandingkan dengan frame preview (`SceneBuilder` + `SoftwareRenderer`) pada tick yang sama.
+   - Metrik: SSIM luma BT.709, jendela seragam 8×8, langkah 1 (`qr_media::ssim`); selisih kanal maksimum, dipisah antara seluruh piksel dan "area datar" (piksel yang jendela 5×5 luma preview-nya berentang ≤ 6, yaitu di luar antialiasing tepi font/bentuk).
+   - **Hasil terukur (macOS, FFmpeg 8.1, 50 tick):**
+
+     | Varian | SSIM min / rata-rata | Selisih kanal maks (semua / area datar) |
+     |---|---|---|
+     | Encoder default (`h264_videotoolbox`, 8000 kbps) | 0,99906 / 0,99914 | 40 / 6 |
+     | `libx264` 8000 kbps | 0,99929 / 0,99934 | 10 / 3 |
+     | `libx264 -crf 0` (lossless) | 0,99929 / 0,99935 | 7 / **2** |
+
+   - **SSIM ≥ 0,995 terpenuhi di ketiga varian.** Selisih kanal ≤ 2/255 di area datar hanya terpenuhi pada varian lossless; varian lossy melampauinya (3–6/255) karena kuantisasi DCT H.264, sehingga uji lossy hanya menegakkan SSIM ≥ 0,995 dan batas atas 10/255 untuk regresi, bukan klaim RND-1 kanal. Sisa 2/255 pada lossless adalah batas fisik YCbCr 8-bit 4:2:0 rentang TV (simulasi bulat-ke-bulat: galat kanal B hingga 2).
+   - **Bug produk yang ditemukan dan diperbaiki oleh uji ini:** frame YUV420 yang sudah BT.709 dikirim sebagai rawvideo tanpa tag warna; karena keluaran ditandai `-colorspace bt709`, FFmpeg menyisipkan konversi BT.601→BT.709 sehingga luma bergeser (Y 49 → 46) dan seluruh video menjadi lebih gelap ±5/255 (SSIM 0,987, selisih area datar 7/255 bahkan pada lossless). Perbaikan: tag input `-color_range tv -colorspace bt709 -color_primaries bt709 -color_trc bt709` sebelum `-i` (`build_ffmpeg_export_args`); koefisien konversi RGB→YUV dinaikkan ke 16-bit.
+   - **Uji mutasi:** membandingkan ekspor dengan preview yang digeser +1 frame menurunkan SSIM min menjadi 0,9489 (< 0,995) sehingga uji gagal bila preview dan ekspor berdivergensi (`equivalence_check_detects_one_frame_tick_offset`, permanen).
+   - Cakupan masih satu proyek 4 dtk/satu templat pada 360 px; belum 60 dtk/tick acak, belum templat/rasio lain, belum Windows/Linux (NVENC/QSV/AMF belum diukur).
 2. **Uji Golden Render 4 Rasio:**
    - 4 templat primer (`subuh`, `hening`, `terang`, `besar`) dirender pada rasio yang **didukung masing-masing** menurut matriks §8 (subuh 4 + hening 4 + terang 3 + besar 2 = **13 frame**, bukan 16) di `tests/golden/render/`. Kombinasi yang tidak didukung ditolak oleh `SceneBuilder`, bukan dirender.
    - `tests/golden/render/manifest.json` memuat SHA-256 piksel tiap frame dan dibandingkan oleh `cargo test -p qr-render --test render_golden`; pembaruan sengaja dengan `QR_UPDATE_GOLDEN=1`.

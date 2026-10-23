@@ -63,8 +63,11 @@ qurender render <folder.qrproj> <keluaran.mp4> [--audio berkas] [--width N] [--m
 
 ## 5. Batch dan paket unggah
 
-- Pemecahan proyek per N ayat/durasi/marker tersedia sebagai pustaka. Antrean batch di antarmuka dan
-  antrean yang bertahan setelah aplikasi ditutup: **Belum tersedia**.
+- Pemecahan proyek per N ayat/durasi/marker dan antrean job yang bertahan setelah aplikasi ditutup
+  (job yang terhenti kembali antre saat dibuka) tersedia sebagai pustaka. Antarmuka batch/antrean:
+  **Belum tersedia**.
+- Arsip `.qrpack` (proyek + aset + sidik jari SHA-256, dapat dibuka di OS lain) tersedia lewat perintah
+  aplikasi; tombol di antarmuka: **Belum tersedia**. Arsip yang rusak atau berbahaya ditolak.
 - Pembuat berkas kredit (`*.credits.txt`) dan teks unggah (`*.upload.txt`) tersedia sebagai pustaka.
   Panel *Siap unggah*: **Belum tersedia**.
 

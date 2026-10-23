@@ -18,3 +18,5 @@ serde_json.workspace = true
 schemars.workspace = true
 ulid.workspace = true
 specta.workspace = true
+sha2.workspace = true
+zip.workspace = true

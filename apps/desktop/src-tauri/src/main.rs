@@ -1,3 +1,5 @@
+mod crashlog;
+mod pack_api;
 mod render_api;
 
 use std::fs;
@@ -351,11 +353,17 @@ fn create_specta_builder() -> Builder<tauri::Wry> {
         project_delete,
         project_validate,
         subtitle_export,
-        preview_frame
+        preview_frame,
+        pack_api::project_export_pack,
+        pack_api::project_import_pack,
+        crashlog::telemetry_status,
+        crashlog::telemetry_set_opt_in
     ])
 }
 
 fn main() {
+    // Pertama-tama: panic apa pun (termasuk saat membuka app.db) tercatat di crash log lokal.
+    crashlog::install_panic_hook(crashlog::default_log_path());
     let builder = create_specta_builder();
 
     #[cfg(debug_assertions)]
