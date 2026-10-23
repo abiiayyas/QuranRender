@@ -1,10 +1,11 @@
-//! Decode/encode libav, audio engine (cpal), waveform, thumbnail, dan normalisasi LUFS.
-//! Mengacu ke PRD SRC-1, SRC-2, SYN-9 dan docs/engineering/01_TECHNICAL_HANDOFF.md §10.2.
+//! Decode/encode libav, audio engine (cpal), waveform, thumbnail, normalisasi LUFS, dan video fx.
+//! Mengacu ke PRD SRC-1, SRC-2, SRC-5, TML-2, SYN-9 dan docs/engineering/01_TECHNICAL_HANDOFF.md §10.2.
 
 pub mod clock;
 pub mod encoder;
 pub mod lufs;
 pub mod probe;
+pub mod video_fx;
 pub mod waveform;
 
 pub use clock::{frame_to_tick, tick_to_frame, AudioClock};
@@ -14,6 +15,7 @@ pub use encoder::{
 };
 pub use lufs::{calculate_normalization_gain, measure_integrated_lufs};
 pub use probe::{is_supported_media_extension, probe_media, MediaMetadata};
+pub use video_fx::{map_timeline_to_source_tick, OverlayTransform, VideoPlaybackFx};
 pub use waveform::{
     compute_waveform_peaks, deserialize_waveform_cache, serialize_waveform_cache, WaveformPeak,
 };
