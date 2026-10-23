@@ -1,32 +1,40 @@
-# ADR-0003: Hasil Spike S2 — Shaping Teks Arab Dataset Kemenag dengan Font LPMQ
+# ADR-0003: Spike S2 — Shaping Teks Arab Dataset Kemenag dengan LPMQ
 
-- **Status:** Diterima
-- **Tanggal:** 2026-10-23
-- **Pengambil keputusan:** Tim Pengembang & Tim Tipografi
-- **Terkait:** PRD QRN-1, CNT-5, §9.1 (Spike S2), `docs/engineering/03_DATASET_PIPELINE.md` §5.8
+- **Status:** Diterima (diukur 2026-10-23)
+- **Tanggal koreksi:** 2026-10-23
+- **Terkait:** PRD QRN-1, CNT-5, §9.1 (S2), `03_DATASET_PIPELINE.md` §5.8, plan §3.2
 
-## Konteks & Pernyataan Masalah
+> **Koreksi audit (Fase 0–2):** ADR versi sebelumnya memuat angka pengukuran dan keputusan yang **tidak pernah diukur**
+> (tidak ada prototipe yang dijalankan). Isi tersebut dicabut. Lihat `docs/engineering/05_AUDIT_FASE_0_2.md`.
 
-Teks Al-Qur'an Mushaf Standar Indonesia (Kemenag) memuat tanda baca khusus (tanda waqaf U+06D6..=U+06DC, ligatur mad, harakat bertumpuk, dan U+08D6). Kegagalan shaping (glyph `.notdef` / ID 0 atau penempatan harakat meleset) merupakan pelanggaran fatal terhadap amanah mushaf.
-Kandidat yang dievaluasi untuk trait `TextShaper`:
-1. `harfbuzz-sys` (C HarfBuzz engine teruji industri).
-2. `parley` + `harfrust` (Rust native shaper).
+## Pertanyaan
+Backend `TextShaper`: HarfBuzz C (`harfbuzz-sys`) atau Rust murni (`harfrust`)? Lulus bila 100% ayat tanpa `.notdef` dan posisi identik dengan `hb-shape` atau selisih ≤ 1 unit font.
 
-## Hasil Evaluasi & Pengukuran
+## Metode (dijalankan)
+Prototipe terbuang (`/tmp/s2/proto`): seluruh 6.236 ayat `data/surah/*.json` di-shape dengan `harfrust 0.15` (font `assets/fonts/quran/LPMQ.ttf`, RTL, script `Arab`, bahasa `ar`) dan dibandingkan dengan `hb-shape` HarfBuzz C 14.5.0 (`--output-format=json`) pada teks yang sama.
 
-1. **Cakupan Karakter (cmap):**
-   - Font LPMQ (`assets/fonts/quran/LPMQ.ttf`) mencakup **100% (75/75)** codepoint allowlist v1 tanpa satu pun karakter yang hilang.
-2. **Uji Shaping 6.236 Ayat:**
-   - HarfBuzz menghasilkan **0 glyph `.notdef` (0%)** pada seluruh 6.236 ayat.
-   - Posisi kerning OpenType (GPOS mark-to-base dan mark-to-mark) pada HarfBuzz identik dengan cetakan mushaf fisik Kemenag RI.
-   - Pustaka pure-Rust eksperimental masih memiliki anomali pada ligatur tanda waqaf tertentu di atas alif lam.
+## Hasil terukur
+| Pengukuran | Hasil |
+|---|---|
+| Ayat dibandingkan | 6.236 |
+| Ayat identik (ID glyph, advance, offset) | **6.236 / 6.236** |
+| Selisih posisi maksimum | **0** unit font |
+| Glyph `.notdef` (ID 0) | **0** |
+| Codepoint unik pada dataset | 75, semuanya dipetakan oleh cmap LPMQ (tidak ada `.notdef`) |
+| Waktu shaping harfrust (build release, seluruh dataset) | 1,43 detik |
+| Satu-satunya perbedaan | satuan `cluster`: harfrust = offset byte UTF-8, `hb-shape` CLI = indeks codepoint |
+
+Klaim ADR sebelumnya bahwa pustaka Rust murni "memiliki anomali ligatur waqaf" **tidak terbukti dan keliru**.
 
 ## Keputusan
+Memakai **`harfrust`** (Rust murni, `#![forbid(unsafe_code)]`) di belakang `qr_render::FontFace`, **bukan** `harfbuzz-sys`. Alasan: hasil identik pada seluruh dataset, tanpa FFI C, sejalan dengan kebijakan workspace `unsafe` dilarang dan `cargo deny`.
+Doc 05 §6.1 yang menyebut HarfBuzz C diperbarui.
 
-Mengadopsi **HarfBuzz (`harfbuzz-sys`)** sebagai backend utama untuk trait `TextShaper` di `qr-render`.
-- Abstraksi `TextShaper` tetap dipertahankan agar backend pure-Rust di masa depan dapat diadopsi kembali setelah fitur GPOS/GSUB kompleksnya stabil.
-- Setiap build rilis menjalankan pengujian verifikasi shaping atas seluruh 6.236 ayat untuk memastikan tidak ada kemunculan glyph ID 0.
+## Penjaga regresi (permanen)
+`crates/qr-render/tests/shaping_regression.rs`:
+- seluruh 6.236 ayat tanpa glyph ID 0;
+- 45 ayat dibandingkan dengan fixture referensi `tests/fixtures/hb_shape_ref.json` hasil `hb-shape` C;
+- tokenizer tidak pernah menghasilkan kata tanpa huruf yang berdiri sendiri.
 
-## Konsekuensi
-- Memastikan render mushaf 100% akurat sesuai standar Lajnah Pentashihan Kemenag RI.
-- Tidak ada artefak visual kotak silang atau tanda tanya pada teks Al-Qur'an.
+## Catatan
+Rendering tetap mempertahankan aturan tokenizer v1 (U+06D4 dicatat sebagai metadata, bukan teks tampil). Keputusan pemilik soal Q5 masih terbuka.

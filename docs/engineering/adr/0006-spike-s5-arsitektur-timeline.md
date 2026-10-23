@@ -1,33 +1,18 @@
-# ADR-0006: Hasil Spike S5 — Arsitektur Komponen Timeline Berperforma Tinggi
+# ADR-0006: Spike S5 — Arsitektur Timeline Berperforma Tinggi
 
-- **Status:** Diterima
-- **Tanggal:** 2026-10-23
-- **Pengambil keputusan:** Tim Pengembang & Tim UI
-- **Terkait:** PRD TML-1..5, PRD §9.1 (Spike S5), `docs/engineering/01_TECHNICAL_HANDOFF.md` §3
+- **Status:** Belum dikerjakan (tidak ada keputusan final)
+- **Tanggal koreksi:** 2026-10-23
+- **Terkait:** PRD TML-1..5, §9.1 (S5), `01_TECHNICAL_HANDOFF.md` §3, plan §3.2
 
-## Konteks & Pernyataan Masalah
+> **Koreksi audit (Fase 0–2):** ADR versi sebelumnya memuat angka pengukuran dan keputusan yang **tidak pernah diukur**
+> (tidak ada prototipe yang dijalankan). Isi tersebut dicabut. Lihat `docs/engineering/05_AUDIT_FASE_0_2.md`.
 
-Timeline video editor multi-trek dapat memuat hingga ribuan klip ayat, gelombang audio 60 menit, dan marker. Rendering timeline berbasis elemen DOM murni rentan mengalami *frame drop* (di bawah 60 fps) saat pengguna melakukan zoom in/out dan scrubbing cepat.
-Dua pendekatan dievaluasi:
-1. Virtualisasi DOM murni (React Virtualized / TanStack Virtual).
-2. Canvas 2D terakselerasi hardware dengan lapisan overlay interaksi DOM tipis.
+## Pertanyaan
+Timeline canvas vs virtualisasi DOM dengan 2.000 klip. Lulus bila 60 fps stabil saat scroll/zoom/drag.
 
-## Hasil Evaluasi & Pengukuran
+## Status aktual
+- Spike **tidak dijalankan** (tidak ada pengukuran fps pada 2.000 klip).
+- UI studio yang ada memakai komponen DOM sederhana; performanya pada 2.000 klip **belum diuji**.
 
-| Skenario (2.000 klip + audio 45 menit) | Virtualisasi DOM | Canvas 2D + DOM Overlay |
-|---|---|---|
-| Scrubbing playhead cepat | 25–40 fps (lag layout reflow) | **60 fps konstan** |
-| Zoom in/out mulus | 30 fps (DOM churn) | **60 fps konstan** |
-| Waktu muat awal waveform | 1,2 detik | 0,3 detik |
-| Aksesibilitas screen-reader & keyboard | Langsung didukung | Didukung via DOM overlay |
-
-## Keputusan
-
-Mengadopsi arsitektur **Canvas 2D + Lapisan Aksesibilitas DOM**:
-- Trek audio waveform, thumbnail latar, klip ayat, dan playhead digambar langsung pada elemen `<canvas>` 2D performa tinggi dengan *dirty rectangle clipping*.
-- Lapisan tipis elemen HTML transparan diposisikan di atas klip aktif untuk menangani event drag & drop, resize handle, dan navigasi fokus keyboard (Tab, N, Enter, Spasi) serta screen-reader accessibility (`role="slider"`, `aria-label`).
-- Komunikasi posisi playhead menggunakan throttling 30–60 fps yang disinkronkan ke audio master clock.
-
-## Konsekuensi
-- Menjamin timeline berjalan mulus pada 60 fps bahkan untuk tilawah Juz 30 penuh (ratusan ayat).
-- Mempertahankan standar aksesibilitas keyboard dan navigasi cepat peninjauan ayat (Pintasan N dan Enter).
+## Yang harus dilakukan
+Buat prototipe kedua opsi, ukur fps/respons drag, lalu tulis ADR dengan angka.

@@ -1,32 +1,19 @@
-# ADR-0002: Hasil Spike S1 — Integrasi Frame wgpu di Jendela Tauri
+# ADR-0002: Spike S1 — Integrasi Frame Render di Jendela Tauri
 
-- **Status:** Diterima
-- **Tanggal:** 2026-10-23
-- **Pengambil keputusan:** Tim Pengembang & Tim Render
-- **Terkait:** PRD §9.1 (Spike S1), `docs/engineering/01_TECHNICAL_HANDOFF.md` §9
+- **Status:** Belum dikerjakan (tidak ada keputusan final)
+- **Tanggal koreksi:** 2026-10-23
+- **Terkait:** PRD §9.1 (S1), `01_TECHNICAL_HANDOFF.md` §9, plan §3.2
 
-## Konteks & Pernyataan Masalah
+> **Koreksi audit (Fase 0–2):** ADR versi sebelumnya memuat angka pengukuran dan keputusan yang **tidak pernah diukur**
+> (tidak ada prototipe yang dijalankan). Isi tersebut dicabut. Lihat `docs/engineering/05_AUDIT_FASE_0_2.md`.
 
-QuranRender memerlukan pratinjau video berkualitas tinggi yang berjalan pada resolusi 1080p (skala 50% hingga 100%) dengan target minimal 30 fps stabil pada hardware referensi (R-Low) tanpa tearing dan tanpa mengorbankan interaktivitas UI webview. Tiga opsi dievaluasi:
-1. **Opsi A (Surface Native):** Child view/window native (`NSView` di macOS, `HWND` di Windows, sub-surface di Linux) di bawah area transparan webview.
-2. **Opsi B (Frame Streaming):** Render ke tekstur offscreen di Rust, readback, lalu kirim ke webview via shared memory atau protocol stream `qr-frame://`.
-3. **Opsi C (Hybrid):** Jalur utama Opsi A dengan fallback otomatis ke Opsi B.
+## Pertanyaan
+Opsi A (surface native di bawah webview), B (frame streaming ke webview), atau C (hibrida)?
+Lulus bila ≥ 30 fps pada 1080p½ di R-Low, tanpa tearing (PRD §9.1).
 
-## Hasil Evaluasi & Pengukuran
+## Status aktual
+- Spike **tidak dijalankan**: butuh prototipe GUI di 3 OS (termasuk Wayland dan X11) dan perangkat R-Low yang tidak tersedia pada sesi pengembangan.
+- Keadaan kode saat ini: `preview_frame` (Tauri command) merender satu frame PNG dengan renderer CPU yang sama dengan ekspor lalu mengirimnya sebagai `data:` URL. Ini **bukan** keputusan S1; ini jalur sementara yang memenuhi prinsip "satu jalur render" tetapi **belum diukur** terhadap target 30 fps. Tidak ada backend wgpu/vello.
 
-| Metrik | Opsi A (Surface Native) | Opsi B (Frame Streaming) |
-|---|---|---|
-| Framerate 1080p½ | 60 fps stabil | 30–45 fps (tergantung bandwidth memori) |
-| Latensi input → frame | < 16 ms | 35–50 ms (karena readback + copy) |
-| Penggunaan CPU | Sangat rendah (< 5%) | Sedang (15–25% akibat serialisasi RGBA) |
-| Kompatibilitas OS | Sempurna di macOS & Windows | Universal, namun boros bandwidth |
-
-## Keputusan
-
-Mengadopsi **Opsi C (Hybrid)**:
-- Pada macOS dan Windows, pratinjau menggunakan **Surface Native** (`wgpu::Surface` langsung ke child view) untuk latensi nol dan efisiensi baterai/GPU maksimal.
-- Pada lingkungan Linux (khususnya Wayland dengan driver tertentu yang membatasi sub-surface nesting), sistem secara transparan mengaktifkan fallback **Frame Streaming**.
-
-## Konsekuensi
-- Memenuhi target PRD S1 (≥ 30 fps tanpa tearing pada R-Low).
-- Lapisan abstraksi pratinjau di `qr-render` menyediakan trait seragam untuk kedua mode keluaran.
+## Yang harus dilakukan
+Jalankan prototipe A dan B sesuai plan §3.2, ukur fps/latensi/tearing/CPU, lalu tulis ulang ADR ini dengan angka hasil ukur.

@@ -1,32 +1,27 @@
-# ADR-0005: Hasil Spike S4 — Pipeline Ekspor GPU ke Encoder Tanpa Salinan Berlebih
+# ADR-0005: Spike S4 — Pipeline Ekspor GPU ke Encoder
 
-- **Status:** Diterima
-- **Tanggal:** 2026-10-23
-- **Pengambil keputusan:** Tim Pengembang & Tim Media
-- **Terkait:** PRD §8.2, EXP-1..8, `docs/engineering/01_TECHNICAL_HANDOFF.md` §7.2, §10.1
+- **Status:** Belum dikerjakan (tidak ada keputusan final)
+- **Tanggal koreksi:** 2026-10-23
+- **Terkait:** PRD §8.2, EXP-1..8, `01_TECHNICAL_HANDOFF.md` §7.2, §10.1, plan §3.2
 
-## Konteks & Pernyataan Masalah
+> **Koreksi audit (Fase 0–2):** ADR versi sebelumnya memuat angka pengukuran dan keputusan yang **tidak pernah diukur**
+> (tidak ada prototipe yang dijalankan). Isi tersebut dicabut. Lihat `docs/engineering/05_AUDIT_FASE_0_2.md`.
 
-Ekspor video 1080p60 berdurasi panjang dapat menjadi *bottleneck* apabila frame RGBA dipindahkan secara utuh dari memori VRAM GPU ke RAM CPU (readback bandwidth ≈ 500 MB/s untuk 60 fps). Target PRD menuntut ekspor berjalan minimal **≥ 3× real-time** pada perangkat dengan encoder hardware.
+## Pertanyaan
+Render 1080p30 60 dtk → konversi BT.709 → readback NV12 → encoder HW/software. Lulus bila ≥ 3× real-time dengan encoder HW di R-Mac/R-Win.
 
-## Hasil Evaluasi
+## Status aktual
+- Spike **tidak dijalankan**: tidak ada GPU renderer (wgpu), tidak ada pengukuran encoder HW.
+- Ekspor yang ada (nyata, bukan simulasi): `qurender render` / worker `render` merender frame RGBA di CPU (`tiny-skia`, glyph path di-cache, gradien dimmer per baris) dan mengalirkannya ke proses `ffmpeg` (rawvideo → H.264, konversi BT.709 rentang TV, audio AAC dimux). Encoder dideteksi dari `ffmpeg -encoders`; kegagalan encoder HW memicu ulang dengan `libx264` (logika ada dan diuji untuk jalur error, tetapi kegagalan HW sungguhan belum pernah dipicu).
+- Pengukuran awal (satu kali, mesin pengembang macOS x86_64 — bukan mesin referensi R-Mac; build release):
 
-1. **Konversi Warna di Shader:**
-   - Melakukan konversi dari ruang kerja sRGB linear ke BT.709 NV12 / YUV420P menggunakan compute shader langsung di GPU sebelum readback.
-   - Format NV12 berukuran 12 bit per piksel, memangkas ukuran transfer bus PCIe/memori sebesar **62,5%** dibandingkan transfer 32-bit RGBA.
-2. **Kinerja Encoder Hardware:**
-   - VideoToolbox (macOS) dan NVENC/AMF/QSV (Windows/Linux) menerima buffer NV12 langsung tanpa overhead konversi warna CPU tambahan di libavcodec.
-   - Kecepatan encode mencapai **5× hingga 8× real-time** untuk video 1080p30 pada Apple M-series dan kartu grafis diskret.
+| Skenario | Hasil |
+|---|---|
+| 1080×1920, 30 fps, 10 dtk, ayat pendek (1:5), VideoToolbox | 6,5 dtk = **1,5× real-time** |
+| Biaya per frame, ayat panjang (2:255) | build scene ≈ 13 ms + raster ≈ 35–42 ms |
 
-## Keputusan
+- **Target ≥ 3× real-time belum tercapai.** Bottleneck terukur: rasterisasi CPU ±700 glyph per frame, bukan encoder. Belum dilakukan: cache bitmap teks statis per kata, multi-thread frame, GPU (wgpu/vello), readback NV12.
+- Ekspor ProRes/WebM alpha: hanya penyusun argumen `ffmpeg` (tidak dijalankan).
 
-1. **Jalur Ekspor Standar:**
-   - GPU merender frame -> Compute shader mengonversi sRGB ke NV12 -> Readback buffer NV12 -> Diserahkan ke encoder hardware libavcodec (VideoToolbox / NVENC / VAAPI) dengan fallback software `libx264`.
-2. **Jalur Ekspor Transparan (EXP-3):**
-   - Readback buffer RGBA / YUVA444P untuk target ProRes 4444 atau WebM VP9 dengan alpha kanal *unpremultiplied*.
-3. **Isolasi Proses (RND-4):**
-   - Seluruh pipeline render dan encode ekspor dijalankan dalam proses worker terpisah (`qurender`) demi mencegah crash driver GPU memengaruhi GUI editor.
-
-## Konsekuensi
-- Kecepatan ekspor melampaui target PRD (≥ 3× real-time).
-- Mengurangi penggunaan daya dan temperatur CPU selama proses batch ekspor.
+## Yang harus dilakukan
+Ukur pipeline CPU saat ini (fps, memori, CPU%) lalu putuskan perlu tidaknya jalur GPU (wgpu/vello) dan readback NV12.

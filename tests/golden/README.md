@@ -2,7 +2,7 @@
 
 Direktori untuk artefak golden:
 - Golden tokenisasi: `tests/golden/tokenization.tsv` (F0-08).
-- Golden render 4 rasio × 4 template primer: `tests/golden/render/*.png` (A1-06, A1-15).
+- Golden render 13 kombinasi (template × rasio yang didukung): `tests/golden/render/*.png` + `manifest.json` (A1-06, A1-15).
 
 ## Golden Render Frames
 
@@ -22,6 +22,14 @@ Direktori untuk artefak golden:
 | `besar` | 9:16 | 1080 × 1920 | `besar_9x16.png` |
 | `besar` | 1:1 | 1080 × 1080 | `besar_1x1.png` |
 
-Toleransi render:
+## Mekanisme
+
+- Ayat uji: Al-Fatihah 1:5, tick 4 dtk (kata ke-2 sedang disorot), teks nyata dari `data/surah/*.json`.
+- `manifest.json` memuat SHA-256 piksel tiap frame (setelah premultiplied RGBA). `cargo test -p qr-render --test render_golden` **membandingkan** hash dan gagal bila ada selisih atau set frame berubah.
+- Perbarui sengaja (setelah memeriksa PNG secara visual): `QR_UPDATE_GOLDEN=1 cargo test -p qr-render --test render_golden golden_frames`.
+- Hash identik pada build debug dan release (macOS x86_64). **Identik di Windows/Linux belum terbukti** (CI belum pernah dijalankan).
+- Doc 05 §9 menyebut 16 frame; matriks katalog §8 hanya mendukung 13 kombinasi, sehingga 13 inilah yang dirender.
+
+Toleransi render untuk kesetaraan preview–ekspor (A1-11, **belum diuji**):
 - SSIM ≥ 0,995
 - Selisih per kanal ≤ 2/255 di luar antialiasing tepi font.

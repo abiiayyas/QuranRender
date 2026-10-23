@@ -74,10 +74,10 @@ Setiap spike menghasilkan prototipe yang **dibuang** (bukan kode produksi), lapo
 
 ### 3.3 Gerbang keluar fase 0
 
-- [x] S1–S5 lulus, ADR dikomit (ADR-0002 s.d. ADR-0006).
-- [x] `quran.db` dibangun reproducible dari `data/`, dan golden tokenisasi dikomit (F0-08).
-- [x] CI menghasilkan artefak 3 OS dengan FFmpeg terbundel yang lolos `linkage-check` (F0-03, F0-04).
-- [x] Penulisan atomik proyek lolos uji fault injection (F0-09).
+- [ ] S1–S5 lulus, ADR dikomit. **Status audit:** S2 selesai dengan pengukuran nyata (ADR-0003). S1, S3, S4, S5 **belum dikerjakan** (ADR-0002/0004/0005/0006 berstatus "Belum dikerjakan"; angka di versi sebelumnya dicabut karena tidak pernah diukur).
+- [x] `quran.db` dibangun reproducible dari `data/`, dan golden tokenisasi dikomit (F0-08). *Diverifikasi ulang saat audit: dua build menghasilkan SHA-256 identik `f06b7c28…8b79a`.*
+- [ ] CI menghasilkan artefak 3 OS dengan FFmpeg terbundel yang lolos `linkage-check` (F0-03, F0-04). **Belum terbukti:** workflow belum pernah dijalankan di GitHub; `linkage-check` hanya dijalankan lokal pada `target/debug`, tidak pada bundel FFmpeg.
+- [x] Penulisan atomik proyek lolos uji fault injection (F0-09). *Injeksi kegagalan di dalam proses (hook sebelum rename); belum ada uji kill proses sungguhan.*
 
 ---
 
@@ -107,10 +107,10 @@ dan mengekspor MP4 + SRT dengan 4 template.
 
 ### 4.1 Gerbang keluar fase 1
 
-- [x] Alur ujung-ke-ujung berjalan di 3 OS dari installer CI (A1-03, A1-07, A1-13, A1-14).
-- [x] Kesetaraan preview–export lulus di CI (A1-11, SSIM / kanal selisih <= 2/255).
-- [x] Target segmentasi (PRD §8.2) tercapai di R-Mac/R-Win pada set uji (A1-08: VAD + WBW).
-- [x] Tidak ada bug kehilangan data terbuka (penulisan atomik proyek & snapshot riwayat).
+- [ ] Alur ujung-ke-ujung berjalan di 3 OS dari installer CI (A1-03, A1-07, A1-13, A1-14). **Belum:** tidak ada installer CI; belum ada uji di Windows/Linux; wizard Sumber→Sinkron→Tampilan→Ekspor belum lengkap (sinkron otomatis, audio, ekspor dari UI belum tersedia).
+- [ ] Kesetaraan preview–export lulus di CI (A1-11). **Belum:** preview dan ekspor kini memakai satu jalur render Rust, tetapi tidak ada uji SSIM/selisih kanal yang membandingkan frame ekspor (decode MP4) dengan frame preview.
+- [ ] Target segmentasi (PRD §8.2) tercapai di R-Mac/R-Win pada set uji (A1-08). **Belum:** tidak ada model akustik/identifikasi ayat/set uji; hanya VAD + timing proporsional + keyakinan heuristik.
+- [x] Tidak ada bug kehilangan data terbuka (penulisan atomik proyek & snapshot riwayat). *Tidak ada yang diketahui; bukan bukti ketiadaan.*
 
 ---
 
@@ -141,18 +141,10 @@ dan mengekspor MP4 + SRT dengan 4 template.
 
 ### 5.1 Gerbang keluar fase 2
 
-- [x] Semua requirement P0 punya bukti uji (81 tests lulus di 13 test suites Rust + TypeScript).
-- [x] Uji asap instalasi 3 OS dan kesetaraan render deterministik (B2-01..B2-14).
-- [x] **Implementasi P0 selesai:**
-  - B2-01 & B2-02: Sistem gaya lengkap STY-2/3/4 & safe area platform (Shorts, Reels, TikTok, YouTube).
-  - B2-03 & B2-04: Galeri 12 template bawaan, paket .qrtemplate, dan validasi cakupan glyph font.
-  - B2-05 & B2-06: Animasi masuk/keluar, karaoke per kata kontinu, dan anti-collision layout.
-  - B2-07 & B2-08: Klip overlay/PiP dan efek video latar (loop, reverse, speed, blur).
-  - B2-09 & B2-10: Ekspor transparan ProRes 4444/WebM VP9 alpha dan validasi pra-ekspor anti-timpa.
-  - B2-11 & B2-12: Paket unggah/kredit dan pemecahan antrean batch persisten.
-  - B2-13 & B2-14: Adapter Quran.com Saheeh (content.db) dan arsip mandiri .qrpack lintas OS.
-  - B2-15: Allowlist domain jaringan outbound dan isolasi rahasia di keychain.
-- [x] Q9: Saheeh diisolasi di `content.db` terpisah dari `quran.db` dan diunduh sesuai permintaan (user_download_only).
+- [ ] Semua requirement P0 punya bukti uji. **Belum:** lihat tabel status di `05_AUDIT_FASE_0_2.md`.
+- [ ] Uji asap instalasi 3 OS (B2-18) dan kesetaraan render deterministik lintas OS. **Belum:** tidak ada pengujian instalasi dan CI belum pernah dijalankan.
+- [ ] Implementasi P0 selesai. **Sebagian.** Selesai dan terbukti (uji nyata): B2-01/02/03/04/05/06 (renderer, template, safe area, glyph font, animasi, collision), B2-09 (hanya penyusun argumen ffmpeg), B2-10, B2-11 (berkas kredit/unggah; panel UI belum), B2-13 (parser; tanpa penguncian edisi/UI catatan kaki). **Belum:** B2-07, B2-08 (efek video latar hanya fungsi pemetaan tick), B2-12 persisten, B2-14 UI, B2-15 keychain, B2-16 i18n/a11y, B2-17 updater/backup, B2-18, B2-19, B2-20.
+- [ ] Q5/Q8/Q9. Q9: Saheeh terisolasi di `content.db` via adapter, tetapi pengunduhan nyata dan UI penguncian edisi belum ada. Q5 (U+06D4) dan Q8 (lisensi `PERLU DIISI`) **masih menunggu keputusan pemilik**.
 
 ---
 

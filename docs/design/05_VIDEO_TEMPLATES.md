@@ -4,7 +4,7 @@
 |---|---|
 | Status | Tahap 5 — Spesifikasi Final Kontrak Desain Video |
 | Dasar | [PRD.md](../product/PRD.md) v1.0 (STY-1..8, ANM-1..3, RND-1..5, CNT-1..5), [01 Identitas](01_BRAND_IDENTITY.md), [02 Sistem Desain](02_DESIGN_SYSTEM.md), [04 Layar](04_SCREEN_SPECIFICATIONS.md), ADR-0002 s.d. ADR-0006 |
-| Pelaksana | Renderer Rust `qr-render` (wgpu + vello + HarfBuzz) dan antarmuka Studio di `apps/desktop` |
+| Pelaksana | Renderer Rust `qr-render` (saat ini CPU: `tiny-skia` + `harfrust`; backend GPU wgpu/vello belum ada) dan antarmuka Studio di `apps/desktop` |
 | Output Terkait | Format berkas `.qrtemplate`, paket templat bawaan di `crates/qr-render/templates/`, tugas Fase 1 (A1-06, A1-15) |
 
 ---
@@ -271,7 +271,7 @@ Sorotan kata tidak boleh berpindah secara kasar (diskrit *on/off*), melainkan be
 
 ### 6.1 Pemenggalan Baris Berbasis Kata (Word-Aware Wrapping)
 
-- Shaping teks Arab dilakukan menggunakan **HarfBuzz C engine** (`harfbuzz-sys`, sesuai ADR-0003).
+- Shaping teks Arab dilakukan dengan **`harfrust`** (HarfBuzz versi Rust murni). Spike S2 (ADR-0003) mengukur hasil identik dengan HarfBuzz C 14.5.0 pada 6.236 ayat (selisih 0, 0 `.notdef`); `harfbuzz-sys` tidak dipakai.
 - **Larangan Keras:** Dilarang memotong di tengah kata atau memisahkan tanda waqaf dari kata yang diikutinya.
 - Batas baris dihitung dari offset kata di tabel `word`. Jika sebuah kata menyebabkan lebar baris melebihi `max_width_cw`, seluruh kata beserta tanda waqafnya diturunkan ke baris berikutnya.
 
@@ -438,8 +438,10 @@ Untuk memenuhi kriteria rilis dan gerbang kualitas teknis:
    - Frame jalur pratinjau (Surface Native / Texture Streaming) dan frame jalur ekspor (Readback NV12 → Encode Lossless) wajib memiliki nilai **SSIM ≥ 0,995**.
    - Deviasi kanal warna maksimum $\le 2/255$ di luar antialiasing tepi font.
 2. **Uji Golden Render 4 Rasio:**
-   - 4 templat primer (`subuh`, `hening`, `terang`, `besar`) dirender pada 4 rasio aspek (9:16, 16:9, 1:1, 4:5) menghasilkan 16 frame referensi di `tests/golden/render/`.
-   - CI memverifikasi bahwa frame yang dihasilkan identik di macOS, Linux, dan Windows.
+   - 4 templat primer (`subuh`, `hening`, `terang`, `besar`) dirender pada rasio yang **didukung masing-masing** menurut matriks §8 (subuh 4 + hening 4 + terang 3 + besar 2 = **13 frame**, bukan 16) di `tests/golden/render/`. Kombinasi yang tidak didukung ditolak oleh `SceneBuilder`, bukan dirender.
+   - `tests/golden/render/manifest.json` memuat SHA-256 piksel tiap frame dan dibandingkan oleh `cargo test -p qr-render --test render_golden`; pembaruan sengaja dengan `QR_UPDATE_GOLDEN=1`.
+   - Identik lintas macOS/Linux/Windows **belum terbukti**: golden baru dihasilkan di macOS; CI belum pernah dijalankan.
+   - Ayat yang tidak muat satu layar pada ukuran minimum (mis. 2:282) ditandai `text_overflow` dan harus dibagi per rentang kata (`AyahSegment.word_range`); terjemahan tidak ditampilkan pada segmen terbagi (menunggu fitur pemotongan terjemahan, P1).
 3. **Pemeriksaan Kerapatan Teks Terhadap Area Aman:**
    - Unit test di `qr-policy` memastikan tidak ada karakter ayat atau terjemahan yang menembus kotak batas Area Aman pada seluruh 12 templat katalog.
 
