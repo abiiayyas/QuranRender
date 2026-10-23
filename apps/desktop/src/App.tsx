@@ -3,12 +3,15 @@ import {
   commands,
   type AppInfo,
   type ProjectIndexEntry_Serialize as ProjectEntry,
+  type Project,
+  type Project_Deserialize,
 } from "./bindings";
+import { Studio } from "./Studio";
 
 export function App(): React.ReactElement {
   const [info, setInfo] = useState<AppInfo | null>(null);
   const [projects, setProjects] = useState<ProjectEntry[]>([]);
-  const [activeProjectName, setActiveProjectName] = useState<string | null>(null);
+  const [activeProject, setActiveProject] = useState<Project | null>(null);
   const [newProjectName, setNewProjectName] = useState<string>("");
   const [reciterName, setReciterName] = useState<string>("");
   const [aspectRatio, setAspectRatio] = useState<string>("9:16");
@@ -59,7 +62,7 @@ export function App(): React.ReactElement {
         setNewProjectName("");
         setReciterName("");
         setIsCreating(false);
-        setActiveProjectName(res.data.name);
+        setActiveProject(res.data);
         await refreshProjects();
       } else {
         setErrorMsg(res.error);
@@ -73,7 +76,7 @@ export function App(): React.ReactElement {
     try {
       const res = await commands.projectOpen(id);
       if (res.status === "ok") {
-        setActiveProjectName(res.data.name);
+        setActiveProject(res.data);
         await refreshProjects();
       } else {
         setErrorMsg(res.error);
@@ -109,6 +112,27 @@ export function App(): React.ReactElement {
     }
   };
 
+    if (activeProject) {
+    return (
+      <Studio
+        project={activeProject}
+        onBack={() => {
+          setActiveProject(null);
+          refreshProjects();
+        }}
+        onSave={async (proj: Project) => {
+          const res = await commands.projectSave(proj as unknown as Project_Deserialize);
+          if (res.status === "ok") {
+            setActiveProject(proj);
+            await refreshProjects();
+          } else {
+            setErrorMsg(res.error);
+          }
+        }}
+      />
+    );
+  }
+
   return (
     <div style={{ maxWidth: "1100px", margin: "0 auto", padding: "32px 24px", fontFamily: "system-ui, -apple-system, sans-serif" }}>
       <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "32px", borderBottom: "1px solid #e5e7eb", paddingBottom: "16px" }}>
@@ -143,12 +167,7 @@ export function App(): React.ReactElement {
         </div>
       )}
 
-      {activeProjectName && (
-        <div style={{ background: "#f0fdf4", color: "#166534", padding: "12px 16px", borderRadius: "6px", marginBottom: "24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span>Proyek Aktif di Studio: <strong>{activeProjectName}</strong></span>
-          <button onClick={() => setActiveProjectName(null)} style={{ border: "none", background: "transparent", cursor: "pointer", color: "#166534", textDecoration: "underline" }}>Tutup Studio</button>
-        </div>
-      )}
+
 
       {isCreating && (
         <div style={{ background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: "8px", padding: "20px", marginBottom: "28px" }}>
