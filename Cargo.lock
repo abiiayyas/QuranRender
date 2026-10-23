@@ -2664,9 +2664,12 @@ dependencies = [
  "anyhow",
  "qr-align",
  "qr-core",
+ "qr-jobs",
  "qr-media",
  "qr-policy",
  "qr-render",
+ "serde",
+ "serde_json",
  "tracing",
  "tracing-subscriber",
 ]
