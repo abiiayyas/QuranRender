@@ -17,3 +17,4 @@ thiserror.workspace = true
 serde.workspace = true
 qr-quran.workspace = true
 serde_json.workspace = true
+specta.workspace = true

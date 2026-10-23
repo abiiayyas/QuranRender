@@ -2712,6 +2712,7 @@ dependencies = [
  "qr-core",
  "qr-jobs",
  "qr-media",
+ "qr-policy",
  "qr-render",
  "qr-sources",
  "qr-store",
@@ -2757,6 +2758,7 @@ dependencies = [
  "qr-render",
  "serde",
  "serde_json",
+ "specta",
  "thiserror 2.0.21",
 ]
 
@@ -2782,6 +2784,7 @@ dependencies = [
  "read-fonts",
  "serde",
  "serde_json",
+ "specta",
  "thiserror 2.0.21",
  "tiny-skia",
  "tracing",

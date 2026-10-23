@@ -21,6 +21,7 @@ qr-store.workspace = true
 qr-render.workspace = true
 qr-media.workspace = true
 qr-sources.workspace = true
+qr-policy.workspace = true
 anyhow.workspace = true
 ulid.workspace = true
 serde.workspace = true

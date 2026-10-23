@@ -3,22 +3,23 @@
 
 use qr_core::project::Project;
 use serde::{Deserialize, Serialize};
+use specta::Type;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
 pub enum SubtitleFormat {
     Srt,
     Vtt,
     Ass,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
 pub enum SubtitleTrackSelection {
     AyahOnly,
     TranslationOnly,
     Bilingual,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct SubtitleExportOptions {
     pub format: SubtitleFormat,
     pub track: SubtitleTrackSelection,

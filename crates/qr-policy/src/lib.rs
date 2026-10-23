@@ -3,6 +3,7 @@
 
 use qr_core::project::{Project, TrackKind};
 use serde::{Deserialize, Serialize};
+use specta::Type;
 use thiserror::Error;
 
 #[derive(Debug, Error, PartialEq, Eq)]
@@ -12,7 +13,7 @@ pub enum PolicyError {
 }
 
 /// Tingkat keparahan temuan validasi.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
 pub enum ViolationSeverity {
     /// Peringatan non-fatal (tidak memblokir ekspor).
     Warning,
@@ -21,7 +22,7 @@ pub enum ViolationSeverity {
 }
 
 /// Pelanggaran atau peringatan kebijakan konten.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 pub struct PolicyViolation {
     pub code: String,
     pub title: String,
@@ -31,10 +32,12 @@ pub struct PolicyViolation {
 }
 
 /// Laporan hasil validasi pra-ekspor.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 pub struct ExportValidationReport {
     pub is_ready: bool,
+    #[specta(type = f64)]
     pub blocking_count: usize,
+    #[specta(type = f64)]
     pub warning_count: usize,
     pub violations: Vec<PolicyViolation>,
 }

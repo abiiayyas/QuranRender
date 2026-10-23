@@ -3,6 +3,9 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 
 use qr_core::{load_project, save_project_atomic, Project};
+use qr_policy::{validate_export_readiness, ExportValidationReport};
+use qr_render::{export_subtitles, SubtitleCue, SubtitleExportOptions};
+
 use qr_store::{duplicate_project_folder, AppDb, ProjectIndexEntry};
 use serde::Serialize;
 use specta::Type;
@@ -190,6 +193,62 @@ fn project_duplicate(
 
 #[tauri::command]
 #[specta::specta]
+fn project_save(mut project: Project, state: tauri::State<'_, AppState>) -> Result<bool, String> {
+    let project_dir = state.projects_dir.join(&project.id);
+    fs::create_dir_all(&project_dir).map_err(|e| e.to_string())?;
+
+    save_project_atomic(&project_dir, &mut project).map_err(|e| e.to_string())?;
+
+    let db = state.db.lock().map_err(|e| e.to_string())?;
+    let entry = ProjectIndexEntry {
+        id: project.id.clone(),
+        path: project_dir.to_string_lossy().to_string(),
+        name: project.name.clone(),
+        reciter: project.reciter.clone(),
+        category: Some("Pribadi".to_string()),
+        status: "ready".to_string(),
+        aspect: project.canvas.aspect_ratio.clone(),
+        duration_ticks: project.canvas.fps_num as i64 * 48000,
+        dataset_version: "1.0.0".into(),
+        thumbnail_path: None,
+        missing: false,
+        created_at: project.created_at as i64,
+        updated_at: project.updated_at as i64,
+        opened_at: Some(project.updated_at as i64),
+    };
+
+    db.upsert_project_index(&entry).map_err(|e| e.to_string())?;
+
+    Ok(true)
+}
+
+#[tauri::command]
+#[specta::specta]
+fn project_validate(project: Project) -> ExportValidationReport {
+    validate_export_readiness(&project)
+}
+
+#[tauri::command]
+#[specta::specta]
+fn subtitle_export(project: Project, options: SubtitleExportOptions) -> String {
+    let cues: Vec<SubtitleCue> = project
+        .segments
+        .iter()
+        .map(|seg| SubtitleCue {
+            start_tick: seg.start_tick,
+            end_tick: seg.end_tick,
+            ayah_text: None,
+            translation_text: None,
+            surah_id: seg.surah_id,
+            ayah_number: seg.ayah_number,
+        })
+        .collect();
+
+    export_subtitles(&project, &cues, &options, &project.name)
+}
+
+#[tauri::command]
+#[specta::specta]
 fn project_delete(id: String, state: tauri::State<'_, AppState>) -> Result<bool, String> {
     let db = state.db.lock().map_err(|e| e.to_string())?;
     if let Some(entry) = db.get_project_index(&id).map_err(|e| e.to_string())? {
@@ -211,8 +270,11 @@ fn create_specta_builder() -> Builder<tauri::Wry> {
         project_create,
         project_list,
         project_open,
+        project_save,
         project_duplicate,
-        project_delete
+        project_delete,
+        project_validate,
+        subtitle_export
     ])
 }
 

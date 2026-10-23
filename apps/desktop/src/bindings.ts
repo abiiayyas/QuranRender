@@ -9,8 +9,11 @@ export const commands = {
 	projectCreate: (name: string, reciter: string | null, aspect: string | null) => typedError<Project_Serialize, string>(__TAURI_INVOKE("project_create", { name, reciter, aspect })),
 	projectList: () => typedError<ProjectIndexEntry_Serialize[], string>(__TAURI_INVOKE("project_list")),
 	projectOpen: (id: string) => typedError<Project_Serialize, string>(__TAURI_INVOKE("project_open", { id })),
+	projectSave: (project: Project_Deserialize) => typedError<boolean, string>(__TAURI_INVOKE("project_save", { project })),
 	projectDuplicate: (id: string, newName: string) => typedError<Project_Serialize, string>(__TAURI_INVOKE("project_duplicate", { id, newName })),
 	projectDelete: (id: string) => typedError<boolean, string>(__TAURI_INVOKE("project_delete", { id })),
+	projectValidate: (project: Project_Deserialize) => __TAURI_INVOKE<ExportValidationReport_Serialize>("project_validate", { project }),
+	subtitleExport: (project: Project_Deserialize, options: SubtitleExportOptions) => __TAURI_INVOKE<string>("subtitle_export", { project, options }),
 };
 
 /* Types */
@@ -85,6 +88,46 @@ export type Clip_Serialize = {
 	label: string,
 };
 
+/**  Laporan hasil validasi pra-ekspor. */
+export type ExportValidationReport = ExportValidationReport_Serialize | ExportValidationReport_Deserialize;
+
+/**  Laporan hasil validasi pra-ekspor. */
+export type ExportValidationReport_Deserialize = {
+	is_ready: boolean,
+	blocking_count: number | null,
+	warning_count: number | null,
+	violations: PolicyViolation_Deserialize[],
+};
+
+/**  Laporan hasil validasi pra-ekspor. */
+export type ExportValidationReport_Serialize = {
+	is_ready: boolean,
+	blocking_count: number | null,
+	warning_count: number | null,
+	violations: PolicyViolation_Serialize[],
+};
+
+/**  Pelanggaran atau peringatan kebijakan konten. */
+export type PolicyViolation = PolicyViolation_Serialize | PolicyViolation_Deserialize;
+
+/**  Pelanggaran atau peringatan kebijakan konten. */
+export type PolicyViolation_Deserialize = {
+	code: string,
+	title: string,
+	description: string,
+	severity: ViolationSeverity,
+	segment_id?: string | null,
+};
+
+/**  Pelanggaran atau peringatan kebijakan konten. */
+export type PolicyViolation_Serialize = {
+	code: string,
+	title: string,
+	description: string,
+	severity: ViolationSeverity,
+	segment_id: string | null,
+};
+
 export type Project = Project_Serialize | Project_Deserialize;
 
 export type ProjectIndexEntry = ProjectIndexEntry_Serialize | ProjectIndexEntry_Deserialize;
@@ -155,6 +198,22 @@ export type Project_Serialize = {
 	style_overrides: { [key in string]: string },
 };
 
+export type SubtitleExportOptions = {
+	format: SubtitleFormat,
+	track: SubtitleTrackSelection,
+	/**
+	 *  Apakah nomor ayat disematkan di dalam teks subtitle (misal "[1] ...").
+	 *  Default `false` untuk menghasilkan subtitle bersih tanpa nomor indeks (menjawab #79).
+	 */
+	include_ayah_number: boolean,
+	/**  Apakah catatan kaki terjemahan disertakan. Default `false` (QRN-13). */
+	include_footnotes: boolean,
+};
+
+export type SubtitleFormat = "Srt" | "Vtt" | "Ass";
+
+export type SubtitleTrackSelection = "AyahOnly" | "TranslationOnly" | "Bilingual";
+
 export type Track = Track_Serialize | Track_Deserialize;
 
 export type TrackKind = "Background" | "Audio" | "Ayah" | "Translation" | "Overlay";
@@ -178,6 +237,13 @@ export type Track_Serialize = {
 	locked: boolean,
 	muted: boolean,
 };
+
+/**  Tingkat keparahan temuan validasi. */
+export type ViolationSeverity = 
+/**  Peringatan non-fatal (tidak memblokir ekspor). */
+"Warning" | 
+/**  Kesalahan fatal yang memblokir ekspor sesuai PRD CNT-1..5. */
+"Blocking";
 
 export type WordTiming = {
 	word_idx: number,
