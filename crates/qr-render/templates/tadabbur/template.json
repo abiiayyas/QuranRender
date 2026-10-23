@@ -1,0 +1,30 @@
+{
+  "$schema": "https://schema.quranrender.app/template/v1.json",
+  "id": "tadabbur",
+  "version": "1.0.0",
+  "name": "Tadabbur Kosakata",
+  "description": "Fokus pada pemahaman kata per kata (WBW) dengan sorotan visual aktif dan arti harfiah di bawah tiap kata.",
+  "author": "QuranRender Team",
+  "license": "CC0-1.0",
+  "supported_ratios": ["9:16", "1:1", "16:9"],
+  "default_ratio": "9:16",
+  "safe_area": {
+    "9:16": { "top": 0.08, "bottom": 0.14, "left": 0.10, "right": 0.10 },
+    "1:1": { "top": 0.06, "bottom": 0.06, "left": 0.06, "right": 0.06 },
+    "16:9": { "top": 0.08, "bottom": 0.08, "left": 0.08, "right": 0.08 }
+  },
+  "background": {
+    "default_color": "#111827",
+    "dimmer_opacity": 0.35
+  },
+  "typography": {
+    "ayah_font": "LPMQ IsepMisbah",
+    "ayah_size_cw": 0.076,
+    "ayah_color": "#F9FAFB",
+    "translation_font": "Inter",
+    "translation_size_cw": 0.038,
+    "translation_color": "#9CA3AF",
+    "translation_opacity": 0.90,
+    "highlight_style": "word_pill"
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "$schema": "https://schema.quranrender.app/template/v1.json",
+  "id": "senja",
+  "version": "1.0.0",
+  "name": "Senja Emas",
+  "description": "Gradien hangat lembayung senja dengan nuansa emas temaram untuk tilawah penuh perenungan.",
+  "author": "QuranRender Team",
+  "license": "CC0-1.0",
+  "supported_ratios": ["9:16", "16:9", "1:1", "4:5"],
+  "default_ratio": "9:16",
+  "safe_area": {
+    "9:16": { "top": 0.08, "bottom": 0.14, "left": 0.10, "right": 0.10 },
+    "16:9": { "top": 0.08, "bottom": 0.08, "left": 0.08, "right": 0.08 },
+    "1:1": { "top": 0.06, "bottom": 0.06, "left": 0.06, "right": 0.06 },
+    "4:5": { "top": 0.06, "bottom": 0.08, "left": 0.06, "right": 0.06 }
+  },
+  "background": {
+    "default_color": "#2A1810",
+    "dimmer_opacity": 0.40
+  },
+  "typography": {
+    "ayah_font": "LPMQ IsepMisbah",
+    "ayah_size_cw": 0.075,
+    "ayah_color": "#FEF3C7",
+    "translation_font": "Inter",
+    "translation_size_cw": 0.040,
+    "translation_color": "#FDE68A",
+    "translation_opacity": 0.88,
+    "highlight_style": "smooth_fade"
+  }
+}
