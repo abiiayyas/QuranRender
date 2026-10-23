@@ -2569,8 +2569,12 @@ dependencies = [
 name = "qr-quran"
 version = "0.1.0"
 dependencies = [
+ "hex",
+ "minisign-verify",
+ "rusqlite",
  "serde",
  "serde_json",
+ "sha2",
  "thiserror 2.0.21",
 ]
 
