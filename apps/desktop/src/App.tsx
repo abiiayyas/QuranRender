@@ -1,299 +1,497 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   commands,
-  type AppInfo,
   type ProjectIndexEntry_Serialize as ProjectEntry,
-  type Project,
-  type Project_Deserialize,
+  type Project_Serialize as Project,
 } from "./bindings";
 import { Studio } from "./Studio";
+import { errorText, isTauri, unwrap } from "./tauri";
+import { ErrorAlert, Icon, Sheet, ThemeSwitch } from "./ui";
+import logoLight from "../../../design/brand/logo/playhead-lockup-light.svg";
+import logoDark from "../../../design/brand/logo/playhead-lockup-dark.svg";
 
-export function App(): React.ReactElement {
-  const [info, setInfo] = useState<AppInfo | null>(null);
-  const [projects, setProjects] = useState<ProjectEntry[]>([]);
-  const [activeProject, setActiveProject] = useState<Project | null>(null);
-  const [newProjectName, setNewProjectName] = useState<string>("");
-  const [reciterName, setReciterName] = useState<string>("");
-  const [aspectRatio, setAspectRatio] = useState<string>("9:16");
-  const [isCreating, setIsCreating] = useState<boolean>(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+const TICKS_PER_SECOND = 48_000;
 
-  const refreshProjects = async () => {
+type StatusFilter = "all" | "draft" | "ready" | "pub";
+
+const FILTERS: ReadonlyArray<{ key: StatusFilter; label: string; icon: string }> = [
+  { key: "all", label: "Semua proyek", icon: "layout-grid" },
+  { key: "draft", label: "Draf", icon: "pencil-line" },
+  { key: "ready", label: "Siap", icon: "circle-check" },
+  { key: "pub", label: "Terbit", icon: "star" },
+];
+
+const STATUS_BADGE: Record<string, { cls: string; label: string }> = {
+  draft: { cls: "qr-badge", label: "Draf" },
+  ready: { cls: "qr-badge qr-badge--success", label: "Siap" },
+  pub: { cls: "qr-badge qr-badge--accent", label: "Terbit" },
+};
+
+function Brand(): React.ReactElement {
+  return (
+    <span className="brand">
+      <img className="only-light" src={logoLight} alt="QuranRender" />
+      <img className="only-dark" src={logoDark} alt="QuranRender" />
+    </span>
+  );
+}
+
+function formatDuration(ticks: number | null): string | null {
+  if (!ticks || ticks <= 0) return null;
+  const s = Math.floor(ticks / TICKS_PER_SECOND);
+  const mm = String(Math.floor(s / 60)).padStart(2, "0");
+  const ss = String(s % 60).padStart(2, "0");
+  return `${mm}:${ss}`;
+}
+
+function formatDate(ms: number | null): string {
+  if (ms === null) return "";
+  return new Date(ms).toLocaleDateString("id-ID", { dateStyle: "medium" });
+}
+
+function NotTauri(): React.ReactElement {
+  return (
+    <div className="home">
+      <header className="app-hd">
+        <Brand />
+        <span className="spacer" />
+        <ThemeSwitch />
+      </header>
+      <div className="center-fill">
+        <div className="qr-empty">
+          <Icon name="hard-drive" />
+          <span className="qr-empty__title">Jalankan lewat Tauri</span>
+          <span>
+            Antarmuka ini memanggil perintah Rust (proyek, preview, subtitle) yang hanya tersedia
+            di dalam jendela aplikasi, bukan di peramban biasa.
+          </span>
+          <code className="mono">pnpm --filter @quranrender/desktop tauri dev</code>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ProjectCard({
+  entry,
+  busy,
+  onOpen,
+  onDuplicate,
+  onDelete,
+}: {
+  entry: ProjectEntry;
+  busy: boolean;
+  onOpen: () => void;
+  onDuplicate: () => void;
+  onDelete: () => void;
+}): React.ReactElement {
+  const badge = STATUS_BADGE[entry.status] ?? { cls: "qr-badge", label: entry.status };
+  const dur = formatDuration(entry.duration_ticks);
+  const meta = [entry.reciter ?? "Tanpa qari", entry.aspect].join(" · ");
+
+  if (entry.missing) {
+    return (
+      <div className="card-wrap">
+        <div className="qr-card is-missing" role="group" aria-label={entry.name}>
+          <span className="qr-card__thumb">
+            <Icon name="triangle-alert" />
+          </span>
+          <span className="qr-card__body">
+            <span className="qr-card__title">{entry.name}</span>
+            <span className="qr-card__meta">Folder tidak ditemukan</span>
+          </span>
+        </div>
+        <div className="card-actions">
+          <button
+            type="button"
+            className="qr-btn qr-btn--danger qr-btn--sm"
+            disabled={busy}
+            onClick={onDelete}
+          >
+            Hapus dari daftar
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="card-wrap">
+      <button type="button" className="qr-card" onClick={onOpen} disabled={busy}>
+        <span className="qr-card__thumb">
+          <Icon name="audio-waveform" />
+          {dur && <span className="qr-card__dur">{dur}</span>}
+        </span>
+        <span className="qr-card__body">
+          <span className="qr-card__title">{entry.name}</span>
+          <span className="qr-card__meta">{meta}</span>
+          <span className="qr-card__foot">
+            <span className={badge.cls}>
+              {badge.label}
+            </span>
+            <span>{formatDate(entry.updated_at)}</span>
+          </span>
+        </span>
+      </button>
+      <div className="card-actions">
+        <button
+          type="button"
+          className="qr-btn qr-btn--ghost qr-btn--sm"
+          disabled={busy}
+          onClick={onDuplicate}
+        >
+          <Icon name="copy" size="sm" />
+          Duplikat
+        </button>
+        <button
+          type="button"
+          className="qr-btn qr-btn--ghost qr-btn--sm"
+          disabled={busy}
+          onClick={onDelete}
+        >
+          Hapus
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function NewProjectSheet({
+  onClose,
+  onCreated,
+}: {
+  onClose: () => void;
+  onCreated: (p: Project) => void;
+}): React.ReactElement {
+  const [name, setName] = useState("");
+  const [reciter, setReciter] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const valid = name.trim().length > 0;
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!valid || busy) return;
+    setBusy(true);
+    setError(null);
     try {
-      const res = await commands.projectList();
-      if (res.status === "ok") {
-        setProjects(res.data);
-      } else {
-        setErrorMsg(res.error);
-      }
-    } catch {
-      // Di web preview browser (bukan runtime Tauri)
-      setProjects([]);
+      const p = await unwrap(
+        commands.projectCreate(name.trim(), reciter.trim() || null, "9:16")
+      );
+      onCreated(p);
+    } catch (err) {
+      setError(errorText(err));
+      setBusy(false);
     }
   };
 
-  useEffect(() => {
-    commands
-      .getAppInfo()
-      .then(setInfo)
-      .catch(() => {
-        setInfo({
-          name: "QuranRender (Web Preview)",
-          version: "0.1.0",
-          status: "Fase 1 — Alpha",
-        });
-      });
+  return (
+    <form onSubmit={(e) => void submit(e)}>
+      <Sheet
+        title="Proyek baru"
+        onClose={onClose}
+        footer={
+          <>
+            <button type="button" className="qr-btn qr-btn--secondary" onClick={onClose}>
+              Batal
+            </button>
+            <button
+              type="submit"
+              className={busy ? "qr-btn qr-btn--primary is-loading" : "qr-btn qr-btn--primary"}
+              disabled={!valid || busy}
+            >
+              {busy ? <span className="qr-spin" /> : null}
+              Buat dan buka
+            </button>
+          </>
+        }
+      >
+        {error && <ErrorAlert title="Proyek gagal dibuat" message={error} />}
+        <div className="qr-fieldset">
+          <label className="qr-label" htmlFor="np-name">
+            Nama proyek
+          </label>
+          <span className="qr-field">
+            <input
+              id="np-name"
+              value={name}
+              autoFocus
+              autoComplete="off"
+              onChange={(e) => setName(e.target.value)}
+            />
+          </span>
+        </div>
+        <div className="qr-fieldset">
+          <label className="qr-label" htmlFor="np-reciter">
+            Qari (opsional)
+          </label>
+          <span className="qr-field">
+            <input
+              id="np-reciter"
+              value={reciter}
+              autoComplete="off"
+              onChange={(e) => setReciter(e.target.value)}
+            />
+          </span>
+        </div>
+        <div className="qr-fieldset">
+          <span className="qr-label" id="np-aspect">
+            Rasio
+          </span>
+          <div className="qr-seg" role="radiogroup" aria-labelledby="np-aspect">
+            <button type="button" role="radio" aria-checked="true">
+              9:16
+            </button>
+            <button type="button" role="radio" aria-checked="false" disabled>
+              16:9
+            </button>
+            <button type="button" role="radio" aria-checked="false" disabled>
+              1:1
+            </button>
+          </div>
+          <span className="qr-help">Rasio lain: Belum tersedia.</span>
+        </div>
+      </Sheet>
+    </form>
+  );
+}
 
-    void refreshProjects();
+function DeleteSheet({
+  entry,
+  onClose,
+  onConfirm,
+}: {
+  entry: ProjectEntry;
+  onClose: () => void;
+  onConfirm: () => void;
+}): React.ReactElement {
+  return (
+    <Sheet
+      title="Hapus proyek"
+      onClose={onClose}
+      footer={
+        <>
+          <button type="button" className="qr-btn qr-btn--secondary" onClick={onClose}>
+            Batal
+          </button>
+          <button type="button" className="qr-btn qr-btn--danger" onClick={onConfirm}>
+            Hapus
+          </button>
+        </>
+      }
+    >
+      <p>
+        Proyek <b>{entry.name}</b> dihapus dari daftar, dan folder proyeknya di disk ikut dihapus.
+        Tindakan ini tidak bisa dibatalkan.
+      </p>
+    </Sheet>
+  );
+}
+
+function Shell(): React.ReactElement {
+  const [projects, setProjects] = useState<ProjectEntry[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  const [active, setActive] = useState<Project | null>(null);
+  const [filter, setFilter] = useState<StatusFilter>("all");
+  const [query, setQuery] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [deleting, setDeleting] = useState<ProjectEntry | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const refresh = useCallback(async () => {
+    try {
+      setProjects(await unwrap(commands.projectList()));
+    } catch (e) {
+      setError(errorText(e));
+    } finally {
+      setLoaded(true);
+    }
   }, []);
 
-  const handleCreateProject = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newProjectName.trim()) return;
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
 
+  const withBusy = async (id: string, job: () => Promise<void>) => {
+    setBusyId(id);
+    setError(null);
     try {
-      const res = await commands.projectCreate(
-        newProjectName.trim(),
-        reciterName.trim() || null,
-        aspectRatio
-      );
-
-      if (res.status === "ok") {
-        setNewProjectName("");
-        setReciterName("");
-        setIsCreating(false);
-        setActiveProject(res.data);
-        await refreshProjects();
-      } else {
-        setErrorMsg(res.error);
-      }
-    } catch (err) {
-      setErrorMsg(String(err));
+      await job();
+    } catch (e) {
+      setError(errorText(e));
+    } finally {
+      setBusyId(null);
     }
   };
 
-  const handleOpenProject = async (id: string) => {
-    try {
-      const res = await commands.projectOpen(id);
-      if (res.status === "ok") {
-        setActiveProject(res.data);
-        await refreshProjects();
-      } else {
-        setErrorMsg(res.error);
-      }
-    } catch (err) {
-      setErrorMsg(String(err));
-    }
+  const open = (id: string) =>
+    withBusy(id, async () => {
+      setActive(await unwrap(commands.projectOpen(id)));
+    });
+
+  const duplicate = (entry: ProjectEntry) =>
+    withBusy(entry.id, async () => {
+      await unwrap(commands.projectDuplicate(entry.id, `${entry.name} (salinan)`));
+      await refresh();
+    });
+
+  const remove = (entry: ProjectEntry) => {
+    setDeleting(null);
+    return withBusy(entry.id, async () => {
+      await unwrap(commands.projectDelete(entry.id));
+      await refresh();
+    });
   };
 
-  const handleDuplicateProject = async (id: string, name: string) => {
-    try {
-      const res = await commands.projectDuplicate(id, `${name} (Salinan)`);
-      if (res.status === "ok") {
-        await refreshProjects();
-      } else {
-        setErrorMsg(res.error);
-      }
-    } catch (err) {
-      setErrorMsg(String(err));
-    }
-  };
+  const count = (f: StatusFilter) =>
+    f === "all" ? projects.length : projects.filter((p) => p.status === f).length;
 
-  const handleDeleteProject = async (id: string) => {
-    try {
-      const res = await commands.projectDelete(id);
-      if (res.status === "ok") {
-        await refreshProjects();
-      } else {
-        setErrorMsg(res.error);
-      }
-    } catch (err) {
-      setErrorMsg(String(err));
-    }
-  };
+  const visible = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return projects.filter(
+      (p) =>
+        (filter === "all" || p.status === filter) &&
+        (!q || `${p.name} ${p.reciter ?? ""}`.toLowerCase().includes(q))
+    );
+  }, [projects, filter, query]);
 
-    if (activeProject) {
+  if (active) {
     return (
       <Studio
-        project={activeProject}
+        project={active}
         onBack={() => {
-          setActiveProject(null);
-          refreshProjects();
+          setActive(null);
+          void refresh();
         }}
-        onSave={async (proj: Project) => {
-          const res = await commands.projectSave(proj as unknown as Project_Deserialize);
-          if (res.status === "ok") {
-            setActiveProject(proj);
-            await refreshProjects();
-          } else {
-            setErrorMsg(res.error);
-          }
+        onSave={async (p) => {
+          await unwrap(commands.projectSave(p));
         }}
       />
     );
   }
 
+  const title = FILTERS.find((f) => f.key === filter)?.label ?? "Semua proyek";
+
   return (
-    <div style={{ maxWidth: "1100px", margin: "0 auto", padding: "32px 24px", fontFamily: "system-ui, -apple-system, sans-serif" }}>
-      <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "32px", borderBottom: "1px solid #e5e7eb", paddingBottom: "16px" }}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: "24px", fontWeight: "700" }}>{info?.name ?? "QuranRender"}</h1>
-          <p style={{ margin: "4px 0 0", color: "#6b7280", fontSize: "14px" }}>
-            {info?.status} (v{info?.version})
-          </p>
-        </div>
-        <div>
-          <button
-            onClick={() => setIsCreating(true)}
-            style={{
-              background: "#4f46e5",
-              color: "#fff",
-              border: "none",
-              borderRadius: "6px",
-              padding: "10px 18px",
-              fontWeight: "600",
-              cursor: "pointer",
-            }}
-          >
-            + Buat Proyek
-          </button>
-        </div>
+    <div className="home">
+      <header className="app-hd">
+        <Brand />
+        <span className="spacer" />
+        <ThemeSwitch />
       </header>
-
-      {errorMsg && (
-        <div style={{ background: "#fee2e2", color: "#b91c1c", padding: "12px 16px", borderRadius: "6px", marginBottom: "24px" }}>
-          <strong>Peringatan:</strong> {errorMsg}
-          <button onClick={() => setErrorMsg(null)} style={{ float: "right", border: "none", background: "transparent", cursor: "pointer" }}>✕</button>
-        </div>
-      )}
-
-
-
-      {isCreating && (
-        <div style={{ background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: "8px", padding: "20px", marginBottom: "28px" }}>
-          <h3 style={{ margin: "0 0 16px" }}>Proyek Baru</h3>
-          <form onSubmit={handleCreateProject} style={{ display: "grid", gap: "12px", maxWidth: "480px" }}>
-            <label style={{ display: "grid", gap: "4px", fontSize: "14px" }}>
-              Nama Proyek:
-              <input
-                type="text"
-                required
-                value={newProjectName}
-                onChange={(e) => setNewProjectName(e.target.value)}
-                placeholder="mis. Al-Fatihah 1-7"
-                style={{ padding: "8px 12px", borderRadius: "6px", border: "1px solid #d1d5db" }}
-              />
-            </label>
-            <label style={{ display: "grid", gap: "4px", fontSize: "14px" }}>
-              Nama Qari (opsional):
-              <input
-                type="text"
-                value={reciterName}
-                onChange={(e) => setReciterName(e.target.value)}
-                placeholder="mis. Mishary Rashid Alafasy"
-                style={{ padding: "8px 12px", borderRadius: "6px", border: "1px solid #d1d5db" }}
-              />
-            </label>
-            <label style={{ display: "grid", gap: "4px", fontSize: "14px" }}>
-              Rasio Aspek:
-              <select
-                value={aspectRatio}
-                onChange={(e) => setAspectRatio(e.target.value)}
-                style={{ padding: "8px 12px", borderRadius: "6px", border: "1px solid #d1d5db" }}
-              >
-                <option value="9:16">9:16 (Shorts / Reels / TikTok)</option>
-                <option value="16:9">16:9 (YouTube Lanskap)</option>
-                <option value="1:1">1:1 (Persegi)</option>
-                <option value="4:5">4:5 (Instagram Potret)</option>
-              </select>
-            </label>
-            <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
+      <div className="home-body">
+        <nav className="home-rail" aria-label="Filter proyek">
+          <div className="qr-rail">
+            {FILTERS.map((f) => (
               <button
-                type="submit"
-                style={{ background: "#4f46e5", color: "#fff", border: "none", borderRadius: "6px", padding: "8px 16px", cursor: "pointer", fontWeight: "600" }}
-              >
-                Simpan & Buka
-              </button>
-              <button
+                key={f.key}
                 type="button"
-                onClick={() => setIsCreating(false)}
-                style={{ background: "#e5e7eb", color: "#374151", border: "none", borderRadius: "6px", padding: "8px 16px", cursor: "pointer" }}
+                className="qr-rail__item"
+                aria-current={filter === f.key}
+                onClick={() => setFilter(f.key)}
               >
-                Batal
+                <Icon name={f.icon} />
+                {f.label}
+                <em>{count(f.key)}</em>
               </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      <section>
-        <h2 style={{ fontSize: "18px", fontWeight: "600", marginBottom: "16px" }}>Semua Proyek ({projects.length})</h2>
-        {projects.length === 0 ? (
-          <div style={{ border: "2px dashed #d1d5db", borderRadius: "8px", padding: "48px", textAlign: "center", color: "#6b7280" }}>
-            <p style={{ margin: "0 0 12px" }}>Belum ada proyek yang dibuat.</p>
-            <button
-              onClick={() => setIsCreating(true)}
-              style={{ background: "#4f46e5", color: "#fff", border: "none", borderRadius: "6px", padding: "8px 16px", cursor: "pointer" }}
-            >
-              Buat proyek pertama
+            ))}
+            <div className="qr-rail__sep" />
+            <button type="button" className="qr-rail__item" aria-disabled="true" disabled>
+              <Icon name="layout-template" />
+              Templat
+              <em>Belum tersedia</em>
             </button>
           </div>
-        ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "16px" }}>
-            {projects.map((p) => (
-              <div
-                key={p.id}
-                style={{
-                  border: "1px solid #e5e7eb",
-                  borderRadius: "8px",
-                  padding: "16px",
-                  background: p.missing ? "#fffbeb" : "#fff",
-                  display: "flex",
-                  flexDirection: "column",
-                  justifyContent: "space-between",
-                }}
-              >
-                <div>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8px" }}>
-                    <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "600" }}>{p.name}</h3>
-                    <span style={{ fontSize: "12px", background: "#f3f4f6", padding: "2px 8px", borderRadius: "999px" }}>
-                      {p.aspect}
-                    </span>
-                  </div>
-                  <p style={{ margin: "0 0 4px", fontSize: "14px", color: "#4b5563" }}>
-                    {p.reciter || "Tanpa qari"}
-                  </p>
-                  <p style={{ margin: 0, fontSize: "12px", color: p.missing ? "#b45309" : "#9ca3af" }}>
-                    {p.missing ? "⚠️ Folder di disk tidak ditemukan" : p.status}
-                  </p>
-                </div>
-                <div style={{ display: "flex", gap: "8px", marginTop: "16px", borderTop: "1px solid #f3f4f6", paddingTop: "12px" }}>
-                  <button
-                    disabled={p.missing}
-                    onClick={() => handleOpenProject(p.id)}
-                    style={{ flex: 1, background: p.missing ? "#e5e7eb" : "#4f46e5", color: p.missing ? "#9ca3af" : "#fff", border: "none", borderRadius: "4px", padding: "6px 10px", fontSize: "13px", cursor: p.missing ? "not-allowed" : "pointer" }}
-                  >
-                    Buka
-                  </button>
-                  <button
-                    disabled={p.missing}
-                    onClick={() => handleDuplicateProject(p.id, p.name)}
-                    style={{ background: "#f3f4f6", border: "1px solid #d1d5db", borderRadius: "4px", padding: "6px 10px", fontSize: "13px", cursor: p.missing ? "not-allowed" : "pointer" }}
-                  >
-                    Duplikat
-                  </button>
-                  <button
-                    onClick={() => handleDeleteProject(p.id)}
-                    style={{ background: "#fee2e2", color: "#dc2626", border: "none", borderRadius: "4px", padding: "6px 10px", fontSize: "13px", cursor: "pointer" }}
-                  >
-                    Hapus
-                  </button>
-                </div>
-              </div>
-            ))}
+        </nav>
+        <main className="home-main">
+          <div className="home-bar">
+            <h1>{title}</h1>
+            <button
+              type="button"
+              className="qr-btn qr-btn--primary"
+              onClick={() => setCreating(true)}
+            >
+              <Icon name="plus" />
+              Buat proyek
+            </button>
+            <span className="spacer" />
+            <label className="qr-field">
+              <Icon name="search" />
+              <input
+                placeholder="Cari proyek atau qari"
+                value={query}
+                autoComplete="off"
+                aria-label="Cari proyek"
+                onChange={(e) => setQuery(e.target.value)}
+              />
+            </label>
           </div>
-        )}
-      </section>
+          {error && (
+            <ErrorAlert title="Terjadi kesalahan" message={error} onClose={() => setError(null)} />
+          )}
+          {!loaded ? (
+            <div className="qr-empty" role="status">
+              <span className="qr-spin" />
+              <span>Memuat proyek…</span>
+            </div>
+          ) : projects.length === 0 ? (
+            <div className="qr-drop qr-empty">
+              <Icon name="file-input" />
+              <span className="qr-empty__title">Belum ada proyek</span>
+              <span>Mulai dengan membuat proyek pertama.</span>
+              <button
+                type="button"
+                className="qr-btn qr-btn--primary"
+                onClick={() => setCreating(true)}
+              >
+                <Icon name="plus" />
+                Buat proyek
+              </button>
+            </div>
+          ) : visible.length === 0 ? (
+            <div className="qr-empty">
+              <Icon name="search" />
+              <span className="qr-empty__title">Tidak ada proyek yang cocok</span>
+              <span>Coba kata kunci lain atau hapus filter.</span>
+            </div>
+          ) : (
+            <div className="grid">
+              {visible.map((p) => (
+                <ProjectCard
+                  key={p.id}
+                  entry={p}
+                  busy={busyId === p.id}
+                  onOpen={() => void open(p.id)}
+                  onDuplicate={() => void duplicate(p)}
+                  onDelete={() => setDeleting(p)}
+                />
+              ))}
+            </div>
+          )}
+        </main>
+      </div>
+      {creating && (
+        <NewProjectSheet
+          onClose={() => setCreating(false)}
+          onCreated={(p) => {
+            setCreating(false);
+            setActive(p);
+            void refresh();
+          }}
+        />
+      )}
+      {deleting && (
+        <DeleteSheet
+          entry={deleting}
+          onClose={() => setDeleting(null)}
+          onConfirm={() => void remove(deleting)}
+        />
+      )}
     </div>
   );
+}
+
+export function App(): React.ReactElement {
+  return isTauri() ? <Shell /> : <NotTauri />;
 }
