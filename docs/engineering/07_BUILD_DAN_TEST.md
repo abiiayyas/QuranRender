@@ -127,6 +127,8 @@ cargo test --workspace --all-targets
 cargo deny check
 pnpm -r build
 pnpm --filter @quranrender/desktop lint:design
+pnpm --filter @quranrender/desktop lint:a11y
+pnpm --filter @quranrender/desktop lint:i18n
 ```
 
 Catatan:

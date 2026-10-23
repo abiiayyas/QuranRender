@@ -8,7 +8,9 @@
     "build": "tsc && vite build",
     "lint": "tsc --noEmit",
     "tauri": "tauri",
-    "lint:design": "node ../../scripts/check-design-classes.mjs"
+    "lint:design": "node ../../scripts/check-design-classes.mjs",
+    "lint:a11y": "node ../../scripts/check-a11y.mjs",
+    "lint:i18n": "node ../../scripts/check-i18n.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.12.4",

@@ -75,6 +75,12 @@ jobs:
       - name: Lint kelas & token design system
         run: pnpm --filter @quranrender/desktop lint:design
 
+      - name: Lint aksesibilitas JSX
+        run: pnpm --filter @quranrender/desktop lint:a11y
+
+      - name: Lint katalog i18n
+        run: pnpm --filter @quranrender/desktop lint:i18n
+
   build-desktop:
     name: Build Desktop (${{ matrix.platform.name }})
     needs: quality

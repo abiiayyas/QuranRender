@@ -1,0 +1,23 @@
+/** Teks bersama (Indonesia). Kunci en.ts harus identik: dicek tsc dan scripts/check-i18n.mjs. */
+export const commonId = {
+  "common.appName": "Quran Render",
+  "common.close": "Tutup",
+  "common.cancel": "Batal",
+  "common.save": "Simpan",
+  "common.copy": "Salin",
+  "common.copied": "Tersalin",
+  "common.delete": "Hapus",
+  "common.loading": "Memuat…",
+  "common.unavailable": "Belum tersedia",
+  "common.unavailableNote": "{what}: Belum tersedia.",
+  "common.error": "Terjadi kesalahan",
+  "common.theme.label": "Tema",
+  "common.theme.system": "Sistem",
+  "common.theme.light": "Terang",
+  "common.theme.dark": "Gelap",
+  "common.language.label": "Bahasa",
+  "common.language.id": "Indonesia",
+  "common.language.en": "English",
+  "common.language.saveError": "Bahasa tidak dapat disimpan ke pengaturan aplikasi.",
+  "common.language.loadError": "Bahasa tidak dapat dibaca dari pengaturan aplikasi.",
+} as const;

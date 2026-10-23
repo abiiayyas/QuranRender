@@ -111,3 +111,62 @@ button.qr-item.is-selected { background: var(--accent-subtle); color: var(--text
   .st-hd { grid-template-columns: auto 1fr auto; }
   .qr-flow li:not(.is-current) .lbl-t { display: none; }
 }
+
+/* Wizard Studio: waveform, impor, ekspor, pembagian per kata */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.qr-flow button:focus-visible { outline: var(--focus-ring-w) solid var(--focus); outline-offset: var(--focus-ring-offset); }
+.qr-track.is-wave { height: 64px; }
+.qr-track.is-wave .qr-lane { height: 52px; }
+.wave-lane { position: absolute; top: 0; bottom: 0; left: 0; cursor: pointer; background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--r-ctl); overflow: hidden; }
+.wave-svg { display: block; width: 100%; height: 100%; color: var(--text-3); }
+.wave-svg path { fill: currentColor; opacity: 0.75; }
+.lane-note { position: absolute; inset: 0; display: flex; align-items: center; padding-left: var(--sp-3); color: var(--text-3); font-size: var(--fs-12); pointer-events: none; }
+.import-form { display: grid; gap: var(--sp-2); }
+.export-form { display: grid; gap: var(--sp-3); }
+.export-progress { display: grid; gap: var(--sp-2); }
+.export-path { word-break: break-all; color: var(--text); user-select: text; }
+.export-sub { margin: var(--sp-2) calc(var(--sp-3) * -1) 0; }
+.range-form { gap: var(--sp-2); }
+.seg-list { display: grid; gap: 2px; }
+.shortcuts { border-top: 1px solid var(--border); padding-top: var(--sp-2); }
+.shortcuts .sum dt { white-space: nowrap; }
+.shortcuts .sum dd { font-size: var(--fs-12); color: var(--text-2); }
+.split-panel { display: grid; gap: var(--sp-2); border-top: 1px solid var(--border); padding-top: var(--sp-3); }
+.word-grid { display: flex; flex-wrap: wrap; gap: 6px; direction: rtl; }
+.word-chip { position: relative; display: inline-grid; justify-items: center; gap: 0; min-width: 44px; padding: 4px 8px; border: 1px solid var(--border); border-radius: var(--r-ctl); background: var(--bg-panel); cursor: pointer; }
+.word-chip:hover { border-color: var(--border-control); }
+.word-chip.is-picked { border-color: var(--accent); background: var(--accent-subtle); }
+.word-chip:has(input:focus-visible) { outline: var(--focus-ring-w) solid var(--focus); outline-offset: 1px; }
+.word-chip small { color: var(--text-3); font-size: var(--fs-11); font-variant-numeric: tabular-nums; }
+.ar-word { font-family: var(--font-ayah); font-size: var(--fs-20); line-height: 1.6; color: var(--text); }
+
+/* Gerak dikurangi: matikan transisi dan animasi dekoratif di seluruh aplikasi */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; scroll-behavior: auto !important; }
+}
+
+/* Layar beranda: Antrean, Pengaturan, Batch, Paket (AppScreens) */
+.card-actions { flex-wrap: wrap; }
+.screen { display: grid; gap: var(--sp-4); align-content: start; }
+.screen > h1 { margin: 0; font-size: var(--fs-20); font-weight: 600; letter-spacing: -0.01em; }
+.queue-summary { margin: 0; color: var(--text-2); font-size: var(--fs-13); }
+.queue-panel { border: 1px solid var(--border); border-radius: var(--r-panel); background: var(--bg-panel); overflow: hidden; }
+.queue-panel .qr-jobs:last-child .qr-job:last-child { border-bottom: 0; }
+.job-note { grid-column: 1 / -1; align-items: flex-start; overflow-wrap: anywhere; user-select: text; }
+.settings-screen { max-width: 720px; gap: var(--sp-6); }
+.settings-screen .qr-prop > .qr-prop__label { width: auto; flex: 1; color: var(--text); }
+.settings-preview { max-height: 220px; overflow: auto; }
+.batch-tbl { max-height: 240px; overflow: auto; border: 1px solid var(--border); border-radius: var(--r-ctl); }
+.qr-prop > .qr-prop__label.batch-grow { width: auto; flex: 1; color: var(--text); }
+.pack-sum { margin: var(--sp-1) 0 0; }
+.pack-sum dd { overflow-wrap: anywhere; }
+.honest-note { margin: 0 6px var(--sp-1); color: var(--text-2); }
+.honest-note b { color: var(--text); }
+
+/* Kontras AA: --text-3 di atas --bg-hover (terang) hanya 4,4983:1, jadi meta item memakai --text-2 saat hover. */
+.qr-item:hover .qr-item__meta, button.qr-item:hover .qr-item__meta { color: var(--text-2); }
+
+/* Header Studio pada lebar sempit: alur tidak boleh membungkus; pemilih tema tersedia di Beranda/Pengaturan */
+.st-hd .qr-flow { flex-wrap: nowrap; }
+.st-hd .qr-flow li { flex: none; }
+@media (max-width: 1099px) { .st-hd .r .qr-seg { display: none; } }

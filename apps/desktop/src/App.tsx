@@ -4,72 +4,86 @@ import {
   type ProjectIndexEntry_Serialize as ProjectEntry,
   type Project_Serialize as Project,
 } from "./bindings";
+import { BatchSheet } from "./Batch";
+import { formatClock } from "./format";
+import { useI18n } from "./i18n";
+import { ExportPackSheet, ImportPackSheet } from "./Packs";
+import { activeJobCount, QueueScreen, useQueueEvents } from "./Queue";
+import { SettingsScreen } from "./Settings";
 import { Studio } from "./Studio";
 import { errorText, isTauri, unwrap } from "./tauri";
-import { ErrorAlert, Icon, Sheet, ThemeSwitch } from "./ui";
+import { ErrorAlert, Icon, LangSwitch, Sheet, ThemeSwitch } from "./ui";
 import logoLight from "../../../design/brand/logo/playhead-lockup-light.svg";
 import logoDark from "../../../design/brand/logo/playhead-lockup-dark.svg";
 
-const TICKS_PER_SECOND = 48_000;
+const TAURI_DEV_COMMAND = "pnpm --filter @quranrender/desktop tauri dev";
+const QUEUE_COUNT_POLL_MS = 2500;
 
 type StatusFilter = "all" | "draft" | "ready" | "pub";
+type View = "projects" | "queue" | "settings";
 
-const FILTERS: ReadonlyArray<{ key: StatusFilter; label: string; icon: string }> = [
-  { key: "all", label: "Semua proyek", icon: "layout-grid" },
-  { key: "draft", label: "Draf", icon: "pencil-line" },
-  { key: "ready", label: "Siap", icon: "circle-check" },
-  { key: "pub", label: "Terbit", icon: "star" },
-];
-
-const STATUS_BADGE: Record<string, { cls: string; label: string }> = {
-  draft: { cls: "qr-badge", label: "Draf" },
-  ready: { cls: "qr-badge qr-badge--success", label: "Siap" },
-  pub: { cls: "qr-badge qr-badge--accent", label: "Terbit" },
-};
+const FILTERS = [
+  { key: "all", label: "app.filter.all", icon: "layout-grid" },
+  { key: "draft", label: "app.filter.draft", icon: "pencil-line" },
+  { key: "ready", label: "app.filter.ready", icon: "circle-check" },
+  { key: "pub", label: "app.filter.pub", icon: "star" },
+] as const;
 
 function Brand(): React.ReactElement {
+  const { t } = useI18n();
   return (
     <span className="brand">
-      <img className="only-light" src={logoLight} alt="Quran Render" />
-      <img className="only-dark" src={logoDark} alt="Quran Render" />
+      <img className="only-light" src={logoLight} alt={t("common.appName")} />
+      <img className="only-dark" src={logoDark} alt={t("common.appName")} />
     </span>
   );
 }
 
-function formatDuration(ticks: number | null): string | null {
-  if (!ticks || ticks <= 0) return null;
-  const s = Math.floor(ticks / TICKS_PER_SECOND);
-  const mm = String(Math.floor(s / 60)).padStart(2, "0");
-  const ss = String(s % 60).padStart(2, "0");
-  return `${mm}:${ss}`;
+function AppHeader(): React.ReactElement {
+  return (
+    <header className="app-hd">
+      <Brand />
+      <span className="spacer" />
+      <LangSwitch />
+      <ThemeSwitch />
+    </header>
+  );
 }
 
-function formatDate(ms: number | null): string {
+function formatDate(ms: number | null, locale: string): string {
   if (ms === null) return "";
-  return new Date(ms).toLocaleDateString("id-ID", { dateStyle: "medium" });
+  return new Date(ms).toLocaleDateString(locale, { dateStyle: "medium" });
 }
 
 function NotTauri(): React.ReactElement {
+  const { t } = useI18n();
   return (
     <div className="home">
-      <header className="app-hd">
-        <Brand />
-        <span className="spacer" />
-        <ThemeSwitch />
-      </header>
-      <div className="center-fill">
+      <AppHeader />
+      <main className="center-fill">
         <div className="qr-empty">
           <Icon name="hard-drive" />
-          <span className="qr-empty__title">Jalankan lewat Tauri</span>
-          <span>
-            Antarmuka ini memanggil perintah Rust (proyek, preview, subtitle) yang hanya tersedia
-            di dalam jendela aplikasi, bukan di peramban biasa.
-          </span>
-          <code className="mono">pnpm --filter @quranrender/desktop tauri dev</code>
+          <span className="qr-empty__title">{t("app.notTauri.title")}</span>
+          <span>{t("app.notTauri.body")}</span>
+          <code className="mono">{TAURI_DEV_COMMAND}</code>
         </div>
-      </div>
+      </main>
     </div>
   );
+}
+
+function StatusBadge({ status }: { status: string }): React.ReactElement {
+  const { t } = useI18n();
+  switch (status) {
+    case "draft":
+      return <span className="qr-badge">{t("app.status.draft")}</span>;
+    case "ready":
+      return <span className="qr-badge qr-badge--success">{t("app.status.ready")}</span>;
+    case "pub":
+      return <span className="qr-badge qr-badge--accent">{t("app.status.pub")}</span>;
+    default:
+      return <span className="qr-badge">{status}</span>;
+  }
 }
 
 function ProjectCard({
@@ -78,16 +92,20 @@ function ProjectCard({
   onOpen,
   onDuplicate,
   onDelete,
+  onExportPack,
+  onBatch,
 }: {
   entry: ProjectEntry;
   busy: boolean;
   onOpen: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
+  onExportPack: () => void;
+  onBatch: () => void;
 }): React.ReactElement {
-  const badge = STATUS_BADGE[entry.status] ?? { cls: "qr-badge", label: entry.status };
-  const dur = formatDuration(entry.duration_ticks);
-  const meta = [entry.reciter ?? "Tanpa qari", entry.aspect].join(" · ");
+  const { t, locale } = useI18n();
+  const dur = formatClock(entry.duration_ticks);
+  const meta = [entry.reciter ?? t("app.card.noReciter"), entry.aspect].join(" · ");
 
   if (entry.missing) {
     return (
@@ -98,7 +116,7 @@ function ProjectCard({
           </span>
           <span className="qr-card__body">
             <span className="qr-card__title">{entry.name}</span>
-            <span className="qr-card__meta">Folder tidak ditemukan</span>
+            <span className="qr-card__meta">{t("app.card.missing")}</span>
           </span>
         </div>
         <div className="card-actions">
@@ -106,9 +124,10 @@ function ProjectCard({
             type="button"
             className="qr-btn qr-btn--danger qr-btn--sm"
             disabled={busy}
+            aria-label={t("app.card.removeNamed", { name: entry.name })}
             onClick={onDelete}
           >
-            Hapus dari daftar
+            {t("app.card.remove")}
           </button>
         </div>
       </div>
@@ -126,10 +145,8 @@ function ProjectCard({
           <span className="qr-card__title">{entry.name}</span>
           <span className="qr-card__meta">{meta}</span>
           <span className="qr-card__foot">
-            <span className={badge.cls}>
-              {badge.label}
-            </span>
-            <span>{formatDate(entry.updated_at)}</span>
+            <StatusBadge status={entry.status} />
+            <span>{formatDate(entry.updated_at, locale)}</span>
           </span>
         </span>
       </button>
@@ -138,18 +155,40 @@ function ProjectCard({
           type="button"
           className="qr-btn qr-btn--ghost qr-btn--sm"
           disabled={busy}
+          aria-label={t("app.card.duplicateNamed", { name: entry.name })}
           onClick={onDuplicate}
         >
           <Icon name="copy" size="sm" />
-          Duplikat
+          {t("app.card.duplicate")}
         </button>
         <button
           type="button"
           className="qr-btn qr-btn--ghost qr-btn--sm"
           disabled={busy}
+          aria-label={t("app.card.exportPackNamed", { name: entry.name })}
+          onClick={onExportPack}
+        >
+          <Icon name="download" size="sm" />
+          {t("app.card.exportPack")}
+        </button>
+        <button
+          type="button"
+          className="qr-btn qr-btn--ghost qr-btn--sm"
+          disabled={busy}
+          aria-label={t("app.card.batchNamed", { name: entry.name })}
+          onClick={onBatch}
+        >
+          <Icon name="scissors" size="sm" />
+          {t("app.card.batch")}
+        </button>
+        <button
+          type="button"
+          className="qr-btn qr-btn--ghost qr-btn--sm"
+          disabled={busy}
+          aria-label={t("app.card.deleteNamed", { name: entry.name })}
           onClick={onDelete}
         >
-          Hapus
+          {t("common.delete")}
         </button>
       </div>
     </div>
@@ -163,6 +202,7 @@ function NewProjectSheet({
   onClose: () => void;
   onCreated: (p: Project) => void;
 }): React.ReactElement {
+  const { t } = useI18n();
   const [name, setName] = useState("");
   const [reciter, setReciter] = useState("");
   const [busy, setBusy] = useState(false);
@@ -188,12 +228,12 @@ function NewProjectSheet({
   return (
     <form onSubmit={(e) => void submit(e)}>
       <Sheet
-        title="Proyek baru"
+        title={t("app.new.title")}
         onClose={onClose}
         footer={
           <>
             <button type="button" className="qr-btn qr-btn--secondary" onClick={onClose}>
-              Batal
+              {t("common.cancel")}
             </button>
             <button
               type="submit"
@@ -201,21 +241,21 @@ function NewProjectSheet({
               disabled={!valid || busy}
             >
               {busy ? <span className="qr-spin" /> : null}
-              Buat dan buka
+              {t("app.new.submit")}
             </button>
           </>
         }
       >
-        {error && <ErrorAlert title="Proyek gagal dibuat" message={error} />}
+        {error && <ErrorAlert title={t("app.new.failed")} message={error} />}
         <div className="qr-fieldset">
           <label className="qr-label" htmlFor="np-name">
-            Nama proyek
+            {t("app.new.name")}
           </label>
           <span className="qr-field">
             <input
               id="np-name"
               value={name}
-              autoFocus
+              data-autofocus
               autoComplete="off"
               onChange={(e) => setName(e.target.value)}
             />
@@ -223,7 +263,7 @@ function NewProjectSheet({
         </div>
         <div className="qr-fieldset">
           <label className="qr-label" htmlFor="np-reciter">
-            Qari (opsional)
+            {t("app.new.reciter")}
           </label>
           <span className="qr-field">
             <input
@@ -236,7 +276,7 @@ function NewProjectSheet({
         </div>
         <div className="qr-fieldset">
           <span className="qr-label" id="np-aspect">
-            Rasio
+            {t("app.new.aspect")}
           </span>
           <div className="qr-seg" role="radiogroup" aria-labelledby="np-aspect">
             <button type="button" role="radio" aria-checked="true">
@@ -249,7 +289,7 @@ function NewProjectSheet({
               1:1
             </button>
           </div>
-          <span className="qr-help">Rasio lain: Belum tersedia.</span>
+          <span className="qr-help">{t("app.new.aspectNote")}</span>
         </div>
       </Sheet>
     </form>
@@ -265,39 +305,46 @@ function DeleteSheet({
   onClose: () => void;
   onConfirm: () => void;
 }): React.ReactElement {
+  const { t } = useI18n();
   return (
     <Sheet
-      title="Hapus proyek"
+      title={t("app.delete.title")}
       onClose={onClose}
       footer={
         <>
           <button type="button" className="qr-btn qr-btn--secondary" onClick={onClose}>
-            Batal
+            {t("common.cancel")}
           </button>
           <button type="button" className="qr-btn qr-btn--danger" onClick={onConfirm}>
-            Hapus
+            {t("common.delete")}
           </button>
         </>
       }
     >
       <p>
-        Proyek <b>{entry.name}</b> dihapus dari daftar, dan folder proyeknya di disk ikut dihapus.
-        Tindakan ini tidak bisa dibatalkan.
+        <b>{entry.name}</b>
       </p>
+      <p>{t("app.delete.body")}</p>
     </Sheet>
   );
 }
 
 function Shell(): React.ReactElement {
+  const { t, error: langError, clearError: clearLangError } = useI18n();
   const [projects, setProjects] = useState<ProjectEntry[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [active, setActive] = useState<Project | null>(null);
+  const [view, setView] = useState<View>("projects");
   const [filter, setFilter] = useState<StatusFilter>("all");
   const [query, setQuery] = useState("");
   const [creating, setCreating] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [deleting, setDeleting] = useState<ProjectEntry | null>(null);
+  const [exportingPack, setExportingPack] = useState<ProjectEntry | null>(null);
+  const [batching, setBatching] = useState<ProjectEntry | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [queueCount, setQueueCount] = useState(0);
 
   const refresh = useCallback(async () => {
     try {
@@ -309,9 +356,31 @@ function Shell(): React.ReactElement {
     }
   }, []);
 
+  const refreshQueueCount = useCallback(async () => {
+    try {
+      setQueueCount(activeJobCount(await unwrap(commands.queueList())));
+    } catch (e) {
+      setError(errorText(e));
+    }
+  }, []);
+
   useEffect(() => {
     void refresh();
-  }, [refresh]);
+    void refreshQueueCount();
+  }, [refresh, refreshQueueCount]);
+
+  // Di layar Antrean, QueueScreen sendiri yang memuat dan melapor; selain itu hitung di sini.
+  const onQueueEvent = useCallback(() => {
+    if (view !== "queue") void refreshQueueCount();
+  }, [view, refreshQueueCount]);
+  useQueueEvents(onQueueEvent, setError);
+
+  const pollCount = queueCount > 0 && view !== "queue";
+  useEffect(() => {
+    if (!pollCount) return;
+    const handle = window.setInterval(() => void refreshQueueCount(), QUEUE_COUNT_POLL_MS);
+    return () => clearInterval(handle);
+  }, [pollCount, refreshQueueCount]);
 
   const withBusy = async (id: string, job: () => Promise<void>) => {
     setBusyId(id);
@@ -332,7 +401,7 @@ function Shell(): React.ReactElement {
 
   const duplicate = (entry: ProjectEntry) =>
     withBusy(entry.id, async () => {
-      await unwrap(commands.projectDuplicate(entry.id, `${entry.name} (salinan)`));
+      await unwrap(commands.projectDuplicate(entry.id, t("app.card.copyName", { name: entry.name })));
       await refresh();
     });
 
@@ -363,6 +432,7 @@ function Shell(): React.ReactElement {
         onBack={() => {
           setActive(null);
           void refresh();
+          void refreshQueueCount();
         }}
         onSave={async (p) => {
           await unwrap(commands.projectSave(p));
@@ -371,103 +441,141 @@ function Shell(): React.ReactElement {
     );
   }
 
-  const title = FILTERS.find((f) => f.key === filter)?.label ?? "Semua proyek";
+  const current = FILTERS.find((f) => f.key === filter) ?? FILTERS[0];
+  const showFilter = (key: StatusFilter) => {
+    setFilter(key);
+    setView("projects");
+  };
 
   return (
     <div className="home">
-      <header className="app-hd">
-        <Brand />
-        <span className="spacer" />
-        <ThemeSwitch />
-      </header>
+      <AppHeader />
       <div className="home-body">
-        <nav className="home-rail" aria-label="Filter proyek">
+        <nav className="home-rail" aria-label={t("app.nav.label")}>
           <div className="qr-rail">
             {FILTERS.map((f) => (
               <button
                 key={f.key}
                 type="button"
                 className="qr-rail__item"
-                aria-current={filter === f.key}
-                onClick={() => setFilter(f.key)}
+                aria-current={view === "projects" && filter === f.key}
+                onClick={() => showFilter(f.key)}
               >
                 <Icon name={f.icon} />
-                {f.label}
+                {t(f.label)}
                 <em>{count(f.key)}</em>
               </button>
             ))}
             <div className="qr-rail__sep" />
+            <button
+              type="button"
+              className="qr-rail__item"
+              aria-current={view === "queue"}
+              onClick={() => setView("queue")}
+            >
+              <Icon name="list-checks" />
+              {t("app.nav.queue")}
+              <em>{queueCount}</em>
+            </button>
+            <button
+              type="button"
+              className="qr-rail__item"
+              aria-current={view === "settings"}
+              onClick={() => setView("settings")}
+            >
+              <Icon name="settings-2" />
+              {t("app.nav.settings")}
+            </button>
             <button type="button" className="qr-rail__item" aria-disabled="true" disabled>
               <Icon name="layout-template" />
-              Templat
-              <em>Belum tersedia</em>
+              {t("app.nav.templates")}
+              <em>{t("common.unavailable")}</em>
             </button>
           </div>
         </nav>
         <main className="home-main">
-          <div className="home-bar">
-            <h1>{title}</h1>
-            <button
-              type="button"
-              className="qr-btn qr-btn--primary"
-              onClick={() => setCreating(true)}
-            >
-              <Icon name="plus" />
-              Buat proyek
-            </button>
-            <span className="spacer" />
-            <label className="qr-field">
-              <Icon name="search" />
-              <input
-                placeholder="Cari proyek atau qari"
-                value={query}
-                autoComplete="off"
-                aria-label="Cari proyek"
-                onChange={(e) => setQuery(e.target.value)}
-              />
-            </label>
-          </div>
-          {error && (
-            <ErrorAlert title="Terjadi kesalahan" message={error} onClose={() => setError(null)} />
+          {langError && (
+            <ErrorAlert title={t("common.error")} message={langError} onClose={clearLangError} />
           )}
-          {!loaded ? (
-            <div className="qr-empty" role="status">
-              <span className="qr-spin" />
-              <span>Memuat proyek…</span>
-            </div>
-          ) : projects.length === 0 ? (
-            <div className="qr-drop qr-empty">
-              <Icon name="file-input" />
-              <span className="qr-empty__title">Belum ada proyek</span>
-              <span>Mulai dengan membuat proyek pertama.</span>
-              <button
-                type="button"
-                className="qr-btn qr-btn--primary"
-                onClick={() => setCreating(true)}
-              >
-                <Icon name="plus" />
-                Buat proyek
-              </button>
-            </div>
-          ) : visible.length === 0 ? (
-            <div className="qr-empty">
-              <Icon name="search" />
-              <span className="qr-empty__title">Tidak ada proyek yang cocok</span>
-              <span>Coba kata kunci lain atau hapus filter.</span>
-            </div>
-          ) : (
-            <div className="grid">
-              {visible.map((p) => (
-                <ProjectCard
-                  key={p.id}
-                  entry={p}
-                  busy={busyId === p.id}
-                  onOpen={() => void open(p.id)}
-                  onDuplicate={() => void duplicate(p)}
-                  onDelete={() => setDeleting(p)}
-                />
-              ))}
-            </div>
+          {error && (
+            <ErrorAlert title={t("common.error")} message={error} onClose={() => setError(null)} />
+          )}
+          {view === "queue" && <QueueScreen onActiveCount={setQueueCount} />}
+          {view === "settings" && <SettingsScreen />}
+          {view === "projects" && (
+            <>
+              <div className="home-bar">
+                <h1>{t(current.label)}</h1>
+                <button
+                  type="button"
+                  className="qr-btn qr-btn--primary"
+                  onClick={() => setCreating(true)}
+                >
+                  <Icon name="plus" />
+                  {t("app.home.create")}
+                </button>
+                <button
+                  type="button"
+                  className="qr-btn qr-btn--secondary"
+                  onClick={() => setImporting(true)}
+                >
+                  <Icon name="upload" />
+                  {t("app.home.importPack")}
+                </button>
+                <span className="spacer" />
+                <label className="qr-field">
+                  <Icon name="search" />
+                  <input
+                    placeholder={t("app.home.searchPlaceholder")}
+                    value={query}
+                    autoComplete="off"
+                    aria-label={t("app.home.searchLabel")}
+                    onChange={(e) => setQuery(e.target.value)}
+                  />
+                </label>
+              </div>
+              {!loaded ? (
+                <div className="qr-empty" role="status">
+                  <span className="qr-spin" />
+                  <span>{t("app.home.loading")}</span>
+                </div>
+              ) : projects.length === 0 ? (
+                <div className="qr-drop qr-empty">
+                  <Icon name="file-input" />
+                  <span className="qr-empty__title">{t("app.home.empty.title")}</span>
+                  <span>{t("app.home.empty.body")}</span>
+                  <button
+                    type="button"
+                    className="qr-btn qr-btn--primary"
+                    onClick={() => setCreating(true)}
+                  >
+                    <Icon name="plus" />
+                    {t("app.home.create")}
+                  </button>
+                </div>
+              ) : visible.length === 0 ? (
+                <div className="qr-empty">
+                  <Icon name="search" />
+                  <span className="qr-empty__title">{t("app.home.noMatch.title")}</span>
+                  <span>{t("app.home.noMatch.body")}</span>
+                </div>
+              ) : (
+                <div className="grid">
+                  {visible.map((p) => (
+                    <ProjectCard
+                      key={p.id}
+                      entry={p}
+                      busy={busyId === p.id}
+                      onOpen={() => void open(p.id)}
+                      onDuplicate={() => void duplicate(p)}
+                      onDelete={() => setDeleting(p)}
+                      onExportPack={() => setExportingPack(p)}
+                      onBatch={() => setBatching(p)}
+                    />
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </main>
       </div>
@@ -479,6 +587,23 @@ function Shell(): React.ReactElement {
             setActive(p);
             void refresh();
           }}
+        />
+      )}
+      {importing && (
+        <ImportPackSheet
+          onClose={() => setImporting(false)}
+          onImported={() => void refresh()}
+        />
+      )}
+      {exportingPack && (
+        <ExportPackSheet entry={exportingPack} onClose={() => setExportingPack(null)} />
+      )}
+      {batching && (
+        <BatchSheet
+          projectId={batching.id}
+          projectName={batching.name}
+          onClose={() => setBatching(null)}
+          onEnqueued={() => void refreshQueueCount()}
         />
       )}
       {deleting && (
