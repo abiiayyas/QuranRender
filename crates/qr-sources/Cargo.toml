@@ -15,3 +15,5 @@ qr-quran.workspace = true
 thiserror.workspace = true
 serde.workspace = true
 minisign-verify.workspace = true
+rusqlite.workspace = true
+serde_json.workspace = true

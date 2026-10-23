@@ -2797,7 +2797,9 @@ version = "0.1.0"
 dependencies = [
  "minisign-verify",
  "qr-quran",
+ "rusqlite",
  "serde",
+ "serde_json",
  "thiserror 2.0.21",
 ]
 

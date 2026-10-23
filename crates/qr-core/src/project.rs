@@ -27,6 +27,8 @@ pub enum ProjectError {
     NotFound(PathBuf),
     #[error("Injeksi kegagalan penulisan sengaja dipicu (fault injection)")]
     InjectedFault,
+    #[error("Format arsip .qrpack rusak atau tidak valid: {0}")]
+    Corrupted(String),
 }
 
 pub const CURRENT_SCHEMA_VERSION: u32 = 1;
