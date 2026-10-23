@@ -216,4 +216,4 @@ Batas: tidak ada render video nyata (kanvas adalah CSS), sinkron dan ekspor adal
 
 ## 8. Tahap berikutnya
 
-Tahap 5: spesifikasi templat video (≥ 12 templat caption; 9:16, 16:9, 1:1, 4:5; sorotan kata, animasi, area aman) sebagai kontrak untuk renderer Rust. Kanvas prototipe (`.cv`) adalah titik awal, tetapi hanya 4 templat dan belum memetakan parameter ke format `.qrtemplate`.
+Tahap 5 selesai di [`05_VIDEO_TEMPLATES.md`](05_VIDEO_TEMPLATES.md). Spesifikasi format paket `.qrtemplate`, sistem koordinat kanvas bernormalisasi, batas area aman lintas platform, algoritma auto-fit, dan katalog lengkap 12 templat video bawaan telah dikunci sebagai kontrak untuk renderer Rust di Fase 1 (tugas A1-06 dan A1-15).

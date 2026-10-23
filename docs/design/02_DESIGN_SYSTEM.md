@@ -291,5 +291,4 @@ Mengikuti [`01_BRAND_IDENTITY.md` §6](01_BRAND_IDENTITY.md):
 
 - **Tahap 3:** selesai di [`03_INFORMATION_ARCHITECTURE.md`](03_INFORMATION_ARCHITECTURE.md). Komponen tata letak tingkat layar (rel Beranda, kartu proyek, lembar, panel geser) dibuat di tahap 4.
 - **Tahap 4:** selesai di [`04_SCREEN_SPECIFICATIONS.md`](04_SCREEN_SPECIFICATIONS.md) dan prototipe [`design/prototype/index.html`](../../design/prototype/index.html). Komponen tingkat layar (lembar, panel geser, rel, kartu, gelembung panduan, baris pemeriksaan, kotak salin, tabel, kartu templat) didaftar di 04 §4 dan hidup di bagian "Tingkat layar" `components.css`.
-- **Tahap 5:** template video. Kanvas video dirender Rust, jadi gayanya didokumentasikan terpisah dari
-  komponen UI.
+- **Tahap 5:** selesai di [`05_VIDEO_TEMPLATES.md`](05_VIDEO_TEMPLATES.md). Spesifikasi format paket `.qrtemplate`, sistem koordinat kanvas bernormalisasi, batas area aman lintas platform, animasi karaoke per kata (ANM-2), dan katalog lengkap 12 templat video bawaan.
