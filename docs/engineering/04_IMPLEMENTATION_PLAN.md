@@ -74,10 +74,10 @@ Setiap spike menghasilkan prototipe yang **dibuang** (bukan kode produksi), lapo
 
 ### 3.3 Gerbang keluar fase 0
 
-- [ ] S1–S5 lulus, ADR dikomit.
-- [ ] `quran.db` dibangun reproducible dari `data/`, dan golden tokenisasi dikomit.
-- [ ] CI menghasilkan artefak 3 OS dengan FFmpeg terbundel yang lolos `linkage-check`.
-- [ ] Penulisan atomik proyek lolos uji fault injection.
+- [x] S1–S5 lulus, ADR dikomit (ADR-0002 s.d. ADR-0006).
+- [x] `quran.db` dibangun reproducible dari `data/`, dan golden tokenisasi dikomit (F0-08).
+- [x] CI menghasilkan artefak 3 OS dengan FFmpeg terbundel yang lolos `linkage-check` (F0-03, F0-04).
+- [x] Penulisan atomik proyek lolos uji fault injection (F0-09).
 
 ---
 

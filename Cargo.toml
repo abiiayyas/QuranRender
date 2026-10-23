@@ -57,3 +57,4 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 rusqlite = { version = "0.40", features = ["bundled"] }
 schemars = { version = "0.8", features = ["derive"] }
 ulid = { version = "3.0", features = ["serde"] }
+minisign-verify = "0.3"
