@@ -2739,32 +2739,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "qr-desktop"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "base64 0.22.1",
- "qr-core",
- "qr-jobs",
- "qr-media",
- "qr-policy",
- "qr-quran",
- "qr-render",
- "qr-sources",
- "qr-store",
- "serde",
- "serde_json",
- "specta",
- "specta-typescript",
- "tauri",
- "tauri-build",
- "tauri-specta",
- "tracing",
- "tracing-subscriber",
- "ulid",
-]
-
-[[package]]
 name = "qr-jobs"
 version = "0.1.0"
 dependencies = [
@@ -2870,6 +2844,32 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1fbf4db142a473a8d80c26bbf18454ed458bf8d26c8219c331daecfdbd079001"
 dependencies = [
  "proc-macro2",
+]
+
+[[package]]
+name = "quranrender"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "base64 0.22.1",
+ "qr-core",
+ "qr-jobs",
+ "qr-media",
+ "qr-policy",
+ "qr-quran",
+ "qr-render",
+ "qr-sources",
+ "qr-store",
+ "serde",
+ "serde_json",
+ "specta",
+ "specta-typescript",
+ "tauri",
+ "tauri-build",
+ "tauri-specta",
+ "tracing",
+ "tracing-subscriber",
+ "ulid",
 ]
 
 [[package]]

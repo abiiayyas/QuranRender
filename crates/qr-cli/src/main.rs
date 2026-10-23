@@ -199,7 +199,7 @@ fn main() -> Result<()> {
 
     if args.len() < 2 {
         println!(
-            "qurender v{} — QuranRender headless CLI & worker",
+            "qurender v{} — Quran Render headless CLI & worker",
             env!("CARGO_PKG_VERSION")
         );
         println!("Penggunaan: qurender <worker|validate|render> [argumen]");

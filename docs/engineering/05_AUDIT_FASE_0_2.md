@@ -128,7 +128,7 @@ Legenda: ✅ terbukti dengan uji/pengukuran nyata · ⚠️ sebagian (rincian di
 ## 4. Bukti verifikasi (dijalankan)
 
 - `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace --all-targets`, `cargo deny check` (lihat bagian akhir ringkasan commit).
-- Dataset: `cargo test -p qr-quran -- --ignored` dan `cargo test -p qr-desktop -- --ignored` lulus dengan dataset bertanda tangan.
+- Dataset: `cargo test -p qr-quran -- --ignored` dan `cargo test -p quranrender -- --ignored` lulus dengan dataset bertanda tangan.
 - `qurender render` pada proyek 1:5, 10 dtk, 1080×1920 menghasilkan MP4 dengan `ffprobe`: h264, 1080×1920, 300 frame, `color_space=bt709`, audio aac.
 - Frame golden dan frame ekspor diperiksa secara visual (teks Arab benar, sorotan karaoke, referensi, terjemahan).
 

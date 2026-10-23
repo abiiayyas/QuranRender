@@ -30,8 +30,8 @@ const STATUS_BADGE: Record<string, { cls: string; label: string }> = {
 function Brand(): React.ReactElement {
   return (
     <span className="brand">
-      <img className="only-light" src={logoLight} alt="QuranRender" />
-      <img className="only-dark" src={logoDark} alt="QuranRender" />
+      <img className="only-light" src={logoLight} alt="Quran Render" />
+      <img className="only-dark" src={logoDark} alt="Quran Render" />
     </span>
   );
 }

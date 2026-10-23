@@ -1,9 +1,11 @@
-# QuranRender — Panduan Pengguna (Bahasa Indonesia)
+# Quran Render — Panduan Pengguna (Bahasa Indonesia)
 
 > **Status: pra-alpha.** Panduan ini hanya memuat apa yang benar-benar berfungsi. Fitur yang belum ada
 > ditandai **Belum tersedia**.
 
 ## 1. Memulai
+
+Panduan build dan test lengkap: [`docs/engineering/07_BUILD_DAN_TEST.md`](../engineering/07_BUILD_DAN_TEST.md).
 
 **Menjalankan dari sumber** (belum ada installer rilis):
 
@@ -76,7 +78,7 @@ qurender render <folder.qrproj> <keluaran.mp4> [--audio berkas] [--width N] [--m
 - Teks Al-Qur'an: Kemenag RI (Mushaf Standar Indonesia). Terjemahan bawaan: Kemenag. Terjemahan
   Saheeh International diunduh pengguna sendiri dan disimpan terpisah (`content.db`); unduhan dari dalam
   aplikasi: **Belum tersedia**.
-- Konten tidak boleh memuat makhluk bernyawa atau musik; QuranRender tidak menyediakan keduanya.
+- Konten tidak boleh memuat makhluk bernyawa atau musik; Quran Render tidak menyediakan keduanya.
 
 ## 7. Bantuan
 

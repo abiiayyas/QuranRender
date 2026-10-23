@@ -1,9 +1,11 @@
-# QuranRender — User Guide (English)
+# Quran Render — User Guide (English)
 
 > **Status: pre-alpha.** This guide only describes what actually works. Missing features are marked
 > **Not available**.
 
 ## 1. Getting started
+
+Full build and test guide (Indonesian): [`docs/engineering/07_BUILD_DAN_TEST.md`](../engineering/07_BUILD_DAN_TEST.md).
 
 **Run from source** (no release installer yet):
 
@@ -76,7 +78,7 @@ qurender render <folder.qrproj> <output.mp4> [--audio file] [--width N] [--max-s
 - Quran text: Kemenag RI (Indonesian Standard Mushaf). Built-in translation: Kemenag. Saheeh
   International is downloaded by the user and stored separately (`content.db`); downloading from inside
   the app: **Not available**.
-- Content must not contain living beings or music; QuranRender provides neither.
+- Content must not contain living beings or music; Quran Render provides neither.
 
 ## 7. Help
 

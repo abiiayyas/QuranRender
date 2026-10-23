@@ -92,7 +92,7 @@ fn greet(name: String) -> String {
 #[specta::specta]
 fn get_app_info() -> AppInfo {
     AppInfo {
-        name: "QuranRender".to_string(),
+        name: "Quran Render".to_string(),
         version: env!("CARGO_PKG_VERSION").to_string(),
         status: "Pra-alpha — Fase 1 belum selesai".to_string(),
     }
@@ -321,7 +321,7 @@ fn remove_project_folder(path: &std::path::Path) -> Result<(), String> {
     let is_qrproj = path.extension().is_some_and(|e| e == "qrproj");
     if !is_qrproj || !path.join("project.json").is_file() || path.is_symlink() {
         return Err(format!(
-            "Menolak menghapus '{}': bukan folder proyek QuranRender (*.qrproj dengan project.json)",
+            "Menolak menghapus '{}': bukan folder proyek Quran Render (*.qrproj dengan project.json)",
             path.display()
         ));
     }
@@ -388,8 +388,8 @@ fn main() {
                 render_api::set_bundled_resources(dir);
             }
             match render_api::self_check(DATASET_PUBKEY) {
-                Ok(msg) => eprintln!("[QuranRender] {msg}"),
-                Err(e) => eprintln!("[QuranRender] PERINGATAN sumber daya: {e}"),
+                Ok(msg) => eprintln!("[Quran Render] {msg}"),
+                Err(e) => eprintln!("[Quran Render] PERINGATAN sumber daya: {e}"),
             }
             Ok(())
         })
@@ -450,7 +450,7 @@ mod tests {
     #[test]
     fn test_get_app_info() {
         let info = get_app_info();
-        assert_eq!(info.name, "QuranRender");
+        assert_eq!(info.name, "Quran Render");
         assert_eq!(info.status, "Pra-alpha — Fase 1 belum selesai");
     }
 

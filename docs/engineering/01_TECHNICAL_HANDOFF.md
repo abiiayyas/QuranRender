@@ -82,7 +82,7 @@ QuranRender/
 ├─ apps/
 │  └─ desktop/
 │     ├─ src/                 React + TS (UI)
-│     ├─ src-tauri/           crate `qr-desktop`: shell Tauri tipis, command → core
+│     ├─ src-tauri/           crate `quranrender`: shell Tauri tipis, command → core
 │     └─ package.json
 ├─ crates/
 │  ├─ qr-core/               model proyek, timeline, gaya berlapis, undo/redo, migrasi skema
@@ -110,7 +110,7 @@ Aturan dependensi antar-crate (dicek di CI dengan `cargo deny` dan uji arsitektu
 
 ```mermaid
 flowchart LR
-  desktop[qr-desktop] --> core[qr-core]
+  desktop[quranrender] --> core[qr-core]
   desktop --> jobs[qr-jobs]
   desktop --> store[qr-store]
   desktop --> render[qr-render]
@@ -133,7 +133,7 @@ flowchart LR
 
 - `qr-core` tidak bergantung pada GPU, jaringan, atau Tauri.
 - `qr-render` tidak bergantung pada Tauri.
-- Hanya `qr-desktop` yang mengenal Tauri.
+- Hanya `quranrender` yang mengenal Tauri.
 - `qr-dataset` dan aplikasi memakai kode normalisasi dan tokenisasi yang sama dari `qr-quran`, supaya
   hasil build dan runtime identik.
 
@@ -143,7 +143,7 @@ flowchart LR
 
 ```mermaid
 flowchart TB
-  subgraph APP["Proses aplikasi (qr-desktop)"]
+  subgraph APP["Proses aplikasi (quranrender)"]
     UI["Webview: React UI"]
     CMD["Command & event layer (tauri-specta)"]
     DOC["Project session (qr-core)<br/>undo/redo, autosave"]

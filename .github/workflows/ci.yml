@@ -51,7 +51,7 @@ jobs:
 
       - name: Verify bindings.ts clean check (F0-02)
         run: |
-          cargo test -p qr-desktop test_export_bindings
+          cargo test -p quranrender test_export_bindings
           git diff --exit-code apps/desktop/src/bindings.ts
 
       - name: Check Rust formatting

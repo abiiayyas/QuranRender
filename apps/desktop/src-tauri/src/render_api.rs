@@ -298,7 +298,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "butuh build/dataset bertanda tangan; jalankan: cargo test -p qr-desktop -- --ignored"]
+    #[ignore = "butuh build/dataset bertanda tangan; jalankan: cargo test -p quranrender -- --ignored"]
     fn verified_dataset_drives_subtitles_and_preview() {
         let pubkey = include_str!("../../../../assets/keys/dataset.pub");
         let db = open_dataset(&dataset_dir(), pubkey).expect("verifikasi dataset harus lolos");

@@ -32,7 +32,7 @@ if [[ "$(uname)" == "Darwin" ]]; then
                 FAILED=1
             done < <(otool -L "$file" | tail -n +2)
         fi
-    done < <(find "$TARGET_DIR" -type f \( -name "*.dylib" -o -name "qurender" -o -name "qr-desktop" \) -print0 2>/dev/null || true)
+    done < <(find "$TARGET_DIR" -type f \( -name "*.dylib" -o -name "qurender" -o -name "quranrender" -o -name "QuranRender" \) -print0 2>/dev/null || true)
 
 elif [[ "$(uname)" == "Linux" ]]; then
     # Linux: periksa dengan readelf / ldd (abaikan deps/)
@@ -51,7 +51,7 @@ elif [[ "$(uname)" == "Linux" ]]; then
                 fi
             fi
         fi
-    done < <(find "$TARGET_DIR" -type f \( -name "*.so*" -o -name "qurender" -o -name "qr-desktop" \) -print0 2>/dev/null || true)
+    done < <(find "$TARGET_DIR" -type f \( -name "*.so*" -o -name "qurender" -o -name "quranrender" -o -name "QuranRender" \) -print0 2>/dev/null || true)
 fi
 
 if [[ $FAILED -eq 0 ]]; then
