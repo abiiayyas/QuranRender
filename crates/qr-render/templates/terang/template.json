@@ -3,29 +3,147 @@
   "id": "terang",
   "version": "1.0.0",
   "name": "Kertas Terang",
-  "description": "Mensimulasikan halaman mushaf cetak terang dengan latar kertas krem gading hangat dan teks hitam pekat.",
+  "description": "Halaman mushaf cetak: kertas krem gading, teks hitam pekat, sorotan garis bawah nila.",
   "author": "QuranRender Team",
   "license": "GPL-3.0-or-later",
-  "categories": ["traditional", "mushaf"],
-  "supported_ratios": ["9:16", "16:9", "1:1"],
+  "categories": [
+    "traditional",
+    "print"
+  ],
+  "supported_ratios": [
+    "9:16",
+    "16:9",
+    "1:1"
+  ],
   "default_ratio": "9:16",
   "safe_area": {
-    "9:16": { "top": 0.08, "bottom": 0.14, "left": 0.10, "right": 0.10 },
-    "16:9": { "top": 0.08, "bottom": 0.08, "left": 0.08, "right": 0.08 },
-    "1:1":  { "top": 0.06, "bottom": 0.06, "left": 0.06, "right": 0.06 }
+    "9:16": {
+      "top": 0.08,
+      "bottom": 0.14,
+      "left": 0.1,
+      "right": 0.1
+    },
+    "16:9": {
+      "top": 0.08,
+      "bottom": 0.08,
+      "left": 0.08,
+      "right": 0.08
+    },
+    "1:1": {
+      "top": 0.06,
+      "bottom": 0.06,
+      "left": 0.06,
+      "right": 0.06
+    }
   },
-  "background": {
-    "default_color": "#F7F6F2",
-    "dimmer_opacity": 0.0
-  },
-  "typography": {
-    "ayah_font": "LPMQ",
-    "ayah_size_cw": 0.092,
-    "ayah_color": "#1A1C20",
-    "translation_font": "Inter",
-    "translation_size_cw": 0.040,
-    "translation_color": "#374151",
-    "translation_opacity": 0.90,
-    "highlight_style": "underline"
+  "layers": [
+    {
+      "id": "bg",
+      "kind": "background",
+      "visible": true,
+      "properties": {
+        "source_type": "media_or_color",
+        "default_color": "#F7F6F2",
+        "dimmer_opacity": 0.0,
+        "dimmer_type": "solid",
+        "dimmer_color": "#000000",
+        "blur_radius": 0.0
+      }
+    },
+    {
+      "id": "surah_name",
+      "kind": "surah_title",
+      "visible": false,
+      "properties": {
+        "font_family": "Amiri",
+        "font_style": "Regular",
+        "font_size_cw": 0.065,
+        "text_color": "#1A1C20",
+        "position_anchor": "top_center",
+        "offset_y_ch": 0.155
+      }
+    },
+    {
+      "id": "ayah",
+      "kind": "ayah_text",
+      "visible": true,
+      "properties": {
+        "font_family": "LPMQ",
+        "font_style": "Regular",
+        "font_size_cw": 0.092,
+        "line_height_multiplier": 1.95,
+        "text_color": "#1A1C20",
+        "highlight_style": "underline",
+        "highlight_active_color": "#1A1C20",
+        "highlight_inactive_opacity": 0.7,
+        "position_anchor": "center",
+        "max_width_cw": 0.8,
+        "highlight_underline_color": "#5B5FD6"
+      }
+    },
+    {
+      "id": "translation",
+      "kind": "translation_text",
+      "visible": true,
+      "properties": {
+        "font_family": "Inter",
+        "font_style": "Regular",
+        "font_size_cw": 0.04,
+        "line_height_multiplier": 1.45,
+        "text_color": "#374151",
+        "opacity": 0.95,
+        "position_relative_to": "ayah",
+        "margin_top_ch": 0.025,
+        "max_width_cw": 0.76
+      }
+    },
+    {
+      "id": "ref_badge",
+      "kind": "reference_badge",
+      "visible": true,
+      "properties": {
+        "font_family": "Inter",
+        "font_style": "Medium",
+        "font_size_cw": 0.032,
+        "text_color": "#374151",
+        "opacity": 0.65,
+        "position_relative_to": "translation",
+        "margin_top_ch": 0.018
+      }
+    },
+    {
+      "id": "qari_pill",
+      "kind": "reciter_pill",
+      "visible": false,
+      "properties": {
+        "font_family": "Inter",
+        "font_size_cw": 0.034,
+        "text_color": "#FFFFFF",
+        "background_color": "rgba(8, 9, 12, 0.55)",
+        "border_radius_cw": 0.02,
+        "padding_cw": [
+          0.008,
+          0.025
+        ],
+        "position_anchor": "bottom_center",
+        "offset_y_ch": 0.26
+      }
+    }
+  ],
+  "animations": {
+    "transition_in": {
+      "type": "fade",
+      "duration_ticks": 15360,
+      "easing": "ease_out"
+    },
+    "transition_out": {
+      "type": "fade",
+      "duration_ticks": 9600,
+      "easing": "ease_in"
+    },
+    "karaoke": {
+      "transition_duration_ticks": 3840,
+      "easing": "ease_out"
+    }
   }
 }

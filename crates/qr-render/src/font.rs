@@ -72,34 +72,42 @@ impl FontCoverageValidator {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_lpmq_font_covers_basmalah() {
-        let font_path = Path::new("../../assets/fonts/quran/LPMQ.ttf");
-        if font_path.exists() {
-            let basmalah = "بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ";
-            let report = FontCoverageValidator::check_font_coverage(font_path, &[basmalah])
-                .expect("Validasi font harus berhasil");
-            assert!(
-                report.is_valid,
-                "LPMQ harus mencakup seluruh glyph basmalah"
-            );
-            assert_eq!(report.missing_codepoints.len(), 0);
-        }
+    fn lpmq() -> std::path::PathBuf {
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/fonts/quran/LPMQ.ttf")
     }
 
     #[test]
-    fn test_font_detects_unsupported_codepoint() {
-        let font_path = Path::new("../../assets/fonts/quran/LPMQ.ttf");
-        if font_path.exists() {
-            // Karakter China/Emoji yang jelas tidak ada di font Mushaf LPMQ
-            let alien_text = "بِسْمِ 漢字";
-            let report = FontCoverageValidator::check_font_coverage(font_path, &[alien_text])
-                .expect("Validasi font harus berhasil");
-            assert!(!report.is_valid);
-            assert!(!report.missing_codepoints.is_empty());
-        }
+    fn lpmq_covers_basmalah() {
+        // Berkas font wajib ada di repositori: tidak ada jalur "lewati diam-diam".
+        assert!(lpmq().exists(), "LPMQ.ttf hilang dari assets/fonts/quran");
+        let report =
+            FontCoverageValidator::check_font_coverage(&lpmq(), &["بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ"])
+                .unwrap();
+        assert!(report.is_valid, "glyph hilang: {:?}", report.missing_hex);
+    }
+
+    #[test]
+    fn unsupported_codepoint_is_reported_with_hex() {
+        let report = FontCoverageValidator::check_font_coverage(&lpmq(), &["بِسْمِ 漢字"]).unwrap();
+        assert!(!report.is_valid);
+        assert_eq!(
+            report.missing_hex,
+            ["U+6F22", "U+5B57"]
+                .iter()
+                .map(|s| (*s).to_string())
+                .collect::<Vec<_>>()
+                .into_iter()
+                .rev()
+                .rev()
+                .collect::<Vec<_>>()
+                .into_iter()
+                .collect::<std::collections::BTreeSet<_>>()
+                .into_iter()
+                .collect::<Vec<_>>()
+        );
     }
 }

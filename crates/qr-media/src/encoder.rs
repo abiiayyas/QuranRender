@@ -67,95 +67,124 @@ impl Default for Mp4ExportConfig {
     }
 }
 
-/// Mendeteksi ketersediaan encoder pada sistem operasi saat ini.
-pub fn probe_available_encoders() -> Vec<VideoEncoder> {
-    let mut encoders = Vec::new();
+/// Urutan preferensi encoder hardware H.264 per nama codec FFmpeg.
+const HW_CANDIDATES: [(&str, HwEncoderKind); 4] = [
+    ("h264_videotoolbox", HwEncoderKind::VideoToolbox),
+    ("h264_nvenc", HwEncoderKind::Nvenc),
+    ("h264_qsv", HwEncoderKind::Qsv),
+    ("h264_amf", HwEncoderKind::Amf),
+];
 
-    // 1. Deteksi hardware encoder berdasarkan platform
-    #[cfg(target_os = "macos")]
-    {
-        encoders.push(VideoEncoder::Hardware(HwEncoderKind::VideoToolbox));
+/// Mengurai keluaran `ffmpeg -hide_banner -encoders` menjadi encoder H.264 yang *terpasang* pada build ini.
+/// Keberadaan di daftar belum menjamin perangkat kerasnya ada; kegagalan runtime ditangani fallback (EXP-2).
+pub fn parse_ffmpeg_encoders(encoders_output: &str) -> Vec<VideoEncoder> {
+    let names: Vec<&str> = encoders_output
+        .lines()
+        .filter_map(|l| l.split_whitespace().nth(1))
+        .collect();
+    let mut out: Vec<VideoEncoder> = HW_CANDIDATES
+        .iter()
+        .filter(|(n, _)| names.contains(n))
+        .map(|(_, k)| VideoEncoder::Hardware(*k))
+        .collect();
+    if names.contains(&"libx264") {
+        out.push(VideoEncoder::SoftwareLibx264);
     }
-
-    #[cfg(target_os = "windows")]
-    {
-        // Di Windows, probe NVENC / QSV / AMF jika driver tersedia
-        encoders.push(VideoEncoder::Hardware(HwEncoderKind::Nvenc));
-        encoders.push(VideoEncoder::Hardware(HwEncoderKind::Qsv));
-        encoders.push(VideoEncoder::Hardware(HwEncoderKind::Amf));
-    }
-
-    #[cfg(target_os = "linux")]
-    {
-        // Di Linux, probe NVENC / QSV
-        encoders.push(VideoEncoder::Hardware(HwEncoderKind::Nvenc));
-        encoders.push(VideoEncoder::Hardware(HwEncoderKind::Qsv));
-    }
-
-    // 2. Fallback universal software (libx264 selalu ada sebagai jaminan)
-    encoders.push(VideoEncoder::SoftwareLibx264);
-
-    encoders
+    out
 }
 
-/// Menentukan encoder terbaik: memilih hardware jika diminta/tersedia, atau fallback ke libx264 (EXP-2).
-pub fn select_best_encoder(config: &Mp4ExportConfig) -> VideoEncoder {
-    let available = probe_available_encoders();
+/// Menjalankan `ffmpeg -encoders` dan mengembalikan encoder H.264 yang tersedia.
+pub fn probe_available_encoders(ffmpeg_bin: &str) -> std::io::Result<Vec<VideoEncoder>> {
+    let out = std::process::Command::new(ffmpeg_bin)
+        .args(["-hide_banner", "-encoders"])
+        .output()?;
+    Ok(parse_ffmpeg_encoders(&String::from_utf8_lossy(&out.stdout)))
+}
 
+/// Memilih encoder: preferensi pengguna bila tersedia, lalu hardware pertama, lalu libx264 (EXP-2).
+/// `None` bila tidak ada encoder H.264 sama sekali.
+pub fn select_best_encoder(
+    config: &Mp4ExportConfig,
+    available: &[VideoEncoder],
+) -> Option<VideoEncoder> {
     if let Some(preferred) = &config.preferred_encoder {
         if available.contains(preferred) {
-            return preferred.clone();
+            return Some(preferred.clone());
         }
     }
-
-    // Pilih encoder hardware pertama yang tersedia, jika tidak ada fallback ke libx264
-    for enc in &available {
-        if let VideoEncoder::Hardware(_) = enc {
-            return enc.clone();
-        }
-    }
-
-    VideoEncoder::SoftwareLibx264
+    available
+        .iter()
+        .find(|e| matches!(e, VideoEncoder::Hardware(_)))
+        .or_else(|| {
+            available
+                .iter()
+                .find(|e| **e == VideoEncoder::SoftwareLibx264)
+        })
+        .cloned()
 }
 
-/// Menyusun argumen perintah FFmpeg untuk ekspor MP4 dari pipa rawvideo stdin (A1-10).
+/// Menyusun argumen FFmpeg untuk ekspor MP4 dari pipa rawvideo RGBA di stdin (A1-10).
+/// Konversi RGB→YUV memakai matriks BT.709 rentang TV dan ditandai di metadata (tanpa ini swscale
+/// memakai BT.601 dan warna bergeser). Audio (bila ada) di-mux sebagai AAC dan memotong ke yang terpendek.
 pub fn build_ffmpeg_export_args(
     config: &Mp4ExportConfig,
     encoder: &VideoEncoder,
+    audio_path: Option<&str>,
     output_path: &str,
 ) -> Vec<String> {
-    let mut args = vec![
-        "-y".into(),
-        "-f".into(),
-        "rawvideo".into(),
-        "-pix_fmt".into(),
-        "rgba".into(),
-        "-s".into(),
-        format!("{}x{}", config.width, config.height),
-        "-r".into(),
-        config.fps.to_string(),
-        "-i".into(),
-        "-".into(), // Baca frame dari stdin
-    ];
-
-    // Video codec
-    args.push("-c:v".into());
-    args.push(encoder.ffmpeg_codec_name().into());
-
-    // Bitrate dan preset
-    args.push("-b:v".into());
-    args.push(format!("{}k", config.video_bitrate_kbps));
-    args.push("-pix_fmt".into());
-    args.push("yuv420p".into());
-
-    if *encoder == VideoEncoder::SoftwareLibx264 {
-        args.push("-preset".into());
-        args.push("medium".into());
+    let mut args: Vec<String> = [
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-y",
+        "-f",
+        "rawvideo",
+        "-pix_fmt",
+        "rgba",
+    ]
+    .iter()
+    .map(|s| (*s).to_string())
+    .collect();
+    args.extend(["-s".into(), format!("{}x{}", config.width, config.height)]);
+    args.extend(["-r".into(), config.fps.to_string(), "-i".into(), "-".into()]);
+    if let Some(a) = audio_path {
+        args.extend(["-i".into(), a.into()]);
     }
-
-    // Output path
-    args.push(output_path.into());
-
+    args.extend(["-map".into(), "0:v:0".into()]);
+    if audio_path.is_some() {
+        args.extend(["-map".into(), "1:a:0".into()]);
+    }
+    args.extend([
+        "-vf".into(),
+        "scale=out_color_matrix=bt709:out_range=tv,format=yuv420p".into(),
+        "-c:v".into(),
+        encoder.ffmpeg_codec_name().into(),
+        "-b:v".into(),
+        format!("{}k", config.video_bitrate_kbps),
+        "-colorspace".into(),
+        "bt709".into(),
+        "-color_primaries".into(),
+        "bt709".into(),
+        "-color_trc".into(),
+        "bt709".into(),
+        "-color_range".into(),
+        "tv".into(),
+    ]);
+    if *encoder == VideoEncoder::SoftwareLibx264 {
+        args.extend(["-preset".into(), "medium".into()]);
+    }
+    if audio_path.is_some() {
+        args.extend([
+            "-c:a".into(),
+            "aac".into(),
+            "-b:a".into(),
+            format!("{}k", config.audio_bitrate_kbps),
+            "-ar".into(),
+            config.audio_sample_rate.to_string(),
+            "-shortest".into(),
+        ]);
+    }
+    args.extend(["-movflags".into(), "+faststart".into(), output_path.into()]);
     args
 }
 

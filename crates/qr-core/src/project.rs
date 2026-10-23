@@ -69,6 +69,23 @@ pub struct CanvasConfig {
     pub aspect_ratio: String,
 }
 
+impl CanvasConfig {
+    /// Mengatur rasio beserta resolusi dasar (sisi pendek 1080 px). `false` bila rasio tidak dikenal.
+    pub fn set_aspect(&mut self, aspect: &str) -> bool {
+        let (w, h) = match aspect {
+            "9:16" => (1080, 1920),
+            "16:9" => (1920, 1080),
+            "1:1" => (1080, 1080),
+            "4:5" => (1080, 1350),
+            _ => return false,
+        };
+        self.width = w;
+        self.height = h;
+        self.aspect_ratio = aspect.to_string();
+        true
+    }
+}
+
 impl Default for CanvasConfig {
     fn default() -> Self {
         Self {
@@ -152,6 +169,11 @@ pub struct AyahSegment {
     pub word_timings: Vec<WordTiming>,
     pub confidence: f32,
     pub manual_override: bool,
+    /// Rentang kata (1-based, inklusif) dari ayat ini yang ditampilkan segmen. `None` = seluruh ayat.
+    /// Ayat panjang (mis. 2:282) dibagi ke beberapa segmen; pembagian hanya di batas kata (CNT-1).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[specta(type = Option<Vec<u32>>)]
+    pub word_range: Option<(u32, u32)>,
 }
 
 #[derive(Serialize, Deserialize, JsonSchema, Type, Debug, Clone, PartialEq)]
@@ -528,6 +550,24 @@ pub fn restore_snapshot(project_dir: &Path, snapshot_path: &Path) -> Result<Proj
 #[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn set_aspect_updates_resolution_and_rejects_unknown() {
+        let mut c = CanvasConfig::default();
+        assert!(c.set_aspect("16:9"));
+        assert_eq!(
+            (c.width, c.height, c.aspect_ratio.as_str()),
+            (1920, 1080, "16:9")
+        );
+        assert!(c.set_aspect("4:5"));
+        assert_eq!((c.width, c.height), (1080, 1350));
+        assert!(!c.set_aspect("21:9"));
+        assert_eq!(
+            (c.width, c.height),
+            (1080, 1350),
+            "rasio tak dikenal tidak boleh mengubah kanvas"
+        );
+    }
 
     #[test]
     fn test_project_schema_generation() {

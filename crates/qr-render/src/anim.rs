@@ -13,10 +13,28 @@ pub enum InOutAnimation {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum HighlightStyle {
+    /// Terang bertahap (doc 05 §5.2).
     SmoothFade,
-    WordPill,
+    /// Latar pil translusen di belakang kata aktif.
+    Pill,
+    /// Latar kotak translusen di belakang kata aktif.
+    Box,
+    /// Garis bawah yang memanjang mengikuti progres kata.
     Underline,
+}
+
+impl HighlightStyle {
+    pub fn parse(s: &str) -> Option<Self> {
+        match s {
+            "smooth_fade" => Some(Self::SmoothFade),
+            "pill" => Some(Self::Pill),
+            "box" => Some(Self::Box),
+            "underline" => Some(Self::Underline),
+            _ => None,
+        }
+    }
 }
 
 /// Menghitung faktor transisi masuk/keluar (0.0 = tak tampak, 1.0 = penuh) secara deterministik dari tick audio.
@@ -96,6 +114,44 @@ pub fn evaluate_verse_karaoke(
             }
         })
         .collect()
+}
+
+/// Easing dasar dari doc 05 §5.1 (`ease_out` = kubik, `ease_in` = kubik, `linear`).
+pub fn ease(kind: &str, t: f32) -> f32 {
+    let t = t.clamp(0.0, 1.0);
+    match kind {
+        "ease_out" => 1.0 - (1.0 - t).powi(3),
+        "ease_out_quart" => 1.0 - (1.0 - t).powi(4),
+        "ease_in" => t * t * t,
+        _ => t,
+    }
+}
+
+/// Alpha segmen berdasarkan durasi transisi masuk dan keluar milik template (tick 48 kHz).
+/// Di luar `[start, end]` hasilnya 0. Pada tengah segmen 1.
+pub fn template_transition_alpha(
+    tick: i64,
+    start: i64,
+    end: i64,
+    in_ticks: i64,
+    in_easing: &str,
+    out_ticks: i64,
+    out_easing: &str,
+) -> f32 {
+    if tick < start || tick > end {
+        return 0.0;
+    }
+    let a_in = if in_ticks > 0 {
+        ease(in_easing, (tick - start) as f32 / in_ticks as f32)
+    } else {
+        1.0
+    };
+    let a_out = if out_ticks > 0 {
+        ease(out_easing, (end - tick) as f32 / out_ticks as f32)
+    } else {
+        1.0
+    };
+    a_in.min(a_out)
 }
 
 #[cfg(test)]

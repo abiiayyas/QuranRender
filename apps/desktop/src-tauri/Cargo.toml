@@ -22,6 +22,8 @@ qr-render.workspace = true
 qr-media.workspace = true
 qr-sources.workspace = true
 qr-policy.workspace = true
+qr-quran.workspace = true
+base64 = "0.22"
 anyhow.workspace = true
 ulid.workspace = true
 serde.workspace = true
@@ -32,6 +34,9 @@ tauri = "2"
 specta = { version = "=2.0.0-rc.26", features = ["derive"] }
 tauri-specta = { version = "=2.0.0-rc.26", features = ["typescript"] }
 specta-typescript = "0.0.13"
+
+[dev-dependencies]
+serde_json.workspace = true
 
 [build-dependencies]
 tauri-build = "2"

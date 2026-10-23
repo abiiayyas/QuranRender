@@ -290,6 +290,7 @@ mod tests {
             ],
             confidence: 0.94,
             manual_override: false,
+            word_range: None,
         }
     }
 

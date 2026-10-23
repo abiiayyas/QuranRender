@@ -20,6 +20,7 @@ qr-render.workspace = true
 qr-media.workspace = true
 qr-align.workspace = true
 qr-policy.workspace = true
+qr-quran.workspace = true
 anyhow.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true

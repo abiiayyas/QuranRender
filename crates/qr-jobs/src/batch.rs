@@ -214,6 +214,7 @@ mod tests {
                 word_timings: vec![],
                 confidence: if i == 3 || i == 7 { 0.75 } else { 0.95 },
                 manual_override: false,
+                word_range: None,
             });
         }
         proj

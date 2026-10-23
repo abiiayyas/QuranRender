@@ -22,11 +22,17 @@ pub struct FootnoteItem {
     pub text: String,
 }
 
-/// Membersihkan tag HTML footnote seperti `<sup foot_note=1>1</sup>` menjadi teks bersih.
+/// Membersihkan teks terjemahan: menghapus penanda catatan kaki `<sup foot_note=N>N</sup>` **beserta
+/// angkanya**, dan menghapus tag HTML lain tanpa menghapus isinya. Mengembalikan teks bersih dan id
+/// catatan kaki yang ditemukan.
+///
+/// Isi catatan kaki TIDAK ada pada respons terjemahan; harus diambil terpisah (Quran.com `foot_notes`).
+/// Karena itu `FootnoteItem.text` dibiarkan kosong, bukan diisi teks karangan.
 pub fn extract_clean_translation_and_footnotes(raw_html: &str) -> (String, Vec<FootnoteItem>) {
     let mut clean = String::with_capacity(raw_html.len());
     let mut footnotes = Vec::new();
     let mut chars = raw_html.chars().peekable();
+    let mut skip_until_sup_close = false;
 
     while let Some(c) = chars.next() {
         if c == '<' {
@@ -37,114 +43,183 @@ pub fn extract_clean_translation_and_footnotes(raw_html: &str) -> (String, Vec<F
                 }
                 tag.push(tc);
             }
-
-            // Jika tag adalah footnote: <sup foot_note=...
-            if tag.starts_with("sup foot_note=") {
-                let note_num_str: String = tag
-                    .trim_start_matches("sup foot_note=")
-                    .chars()
-                    .take_while(|ch| ch.is_ascii_digit())
-                    .collect();
-                if let Ok(num) = note_num_str.parse::<u32>() {
+            if let Some(rest) = tag.strip_prefix("sup foot_note=") {
+                let digits: String = rest.chars().take_while(char::is_ascii_digit).collect();
+                if let Ok(id) = digits.parse::<u32>() {
                     footnotes.push(FootnoteItem {
-                        id: num,
-                        text: format!("Catatan kaki nomor {}", num),
+                        id,
+                        text: String::new(),
                     });
+                    skip_until_sup_close = true;
                 }
+            } else if tag == "/sup" {
+                skip_until_sup_close = false;
             }
-        } else {
+        } else if !skip_until_sup_close {
             clean.push(c);
         }
     }
 
-    (clean.trim().to_string(), footnotes)
+    // Rapikan spasi ganda akibat penghapusan penanda.
+    let normalized = clean.split_whitespace().collect::<Vec<_>>().join(" ");
+    (normalized, footnotes)
 }
 
-/// Mem-parsing payload JSON terjemahan Quran.com menjadi entri `TranslationVerse`.
+/// Mem-parsing dan **memvalidasi** respons terjemahan Quran.com (03 §6.2). Respons ditolak seluruhnya bila:
+/// - bukan JSON yang valid;
+/// - jumlah `translations` ≠ jumlah ayat yang diharapkan;
+/// - `verse_key` hilang/tidak valid atau urutannya ≠ urutan `expected` (dari `quran.db`);
+/// - `resource_id` ≠ `expected_resource_id`;
+/// - ada teks kosong setelah normalisasi.
 pub fn parse_quran_com_payload(
     edition_id: &str,
+    expected_resource_id: u32,
+    expected: &[(u32, u32)],
     json_str: &str,
 ) -> Result<Vec<TranslationVerse>, String> {
-    let parsed: QuranComTranslationResponse = serde_json::from_str(json_str)
-        .map_err(|e| format!("Gagal parsing JSON Quran.com: {}", e))?;
+    let parsed: QuranComTranslationResponse =
+        serde_json::from_str(json_str).map_err(|e| format!("Gagal parsing JSON Quran.com: {e}"))?;
+    if parsed.translations.len() != expected.len() {
+        return Err(format!(
+            "Jumlah terjemahan {} tidak sama dengan yang diharapkan {}",
+            parsed.translations.len(),
+            expected.len()
+        ));
+    }
 
-    let mut verses = Vec::with_capacity(parsed.translations.len());
-
-    for item in parsed.translations {
-        let (surah_id, ayah_number) = if let Some(key) = &item.verse_key {
-            let parts: Vec<&str> = key.split(':').collect();
-            if parts.len() == 2 {
-                (
-                    parts[0].parse::<u32>().unwrap_or(1),
-                    parts[1].parse::<u32>().unwrap_or(1),
-                )
-            } else {
-                (1, 1)
-            }
-        } else {
-            (1, 1)
-        };
+    let mut verses = Vec::with_capacity(expected.len());
+    for (idx, (item, &(want_s, want_a))) in
+        parsed.translations.into_iter().zip(expected).enumerate()
+    {
+        if item.resource_id != expected_resource_id {
+            return Err(format!(
+                "Entri {idx}: resource_id {} bukan {expected_resource_id}",
+                item.resource_id
+            ));
+        }
+        let key = item
+            .verse_key
+            .as_deref()
+            .ok_or_else(|| format!("Entri {idx}: verse_key hilang"))?;
+        let (s, a) = key
+            .split_once(':')
+            .and_then(|(s, a)| Some((s.parse::<u32>().ok()?, a.parse::<u32>().ok()?)))
+            .ok_or_else(|| format!("Entri {idx}: verse_key '{key}' tidak valid"))?;
+        if (s, a) != (want_s, want_a) {
+            return Err(format!(
+                "Entri {idx}: urutan salah, dapat {s}:{a}, diharapkan {want_s}:{want_a}"
+            ));
+        }
 
         let (clean_text, footnotes) = extract_clean_translation_and_footnotes(&item.text);
-        let footnotes_json = serde_json::to_string(&footnotes).ok();
-
+        if clean_text.is_empty() {
+            return Err(format!(
+                "Entri {idx} ({key}): teks kosong setelah normalisasi"
+            ));
+        }
+        let footnotes_json = if footnotes.is_empty() {
+            None
+        } else {
+            Some(serde_json::to_string(&footnotes).map_err(|e| e.to_string())?)
+        };
         verses.push(TranslationVerse {
             edition_id: edition_id.to_string(),
-            surah_id,
-            ayah_number,
+            surah_id: s,
+            ayah_number: a,
             text: item.text,
             clean_text,
             footnotes_json,
         });
     }
-
     Ok(verses)
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 
+    fn payload(items: &[(&str, u32, &str)]) -> String {
+        let v: Vec<serde_json::Value> = items
+            .iter()
+            .map(|(k, r, t)| serde_json::json!({"verse_key": k, "resource_id": r, "text": t}))
+            .collect();
+        serde_json::json!({ "translations": v }).to_string()
+    }
+
+    const EXPECTED: [(u32, u32); 2] = [(1, 1), (1, 2)];
+
     #[test]
-    fn test_extract_clean_text_and_footnotes() {
+    fn footnote_marker_and_its_number_are_removed_from_clean_text() {
         let raw = "In the name of Allah, the Entirely Merciful,<sup foot_note=1>1</sup> the Especially Merciful.";
         let (clean, notes) = extract_clean_translation_and_footnotes(raw);
-
         assert_eq!(
             clean,
-            "In the name of Allah, the Entirely Merciful,1 the Especially Merciful."
+            "In the name of Allah, the Entirely Merciful, the Especially Merciful."
         );
         assert_eq!(notes.len(), 1);
         assert_eq!(notes[0].id, 1);
+        assert!(
+            notes[0].text.is_empty(),
+            "isi catatan kaki tidak boleh dikarang"
+        );
     }
 
     #[test]
-    fn test_parse_quran_com_json_response() {
-        let payload = r#"{
-            "translations": [
-                {
-                    "resource_id": 20,
-                    "text": "In the name of Allah, the Entirely Merciful, the Especially Merciful.",
-                    "verse_key": "1:1"
-                },
-                {
-                    "resource_id": 20,
-                    "text": "[All] praise is [due] to Allah, Lord of the worlds -<sup foot_note=2>2</sup>",
-                    "verse_key": "1:2"
-                }
-            ]
-        }"#;
+    fn other_html_tags_are_stripped_but_text_kept() {
+        let (clean, notes) = extract_clean_translation_and_footnotes("A <i>kind</i> word");
+        assert_eq!(clean, "A kind word");
+        assert!(notes.is_empty());
+    }
 
-        let verses = parse_quran_com_payload("en.saheeh", payload)
-            .expect("Parsing payload Quran.com harus berhasil");
-        assert_eq!(verses.len(), 2);
-        assert_eq!(verses[0].surah_id, 1);
-        assert_eq!(verses[0].ayah_number, 1);
-        assert_eq!(verses[1].ayah_number, 2);
-        assert!(verses[1]
-            .footnotes_json
-            .as_ref()
-            .expect("Footnote JSON harus ada")
-            .contains("\"id\":2"));
+    #[test]
+    fn valid_payload_is_parsed_in_order_with_footnote_ids() {
+        let p = payload(&[
+            (
+                "1:1",
+                20,
+                "In the name of Allah, the Entirely Merciful, the Especially Merciful.",
+            ),
+            (
+                "1:2",
+                20,
+                "[All] praise is [due] to Allah, Lord of the worlds -<sup foot_note=2>2</sup>",
+            ),
+        ]);
+        let v = parse_quran_com_payload("en.saheeh", 20, &EXPECTED, &p).unwrap();
+        assert_eq!(
+            (v[0].surah_id, v[0].ayah_number, v[1].ayah_number),
+            (1, 1, 2)
+        );
+        assert!(v[0].footnotes_json.is_none());
+        assert!(v[1].footnotes_json.as_ref().unwrap().contains("\"id\":2"));
+        assert!(
+            !v[1].clean_text.contains('2'),
+            "angka catatan kaki bocor ke teks: {}",
+            v[1].clean_text
+        );
+    }
+
+    #[test]
+    fn invalid_responses_are_rejected_entirely() {
+        let ok = ("1:1", 20, "Text one.");
+        let ok2 = ("1:2", 20, "Text two.");
+        let cases: Vec<(String, &str)> = vec![
+            ("bukan json".into(), "parsing"),
+            (payload(&[ok]), "Jumlah"),
+            (payload(&[ok2, ok]), "urutan salah"),
+            (payload(&[ok, ("1:2", 21, "Text two.")]), "resource_id"),
+            (payload(&[ok, ("1:2", 20, "<sup foot_note=1>1</sup>")]), "kosong"),
+            (payload(&[ok, ("1:2", 20, "   ")]), "kosong"),
+            (payload(&[ok, ("bukan-kunci", 20, "Text two.")]), "tidak valid"),
+            (r#"{"translations":[{"resource_id":20,"text":"a"},{"resource_id":20,"text":"b","verse_key":"1:2"}]}"#.into(), "hilang"),
+        ];
+        for (body, needle) in cases {
+            let err = parse_quran_com_payload("en.saheeh", 20, &EXPECTED, &body).unwrap_err();
+            assert!(
+                err.to_lowercase().contains(&needle.to_lowercase()),
+                "{needle}: {err}"
+            );
+        }
     }
 }

@@ -1,0 +1,177 @@
+{
+  "$schema": "https://schema.quranrender.app/template/v1.json",
+  "id": "tadabbur-wbw",
+  "version": "1.0.0",
+  "name": "Tadabbur Kosakata",
+  "description": "Ayat di atas, terjemahan di tengah, dan kartu kata aktif di bawah yang menyala bersama sorotan ayat.",
+  "author": "QuranRender Team",
+  "license": "GPL-3.0-or-later",
+  "categories": [
+    "education",
+    "vocabulary"
+  ],
+  "supported_ratios": [
+    "9:16",
+    "1:1"
+  ],
+  "default_ratio": "9:16",
+  "safe_area": {
+    "9:16": {
+      "top": 0.08,
+      "bottom": 0.14,
+      "left": 0.1,
+      "right": 0.1
+    },
+    "1:1": {
+      "top": 0.06,
+      "bottom": 0.06,
+      "left": 0.06,
+      "right": 0.06
+    }
+  },
+  "layers": [
+    {
+      "id": "bg",
+      "kind": "background",
+      "visible": true,
+      "properties": {
+        "source_type": "media_or_color",
+        "default_color": "#111827",
+        "dimmer_opacity": 0.35,
+        "dimmer_type": "solid",
+        "dimmer_color": "#000000",
+        "blur_radius": 0.0
+      }
+    },
+    {
+      "id": "surah_name",
+      "kind": "surah_title",
+      "visible": false,
+      "properties": {
+        "font_family": "Amiri",
+        "font_style": "Regular",
+        "font_size_cw": 0.065,
+        "text_color": "#F4F5F7",
+        "position_anchor": "top_center",
+        "offset_y_ch": 0.155
+      }
+    },
+    {
+      "id": "ayah",
+      "kind": "ayah_text",
+      "visible": true,
+      "properties": {
+        "font_family": "LPMQ",
+        "font_style": "Regular",
+        "font_size_cw": 0.085,
+        "line_height_multiplier": 1.95,
+        "text_color": "#F4F5F7",
+        "text_shadow": {
+          "color": "rgba(0, 0, 0, 0.45)",
+          "blur": 14.0,
+          "offset_x": 0.0,
+          "offset_y": 1.5
+        },
+        "highlight_style": "box",
+        "highlight_active_color": "#FFFFFF",
+        "highlight_inactive_opacity": 0.7,
+        "position_anchor": "center",
+        "max_width_cw": 0.8,
+        "box": {
+          "x": 0.1,
+          "y": 0.08,
+          "w": 0.8,
+          "h": 0.38
+        }
+      }
+    },
+    {
+      "id": "translation",
+      "kind": "translation_text",
+      "visible": true,
+      "properties": {
+        "font_family": "Inter",
+        "font_style": "Regular",
+        "font_size_cw": 0.04,
+        "line_height_multiplier": 1.45,
+        "text_color": "#E5E7EB",
+        "opacity": 0.88,
+        "position_relative_to": "ayah",
+        "margin_top_ch": 0.025,
+        "max_width_cw": 0.78,
+        "box": {
+          "x": 0.1,
+          "y": 0.47,
+          "w": 0.8,
+          "h": 0.16
+        }
+      }
+    },
+    {
+      "id": "ref_badge",
+      "kind": "reference_badge",
+      "visible": true,
+      "properties": {
+        "font_family": "Inter",
+        "font_style": "Medium",
+        "font_size_cw": 0.032,
+        "text_color": "#E5E7EB",
+        "opacity": 0.65,
+        "position_relative_to": "translation",
+        "margin_top_ch": 0.018
+      }
+    },
+    {
+      "id": "qari_pill",
+      "kind": "reciter_pill",
+      "visible": false,
+      "properties": {
+        "font_family": "Inter",
+        "font_size_cw": 0.034,
+        "text_color": "#FFFFFF",
+        "background_color": "rgba(8, 9, 12, 0.55)",
+        "border_radius_cw": 0.02,
+        "padding_cw": [
+          0.008,
+          0.025
+        ],
+        "position_anchor": "bottom_center",
+        "offset_y_ch": 0.26
+      }
+    },
+    {
+      "id": "word_card",
+      "kind": "word_card",
+      "visible": true,
+      "properties": {
+        "x": 0.14,
+        "y": 0.68,
+        "w": 0.72,
+        "h": 0.2,
+        "fill": "rgba(255, 255, 255, 0.08)",
+        "stroke": "rgba(255, 255, 255, 0.22)",
+        "stroke_width_cw": 0.002,
+        "radius_cw": 0.03,
+        "font_family": "LPMQ",
+        "font_size_cw": 0.045,
+        "text_color": "#FFFFFF"
+      }
+    }
+  ],
+  "animations": {
+    "transition_in": {
+      "type": "fade",
+      "duration_ticks": 15360,
+      "easing": "ease_out"
+    },
+    "transition_out": {
+      "type": "fade",
+      "duration_ticks": 9600,
+      "easing": "ease_in"
+    },
+    "karaoke": {
+      "transition_duration_ticks": 3840,
+      "easing": "ease_out"
+    }
+  }
+}

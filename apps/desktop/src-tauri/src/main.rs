@@ -1,10 +1,12 @@
+mod render_api;
+
 use std::fs;
 use std::path::PathBuf;
 use std::sync::Mutex;
 
 use qr_core::{load_project, save_project_atomic, Project};
 use qr_policy::{validate_export_readiness, ExportValidationReport};
-use qr_render::{export_subtitles, SubtitleCue, SubtitleExportOptions};
+use qr_render::{export_subtitles, QuranDbVerses, SubtitleExportOptions};
 
 use qr_store::{duplicate_project_folder, AppDb, ProjectIndexEntry};
 use serde::Serialize;
@@ -24,6 +26,29 @@ pub struct AppInfo {
 pub struct AppState {
     pub db: Mutex<AppDb>,
     pub projects_dir: PathBuf,
+    /// Dataset terverifikasi, dibuka malas saat pertama dipakai.
+    pub dataset: Mutex<Option<qr_quran::QuranDatabase>>,
+}
+
+const DATASET_PUBKEY: &str = include_str!("../../../../assets/keys/dataset.pub");
+
+impl AppState {
+    fn with_dataset<T>(
+        &self,
+        f: impl FnOnce(&qr_quran::QuranDatabase) -> Result<T, String>,
+    ) -> Result<T, String> {
+        let mut guard = self.dataset.lock().map_err(|e| e.to_string())?;
+        if guard.is_none() {
+            *guard = Some(render_api::open_dataset(
+                &render_api::dataset_dir(),
+                DATASET_PUBKEY,
+            )?);
+        }
+        match guard.as_ref() {
+            Some(db) => f(db),
+            None => Err("Dataset tidak tersedia".to_string()),
+        }
+    }
 }
 
 impl std::fmt::Debug for AppState {
@@ -66,8 +91,20 @@ fn get_app_info() -> AppInfo {
     AppInfo {
         name: "QuranRender".to_string(),
         version: env!("CARGO_PKG_VERSION").to_string(),
-        status: "Fase 1 — Alpha (vertical slice)".to_string(),
+        status: "Pra-alpha — Fase 1 belum selesai".to_string(),
     }
+}
+
+/// Folder proyek baru yang tidak menimpa proyek lain: `Nama.qrproj`, `Nama-2.qrproj`, ...
+fn unique_project_dir(projects_dir: &std::path::Path, name: &str) -> PathBuf {
+    let base = name.replace(['/', '\\', ':'], "-");
+    let mut candidate = projects_dir.join(format!("{base}.qrproj"));
+    let mut n = 2;
+    while candidate.exists() {
+        candidate = projects_dir.join(format!("{base}-{n}.qrproj"));
+        n += 1;
+    }
+    candidate
 }
 
 #[tauri::command]
@@ -81,11 +118,14 @@ fn project_create(
     let mut proj = Project::new(&name);
     proj.reciter = reciter.clone();
     if let Some(asp) = &aspect {
-        proj.canvas.aspect_ratio = asp.clone();
+        if !proj.canvas.set_aspect(asp) {
+            return Err(format!(
+                "Rasio tidak dikenal: {asp} (didukung: 9:16, 16:9, 1:1, 4:5)"
+            ));
+        }
     }
 
-    let folder_name = format!("{}.qrproj", name.replace(['/', '\\', ':'], "-"));
-    let proj_dir = state.projects_dir.join(folder_name);
+    let proj_dir = unique_project_dir(&state.projects_dir, &name);
 
     save_project_atomic(&proj_dir, &mut proj).map_err(|e| e.to_string())?;
 
@@ -230,21 +270,43 @@ fn project_validate(project: Project) -> ExportValidationReport {
 
 #[tauri::command]
 #[specta::specta]
-fn subtitle_export(project: Project, options: SubtitleExportOptions) -> String {
-    let cues: Vec<SubtitleCue> = project
-        .segments
-        .iter()
-        .map(|seg| SubtitleCue {
-            start_tick: seg.start_tick,
-            end_tick: seg.end_tick,
-            ayah_text: None,
-            translation_text: None,
-            surah_id: seg.surah_id,
-            ayah_number: seg.ayah_number,
-        })
-        .collect();
+fn subtitle_export(
+    project: Project,
+    options: SubtitleExportOptions,
+    state: tauri::State<'_, AppState>,
+) -> Result<String, String> {
+    state.with_dataset(|db| {
+        let verses = QuranDbVerses {
+            db,
+            edition_key: Some(render_api::DEFAULT_TRANSLATION_EDITION),
+        };
+        let cues = render_api::subtitle_cues(&project, &verses, options.track)?;
+        Ok(export_subtitles(&project, &cues, &options, &project.name))
+    })
+}
 
-    export_subtitles(&project, &cues, &options, &project.name)
+/// Satu frame preview dari renderer Rust yang sama dengan ekspor (prinsip #3: tanpa preview DOM).
+#[tauri::command]
+#[specta::specta]
+fn preview_frame(
+    project: Project,
+    tick: f64,
+    max_width: u32,
+    state: tauri::State<'_, AppState>,
+) -> Result<render_api::PreviewFrame, String> {
+    state.with_dataset(|db| {
+        let verses = QuranDbVerses {
+            db,
+            edition_key: Some(render_api::DEFAULT_TRANSLATION_EDITION),
+        };
+        render_api::render_preview(
+            &project,
+            &render_api::resources_root(),
+            &verses,
+            tick.max(0.0) as i64,
+            max_width,
+        )
+    })
 }
 
 #[tauri::command]
@@ -274,7 +336,8 @@ fn create_specta_builder() -> Builder<tauri::Wry> {
         project_duplicate,
         project_delete,
         project_validate,
-        subtitle_export
+        subtitle_export,
+        preview_frame
     ])
 }
 
@@ -295,6 +358,7 @@ fn main() {
         .manage(AppState {
             db: Mutex::new(db),
             projects_dir,
+            dataset: Mutex::new(None),
         })
         .invoke_handler(builder.invoke_handler())
         .run(tauri::generate_context!())
@@ -307,6 +371,18 @@ mod tests {
     use super::*;
 
     #[test]
+    fn unique_project_dir_never_reuses_an_existing_folder() {
+        let tmp = std::env::temp_dir().join(format!("qr_uniq_{}", Ulid::generate()));
+        fs::create_dir_all(&tmp).unwrap();
+        let a = unique_project_dir(&tmp, "Kajian/Subuh");
+        assert_eq!(a.file_name().unwrap(), "Kajian-Subuh.qrproj");
+        fs::create_dir_all(&a).unwrap();
+        let b = unique_project_dir(&tmp, "Kajian/Subuh");
+        assert_eq!(b.file_name().unwrap(), "Kajian-Subuh-2.qrproj");
+        let _ = fs::remove_dir_all(&tmp);
+    }
+
+    #[test]
     fn test_greet() {
         assert_eq!(greet("Dunia".to_string()), "Salam, Dunia!");
     }
@@ -315,7 +391,7 @@ mod tests {
     fn test_get_app_info() {
         let info = get_app_info();
         assert_eq!(info.name, "QuranRender");
-        assert_eq!(info.status, "Fase 1 — Alpha (vertical slice)");
+        assert_eq!(info.status, "Pra-alpha — Fase 1 belum selesai");
     }
 
     #[test]
@@ -335,6 +411,7 @@ mod tests {
         let state = AppState {
             db: Mutex::new(db),
             projects_dir: temp_dir.clone(),
+            dataset: Mutex::new(None),
         };
 
         // Tauri state wrapper test

@@ -110,6 +110,67 @@ pub fn validate_cnt1_word_boundaries(project: &Project, report: &mut ExportValid
     }
 }
 
+/// CNT-1 untuk ayat yang dibagi per rentang kata: rentang harus valid (mulai ≥ 1, mulai ≤ akhir) dan
+/// tidak boleh tumpang tindih antar-segmen pada ayat yang sama. Pemotongan hanya di batas kata, karena
+/// rentang dinyatakan dalam indeks kata utuh.
+pub fn validate_cnt1_word_ranges(project: &Project, report: &mut ExportValidationReport) {
+    use std::collections::BTreeMap;
+    let mut by_ayah: BTreeMap<(u32, u32), Vec<&qr_core::project::AyahSegment>> = BTreeMap::new();
+    for seg in &project.segments {
+        if let Some((a, b)) = seg.word_range {
+            if a == 0 || a > b {
+                report.add(PolicyViolation {
+                    code: "CNT-1".into(),
+                    title: "Rentang kata segmen tidak valid".into(),
+                    description: format!(
+                        "Segmen '{}:{}' memiliki rentang kata {a}-{b}. Indeks kata dimulai dari 1 dan awal tidak boleh melebihi akhir.",
+                        seg.surah_id, seg.ayah_number
+                    ),
+                    severity: ViolationSeverity::Blocking,
+                    segment_id: Some(seg.id.clone()),
+                });
+                continue;
+            }
+        }
+        by_ayah
+            .entry((seg.surah_id, seg.ayah_number))
+            .or_default()
+            .push(seg);
+    }
+    for ((s, a), segs) in by_ayah {
+        let mut ranged: Vec<_> = segs
+            .iter()
+            .filter_map(|g| g.word_range.map(|r| (r, g)))
+            .collect();
+        ranged.sort_by_key(|((from, _), _)| *from);
+        for pair in ranged.windows(2) {
+            let ((_, prev_end), _) = pair[0];
+            let ((next_start, _), seg) = pair[1];
+            if next_start <= prev_end {
+                report.add(PolicyViolation {
+                    code: "CNT-1".into(),
+                    title: "Rentang kata antar-segmen tumpang tindih".into(),
+                    description: format!(
+                        "Ayat {s}:{a}: segmen lain sudah menampilkan kata sampai indeks {prev_end}, sedangkan segmen ini mulai dari {next_start}. Satu kata tidak boleh tampil di dua segmen."
+                    ),
+                    severity: ViolationSeverity::Blocking,
+                    segment_id: Some(seg.id.clone()),
+                });
+            }
+        }
+        // Segmen tanpa rentang bercampur dengan segmen berrentang pada ayat yang sama = ambigu.
+        if segs.len() > 1 && segs.iter().any(|g| g.word_range.is_none()) {
+            report.add(PolicyViolation {
+                code: "CNT-1".into(),
+                title: "Pembagian ayat ambigu".into(),
+                description: format!("Ayat {s}:{a} muncul di beberapa segmen, tetapi tidak semuanya memiliki rentang kata."),
+                severity: ViolationSeverity::Warning,
+                segment_id: None,
+            });
+        }
+    }
+}
+
 /// Validator CNT-2: Larangan perubahan teks Al-Qur'an.
 /// Nomor surah dan ayat harus valid (surah 1..=114, ayat >= 1).
 pub fn validate_cnt2_text_integrity(project: &Project, report: &mut ExportValidationReport) {
@@ -236,6 +297,7 @@ pub fn validate_export_readiness(project: &Project) -> ExportValidationReport {
 
     // 2. Validasi CNT-1 (Word boundary)
     validate_cnt1_word_boundaries(project, &mut report);
+    validate_cnt1_word_ranges(project, &mut report);
 
     // 3. Validasi CNT-2 (Integritas teks Al-Qur'an)
     validate_cnt2_text_integrity(project, &mut report);
@@ -270,6 +332,63 @@ pub fn validate_export_readiness(project: &Project) -> ExportValidationReport {
 
 #[cfg(test)]
 mod tests {
+
+    fn seg(id: &str, range: Option<(u32, u32)>) -> AyahSegment {
+        AyahSegment {
+            id: id.into(),
+            surah_id: 2,
+            ayah_number: 282,
+            start_tick: 0,
+            end_tick: 48_000,
+            word_timings: vec![],
+            confidence: 1.0,
+            manual_override: false,
+            word_range: range,
+        }
+    }
+
+    fn cnt1_blocking(segs: Vec<AyahSegment>) -> usize {
+        let mut p = Project::new("x");
+        p.segments = segs;
+        let r = validate_export_readiness(&p);
+        r.violations
+            .iter()
+            .filter(|v| v.code == "CNT-1" && v.severity == ViolationSeverity::Blocking)
+            .count()
+    }
+
+    #[test]
+    fn word_ranges_must_be_valid_and_not_overlap() {
+        assert_eq!(
+            cnt1_blocking(vec![seg("a", Some((1, 40))), seg("b", Some((41, 90)))]),
+            0
+        );
+        assert_eq!(
+            cnt1_blocking(vec![seg("a", Some((1, 40))), seg("b", Some((40, 90)))]),
+            1,
+            "kata 40 tampil dua kali"
+        );
+        assert_eq!(
+            cnt1_blocking(vec![seg("a", Some((0, 5)))]),
+            1,
+            "indeks dimulai dari 1"
+        );
+        assert_eq!(
+            cnt1_blocking(vec![seg("a", Some((9, 3)))]),
+            1,
+            "awal > akhir"
+        );
+        assert_eq!(cnt1_blocking(vec![seg("a", None)]), 0);
+    }
+
+    #[test]
+    fn mixed_whole_and_ranged_segments_of_one_ayah_warn() {
+        let mut p = Project::new("x");
+        p.segments = vec![seg("a", None), seg("b", Some((1, 5)))];
+        let r = validate_export_readiness(&p);
+        assert!(r.violations.iter().any(|v| v.title.contains("ambigu")));
+    }
+
     use super::*;
     use qr_core::project::{AssetKind, AssetRef, AyahSegment, Clip, Track, TrackKind, WordTiming};
 
@@ -291,6 +410,7 @@ mod tests {
             }],
             confidence: 0.98,
             manual_override: true,
+            word_range: None,
         });
 
         let report = validate_export_readiness(&project);
@@ -311,6 +431,7 @@ mod tests {
             word_timings: vec![],
             confidence: 0.98,
             manual_override: true,
+            word_range: None,
         });
 
         project.assets.insert(
@@ -345,6 +466,7 @@ mod tests {
             word_timings: vec![],
             confidence: 0.98,
             manual_override: true,
+            word_range: None,
         });
 
         let track = Track {

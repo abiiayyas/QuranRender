@@ -4,6 +4,7 @@
 pub mod pack;
 pub mod project;
 pub mod session;
+pub mod style;
 
 pub use pack::{export_qrpack, import_qrpack, QrPackManifest};
 pub use project::{

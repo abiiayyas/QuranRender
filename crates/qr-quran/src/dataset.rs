@@ -548,11 +548,10 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "butuh build/dataset/quran.db bertanda tangan (qr-dataset build); jalankan: cargo test -- --ignored"]
     fn test_open_with_verification_success() {
         let (db_path, manifest_path, sig_path, pubkey) = get_paths();
-        if !db_path.exists() {
-            return;
-        }
+        assert!(db_path.exists(), "build/dataset/quran.db tidak ada");
 
         let db =
             QuranDatabase::open_with_verification(&db_path, &manifest_path, &sig_path, &pubkey)
@@ -564,11 +563,10 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "butuh build/dataset/quran.db bertanda tangan (qr-dataset build); jalankan: cargo test -- --ignored"]
     fn test_corrupted_hash_triggers_dataset_integrity_error() {
         let (db_path, manifest_path, sig_path, pubkey) = get_paths();
-        if !db_path.exists() {
-            return;
-        }
+        assert!(db_path.exists(), "build/dataset/quran.db tidak ada");
 
         // Buat file quran.db tiruan yang isinya diubah sedikit (corrupted)
         let temp_dir = std::env::temp_dir().join("qr_test_integrity");
@@ -596,11 +594,10 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "butuh build/dataset/quran.db bertanda tangan (qr-dataset build); jalankan: cargo test -- --ignored"]
     fn test_query_surah_juz_ayah_and_words() {
         let (db_path, _, _, _) = get_paths();
-        if !db_path.exists() {
-            return;
-        }
+        assert!(db_path.exists(), "build/dataset/quran.db tidak ada");
 
         let db = QuranDatabase::open_unverified_for_test(&db_path).unwrap();
 
@@ -640,11 +637,10 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "butuh build/dataset/quran.db bertanda tangan (qr-dataset build); jalankan: cargo test -- --ignored"]
     fn test_search_fts5() {
         let (db_path, _, _, _) = get_paths();
-        if !db_path.exists() {
-            return;
-        }
+        assert!(db_path.exists(), "build/dataset/quran.db tidak ada");
 
         let db = QuranDatabase::open_unverified_for_test(&db_path).unwrap();
 

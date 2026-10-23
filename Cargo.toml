@@ -61,3 +61,7 @@ ulid = { version = "3.0", features = ["serde"] }
 minisign-verify = "0.3"
 cpal = "0.18"
 tiny-skia = "0.12"
+harfrust = "0.15"
+read-fonts = "0.46"
+sha2 = "0.10"
+zip = { version = "9", default-features = false, features = ["deflate"] }

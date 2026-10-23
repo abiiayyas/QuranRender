@@ -13,7 +13,9 @@ export const commands = {
 	projectDuplicate: (id: string, newName: string) => typedError<Project_Serialize, string>(__TAURI_INVOKE("project_duplicate", { id, newName })),
 	projectDelete: (id: string) => typedError<boolean, string>(__TAURI_INVOKE("project_delete", { id })),
 	projectValidate: (project: Project_Deserialize) => __TAURI_INVOKE<ExportValidationReport_Serialize>("project_validate", { project }),
-	subtitleExport: (project: Project_Deserialize, options: SubtitleExportOptions) => __TAURI_INVOKE<string>("subtitle_export", { project, options }),
+	subtitleExport: (project: Project_Deserialize, options: SubtitleExportOptions) => typedError<string, string>(__TAURI_INVOKE("subtitle_export", { project, options })),
+	/**  Satu frame preview dari renderer Rust yang sama dengan ekspor (prinsip #3: tanpa preview DOM). */
+	previewFrame: (project: Project_Deserialize, tick: number | null, maxWidth: number) => typedError<PreviewFrame, string>(__TAURI_INVOKE("preview_frame", { project, tick, maxWidth })),
 };
 
 /* Types */
@@ -45,6 +47,11 @@ export type AyahSegment_Deserialize = {
 	word_timings?: WordTiming[],
 	confidence: number | null,
 	manual_override: boolean,
+	/**
+	 *  Rentang kata (1-based, inklusif) dari ayat ini yang ditampilkan segmen. `None` = seluruh ayat.
+	 *  Ayat panjang (mis. 2:282) dibagi ke beberapa segmen; pembagian hanya di batas kata (CNT-1).
+	 */
+	word_range?: number[] | null,
 };
 
 export type AyahSegment_Serialize = {
@@ -56,6 +63,11 @@ export type AyahSegment_Serialize = {
 	word_timings: WordTiming[],
 	confidence: number | null,
 	manual_override: boolean,
+	/**
+	 *  Rentang kata (1-based, inklusif) dari ayat ini yang ditampilkan segmen. `None` = seluruh ayat.
+	 *  Ayat panjang (mis. 2:282) dibagi ke beberapa segmen; pembagian hanya di batas kata (CNT-1).
+	 */
+	word_range?: number[],
 };
 
 export type CanvasConfig = {
@@ -126,6 +138,17 @@ export type PolicyViolation_Serialize = {
 	description: string,
 	severity: ViolationSeverity,
 	segment_id: string | null,
+};
+
+export type PreviewFrame = {
+	/**  `data:image/png;base64,...` */
+	data_url: string,
+	width: number,
+	height: number,
+	/**  Teks ayat melebihi area aman pada ukuran minimum — segmen harus dibagi per rentang kata. */
+	text_overflow: boolean,
+	/**  SHA-256 piksel (untuk perbandingan preview↔ekspor). */
+	digest: string,
 };
 
 export type Project = Project_Serialize | Project_Deserialize;
