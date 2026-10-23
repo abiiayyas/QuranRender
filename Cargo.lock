@@ -2650,7 +2650,9 @@ dependencies = [
 name = "qr-align"
 version = "0.1.0"
 dependencies = [
+ "qr-core",
  "qr-quran",
+ "serde",
  "thiserror 2.0.21",
  "tracing",
 ]

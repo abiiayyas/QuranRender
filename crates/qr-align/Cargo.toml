@@ -14,3 +14,5 @@ workspace = true
 qr-quran.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
+qr-core.workspace = true
+serde.workspace = true
