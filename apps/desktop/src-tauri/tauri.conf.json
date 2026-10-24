@@ -41,6 +41,9 @@
       "../../../build/dataset/quran.db": "build/dataset/quran.db",
       "../../../build/dataset/dataset-manifest.json": "build/dataset/dataset-manifest.json",
       "../../../build/dataset/dataset-manifest.json.minisig": "build/dataset/dataset-manifest.json.minisig"
+    },
+    "macOS": {
+      "signingIdentity": "-"
     }
   }
 }

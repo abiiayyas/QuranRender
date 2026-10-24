@@ -68,7 +68,7 @@ fn media_error(path: &Path, e: MediaError) -> String {
     }
 }
 
-fn sha256_file(path: &Path) -> Result<String, String> {
+pub(crate) fn sha256_file(path: &Path) -> Result<String, String> {
     let mut f =
         std::fs::File::open(path).map_err(|e| format!("Gagal membuka {}: {e}", path.display()))?;
     let mut hasher = Sha256::new();
@@ -324,13 +324,92 @@ pub async fn align_auto(
 ) -> Result<AlignOutcomeDto, String> {
     let (_, project) = load_registered(&state.db, &project_id)?;
     let texts = state.with_dataset(|db| {
-        let verses = qr_render::QuranDbVerses {
-            db,
-            edition_key: None,
-        };
+        let verses = qr_render::QuranDbVerses { db };
         load_verse_texts(&verses, surah_id, from_ayah, to_ayah)
     })?;
     align_auto_impl(&project, &texts, &MediaTools::discover())
+}
+
+/// Kata-kata satu ayat dalam urutan tampil (indeks 1-based = `WordTiming.word_idx` = batas `word_range`).
+#[derive(Debug, Clone, Serialize, specta::Type)]
+pub struct VerseWordsDto {
+    pub surah: u32,
+    pub ayah: u32,
+    pub words: Vec<String>,
+}
+
+/// Kata-kata ayat `surah:from_ayah..=to_ayah` dengan tokenisasi yang sama dengan renderer, untuk pemilih kata
+/// sinkron manual. Rentang divalidasi seperti [`load_verse_texts`].
+pub fn verse_words_impl(
+    verses: &dyn VerseSource,
+    surah: u32,
+    from_ayah: u32,
+    to_ayah: u32,
+) -> Result<Vec<VerseWordsDto>, String> {
+    load_verse_texts(verses, surah, from_ayah, to_ayah)?
+        .into_iter()
+        .map(|(s, a, text)| {
+            let words = qr_render::words_of_ayah(&text).map_err(|e| e.to_string())?;
+            Ok(VerseWordsDto {
+                surah: s,
+                ayah: a,
+                words: words.into_iter().map(|w| w.text).collect(),
+            })
+        })
+        .collect()
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn verse_words(
+    surah: u32,
+    from_ayah: u32,
+    to_ayah: u32,
+    state: tauri::State<'_, crate::AppState>,
+) -> Result<Vec<VerseWordsDto>, String> {
+    state.with_dataset(|db| {
+        let verses = qr_render::QuranDbVerses { db };
+        verse_words_impl(&verses, surah, from_ayah, to_ayah)
+    })
+}
+
+/// Satu surah untuk dropdown rentang ayat di UI.
+#[derive(Debug, Clone, Serialize, specta::Type, PartialEq, Eq)]
+pub struct SurahInfoDto {
+    pub id: u32,
+    pub name_ar: String,
+    pub name_latin: String,
+    pub name_en: String,
+    pub meaning_id: String,
+    pub meaning_en: String,
+    pub ayah_count: u32,
+}
+
+/// Daftar 114 surah dari dataset terverifikasi, urut nomor surah.
+pub fn surah_list_impl(db: &qr_quran::QuranDatabase) -> Result<Vec<SurahInfoDto>, String> {
+    let surahs = db
+        .get_surah_list()
+        .map_err(|e| format!("Daftar surah tidak dapat dibaca dari dataset: {e}"))?;
+    Ok(surahs
+        .into_iter()
+        .map(|s| SurahInfoDto {
+            id: s.id,
+            name_ar: s.name_ar,
+            name_latin: s.name_latin,
+            name_en: s.name_en,
+            meaning_id: s.meaning_id,
+            meaning_en: s.meaning_en,
+            ayah_count: s.ayah_count,
+        })
+        .collect())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn surah_list(
+    state: tauri::State<'_, crate::AppState>,
+) -> Result<Vec<SurahInfoDto>, String> {
+    state.with_dataset(surah_list_impl)
 }
 
 #[cfg(test)]
@@ -347,7 +426,7 @@ mod tests {
     fn verses() -> HashMap<(u32, u32), VerseContent> {
         let mk = |t: &str| VerseContent {
             ayah_text: t.into(),
-            translation: None,
+            translations: Default::default(),
             surah_name_ar: "الفاتحة".into(),
             surah_name_latin: "Al-Fatihah".into(),
         };
@@ -657,5 +736,25 @@ mod tests {
         assert!(load_verse_texts(&verses(), 1, 1, 9)
             .unwrap_err()
             .contains("1:4"));
+    }
+
+    #[test]
+    #[ignore = "butuh build/dataset bertanda tangan; jalankan: cargo test -p quranrender -- --ignored"]
+    fn surah_list_comes_from_the_verified_dataset() {
+        let pubkey = include_str!("../../../../assets/keys/dataset.pub");
+        let db = crate::render_api::open_dataset(&crate::render_api::dataset_dir(), pubkey)
+            .expect("verifikasi dataset harus lolos");
+        let list = surah_list_impl(&db).unwrap();
+        assert_eq!(list.len(), 114);
+        assert_eq!(list.iter().map(|s| s.ayah_count).sum::<u32>(), 6236);
+        assert!(list.windows(2).all(|w| w[0].id + 1 == w[1].id));
+        let fatihah = &list[0];
+        assert_eq!(
+            (fatihah.id, fatihah.name_latin.as_str(), fatihah.ayah_count),
+            (1, "Al-Fatihah", 7)
+        );
+        assert_eq!(fatihah.name_ar, "الفاتحة");
+        assert_eq!(list[1].ayah_count, 286);
+        assert!(!fatihah.meaning_id.is_empty() && !fatihah.meaning_en.is_empty());
     }
 }

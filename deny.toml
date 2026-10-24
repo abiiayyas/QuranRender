@@ -28,6 +28,8 @@ allow = [
   "Zlib",
   "OpenSSL",
   "MPL-2.0",
+  # Data sertifikat akar Mozilla di webpki-roots (TLS ureq/rustls); lisensi data permisif.
+  "CDLA-Permissive-2.0",
 ]
 
 [[licenses.clarify]]

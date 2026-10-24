@@ -8,8 +8,9 @@ import {
 import { useI18n } from "./i18n";
 import { errorText, unwrap } from "./tauri";
 import { ErrorAlert, Icon, Sheet } from "./ui";
+import { openFile, PACK_EXTENSION, PickButton, safeFileName, saveFile } from "./pick";
 
-const PACK_EXT = ".qrpack";
+const PACK_EXT = `.${PACK_EXTENSION}`;
 const NONE = "—";
 const BYTE_UNITS: ReadonlyArray<string> = ["B", "KB", "MB", "GB", "TB"];
 
@@ -115,21 +116,32 @@ export function ExportPackSheet({
             <label className="qr-label" htmlFor={`${uid}-dest`}>
               {t("app.pack.export.destLabel")}
             </label>
-            <span className={showProblem ? "qr-field is-invalid" : "qr-field"}>
-              <input
-                id={`${uid}-dest`}
-                value={dest}
-                data-autofocus
-                autoComplete="off"
-                spellCheck={false}
-                placeholder={t("app.pack.export.destPlaceholder")}
-                aria-invalid={showProblem}
-                aria-describedby={showProblem ? `${uid}-err` : `${uid}-help`}
+            <div className="path-pick">
+              <span className={showProblem ? "qr-field is-invalid" : "qr-field"}>
+                <input
+                  id={`${uid}-dest`}
+                  value={dest}
+                  data-autofocus
+                  autoComplete="off"
+                  spellCheck={false}
+                  placeholder={t("app.pack.export.destPlaceholder")}
+                  aria-invalid={showProblem}
+                  aria-describedby={showProblem ? `${uid}-err` : `${uid}-help`}
+                  disabled={busy}
+                  onChange={(e) => setDest(e.target.value)}
+                  onBlur={() => setTouched(true)}
+                />
+              </span>
+              <PickButton
                 disabled={busy}
-                onChange={(e) => setDest(e.target.value)}
-                onBlur={() => setTouched(true)}
+                pick={() => saveFile(t("app.pack.pickFilter"), PACK_EXTENSION, safeFileName(entry.name, PACK_EXTENSION))}
+                onPicked={(p) => {
+                  setDest(p);
+                  setTouched(true);
+                }}
+                onError={setError}
               />
-            </span>
+            </div>
             {showProblem ? (
               <span className="qr-error" id={`${uid}-err`}>
                 <Icon name="circle-alert" size="sm" />
@@ -148,15 +160,17 @@ export function ExportPackSheet({
 }
 
 export function ImportPackSheet({
+  initialPath = "",
   onClose,
   onImported,
 }: {
+  initialPath?: string;
   onClose: () => void;
   onImported: (project: Project) => void;
 }): React.ReactElement {
   const { t } = useI18n();
   const uid = useId();
-  const [src, setSrc] = useState("");
+  const [src, setSrc] = useState(initialPath);
   const [touched, setTouched] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -226,21 +240,32 @@ export function ImportPackSheet({
             <label className="qr-label" htmlFor={`${uid}-src`}>
               {t("app.pack.import.srcLabel")}
             </label>
-            <span className={showProblem ? "qr-field is-invalid" : "qr-field"}>
-              <input
-                id={`${uid}-src`}
-                value={src}
-                data-autofocus
-                autoComplete="off"
-                spellCheck={false}
-                placeholder={t("app.pack.import.srcPlaceholder")}
-                aria-invalid={showProblem}
-                aria-describedby={showProblem ? `${uid}-err` : `${uid}-help`}
+            <div className="path-pick">
+              <span className={showProblem ? "qr-field is-invalid" : "qr-field"}>
+                <input
+                  id={`${uid}-src`}
+                  value={src}
+                  data-autofocus
+                  autoComplete="off"
+                  spellCheck={false}
+                  placeholder={t("app.pack.import.srcPlaceholder")}
+                  aria-invalid={showProblem}
+                  aria-describedby={showProblem ? `${uid}-err` : `${uid}-help`}
+                  disabled={busy}
+                  onChange={(e) => setSrc(e.target.value)}
+                  onBlur={() => setTouched(true)}
+                />
+              </span>
+              <PickButton
                 disabled={busy}
-                onChange={(e) => setSrc(e.target.value)}
-                onBlur={() => setTouched(true)}
+                pick={() => openFile(t("app.pack.pickFilter"), [PACK_EXTENSION])}
+                onPicked={(p) => {
+                  setSrc(p);
+                  setTouched(true);
+                }}
+                onError={setError}
               />
-            </span>
+            </div>
             {showProblem ? (
               <span className="qr-error" id={`${uid}-err`}>
                 <Icon name="circle-alert" size="sm" />

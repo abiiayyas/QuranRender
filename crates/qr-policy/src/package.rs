@@ -119,6 +119,7 @@ mod tests {
             confidence: 0.99,
             manual_override: false,
             word_range: None,
+            ..Default::default()
         });
         proj.segments.push(AyahSegment {
             id: "s2".into(),
@@ -130,6 +131,7 @@ mod tests {
             confidence: 0.98,
             manual_override: false,
             word_range: None,
+            ..Default::default()
         });
 
         let upload = generate_upload_text(&proj, "Al-Fatihah", "1-2");

@@ -2,7 +2,9 @@ import React, { useId } from "react";
 import { useI18n } from "../i18n";
 import { Segmented } from "../ui";
 import { Summary } from "./parts";
+import { ProjectEditions } from "./ProjectEditions";
 import { RATIOS, TEMPLATES, templateById, type Project, type Ratio } from "./model";
+import type { EditionInfo } from "./translation";
 
 /** Panel kiri langkah Tampilan: pilih templat (rasio yang didukung ditampilkan per templat). */
 export function TemplatePanel({
@@ -49,15 +51,21 @@ export function TemplatePanel({
   );
 }
 
-/** Inspector langkah Tampilan: rasio (hanya yang didukung templat), ringkasan gaya. */
+/** Inspector langkah Tampilan: rasio (hanya yang didukung templat), edisi terjemahan, ringkasan gaya. */
 export function StyleInspector({
   project,
   ratioNotice,
   onRatio,
+  catalog,
+  catalogError,
+  onEditions,
 }: {
   project: Project;
   ratioNotice: string | null;
   onRatio: (ratio: Ratio) => void;
+  catalog: ReadonlyArray<EditionInfo> | null;
+  catalogError: string | null;
+  onEditions: (editions: string[]) => void;
 }): React.ReactElement {
   const { t } = useI18n();
   const labelId = useId();
@@ -94,6 +102,17 @@ export function StyleInspector({
         <div role="status" aria-live="polite">
           {ratioNotice && <span className="qr-help">{ratioNotice}</span>}
         </div>
+      </div>
+      <div className="qr-panel__head">
+        <span className="qr-panel__title">{t("studio.editions.title")}</span>
+      </div>
+      <div className="insp-pad">
+        <ProjectEditions
+          editions={project.translation_editions}
+          catalog={catalog}
+          catalogError={catalogError}
+          onChange={onEditions}
+        />
       </div>
       <div className="qr-panel__head">
         <span className="qr-panel__title">{t("studio.style.title")}</span>

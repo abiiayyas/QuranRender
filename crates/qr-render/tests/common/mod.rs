@@ -71,10 +71,11 @@ pub fn verses(want: &[(u32, u32)]) -> HashMap<(u32, u32), VerseContent> {
             (s, a),
             VerseContent {
                 ayah_text: ay["aya_text"].as_str().unwrap().trim().to_string(),
-                translation: Some(
+                translations: std::collections::BTreeMap::from([(
+                    "id.kemenag".to_string(),
                     qr_quran::clean_translation(ay["translation_aya_text"].as_str().unwrap())
                         .unwrap(),
-                ),
+                )]),
                 surah_name_ar: n["nama"].as_str().unwrap().to_string(),
                 surah_name_latin: n["nama_latin"].as_str().unwrap().to_string(),
             },
@@ -131,6 +132,7 @@ pub fn project_with(
         confidence: 0.95,
         manual_override: false,
         word_range: None,
+        ..Default::default()
     });
     p
 }

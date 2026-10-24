@@ -60,8 +60,9 @@ pub fn extract_clean_translation_and_footnotes(raw_html: &str) -> (String, Vec<F
         }
     }
 
-    // Rapikan spasi ganda akibat penghapusan penanda.
-    let normalized = clean.split_whitespace().collect::<Vec<_>>().join(" ");
+    // Sisa tag HTML, entitas HTML, dan spasi ganda dibereskan oleh normalisasi yang sama dengan dataset
+    // (03 §5.6). Teks yang kosong setelah normalisasi dikembalikan kosong (ditolak oleh pemanggil).
+    let normalized = qr_quran::clean_translation(&clean).unwrap_or_default();
     (normalized, footnotes)
 }
 
@@ -170,6 +171,15 @@ mod tests {
         let (clean, notes) = extract_clean_translation_and_footnotes("A <i>kind</i> word");
         assert_eq!(clean, "A kind word");
         assert!(notes.is_empty());
+    }
+
+    #[test]
+    fn html_entities_are_decoded_after_markers_removed() {
+        let (clean, notes) = extract_clean_translation_and_footnotes(
+            "He said, &quot;Indeed, I know&quot;<sup foot_note=7>1</sup>  &amp; more.",
+        );
+        assert_eq!(clean, "He said, \"Indeed, I know\" & more.");
+        assert_eq!(notes[0].id, 7);
     }
 
     #[test]

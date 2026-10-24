@@ -3,6 +3,7 @@ import { commands, type BatchClipDto, type BatchMode } from "./bindings";
 import { useI18n } from "./i18n";
 import { errorText, unwrap } from "./tauri";
 import { ErrorAlert, Icon, Segmented, Sheet } from "./ui";
+import { openFolder, PickButton } from "./pick";
 
 type Method = BatchMode["method"];
 
@@ -74,6 +75,7 @@ export function BatchSheet({
   const [enqueuing, setEnqueuing] = useState(false);
   const [enqueueError, setEnqueueError] = useState<string | null>(null);
   const [enqueued, setEnqueued] = useState<number | null>(null);
+  const [pickError, setPickError] = useState<string | null>(null);
 
   const valueText = method === "by_ayah_count" ? countText : secondsText;
   const parsedValue = parsePositiveInt(valueText);
@@ -318,19 +320,25 @@ export function BatchSheet({
               <label className="qr-label" htmlFor={`${uid}-dir`}>
                 {t("app.batch.outputLabel")}
               </label>
-              <span className={showDirProblem ? "qr-field is-invalid" : "qr-field"}>
-                <input
-                  id={`${uid}-dir`}
-                  value={outputDir}
-                  autoComplete="off"
-                  spellCheck={false}
-                  disabled={busy}
-                  placeholder={t("app.batch.outputPlaceholder")}
-                  aria-invalid={showDirProblem}
-                  aria-describedby={showDirProblem ? `${uid}-dir-err` : `${uid}-dir-help`}
-                  onChange={(e) => setOutputDir(e.target.value)}
-                />
-              </span>
+              {pickError && (
+                <ErrorAlert title={t("common.pickFailed")} message={pickError} onClose={() => setPickError(null)} />
+              )}
+              <div className="path-pick">
+                <span className={showDirProblem ? "qr-field is-invalid" : "qr-field"}>
+                  <input
+                    id={`${uid}-dir`}
+                    value={outputDir}
+                    autoComplete="off"
+                    spellCheck={false}
+                    disabled={busy}
+                    placeholder={t("app.batch.outputPlaceholder")}
+                    aria-invalid={showDirProblem}
+                    aria-describedby={showDirProblem ? `${uid}-dir-err` : `${uid}-dir-help`}
+                    onChange={(e) => setOutputDir(e.target.value)}
+                  />
+                </span>
+                <PickButton disabled={busy} pick={openFolder} onPicked={setOutputDir} onError={setPickError} />
+              </div>
               {showDirProblem && dirProblem !== null ? (
                 <FieldError id={`${uid}-dir-err`} message={dirProblem} />
               ) : (

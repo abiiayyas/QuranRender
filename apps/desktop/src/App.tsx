@@ -5,18 +5,20 @@ import {
   type Project_Serialize as Project,
 } from "./bindings";
 import { BatchSheet } from "./Batch";
-import { formatClock } from "./format";
+import { fileName, formatClock } from "./format";
 import { useI18n } from "./i18n";
 import { ExportPackSheet, ImportPackSheet } from "./Packs";
+import { IMAGE_EXTENSIONS, MEDIA_EXTENSIONS, openFile, PACK_EXTENSION, PickButton } from "./pick";
 import { activeJobCount, QueueScreen, useQueueEvents } from "./Queue";
 import { SettingsScreen } from "./Settings";
 import { Studio } from "./Studio";
 import { errorText, isTauri, unwrap } from "./tauri";
+import { useFileDrop } from "./hooks";
 import { ErrorAlert, Icon, LangSwitch, Sheet, ThemeSwitch } from "./ui";
 import logoLight from "../../../design/brand/logo/playhead-lockup-light.svg";
 import logoDark from "../../../design/brand/logo/playhead-lockup-dark.svg";
 
-const TAURI_DEV_COMMAND = "pnpm --filter @quranrender/desktop tauri dev";
+const TAURI_DEV_COMMAND = "pnpm app";
 const QUEUE_COUNT_POLL_MS = 2500;
 
 type StatusFilter = "all" | "draft" | "ready" | "pub";
@@ -195,19 +197,40 @@ function ProjectCard({
   );
 }
 
+/** Nama proyek bawaan dari nama berkas tanpa ekstensi. */
+function fileStem(path: string): string {
+  return fileName(path).replace(/\.[^.]+$/, "");
+}
+
 function NewProjectSheet({
+  file,
+  dragging,
+  notice,
+  onFile,
   onClose,
   onCreated,
 }: {
+  /** Berkas tilawah (opsional); diimpor saat Studio dibuka. */
+  file: string | null;
+  /** Path yang sedang diseret di atas jendela, untuk sorotan area lepas. */
+  dragging: string[] | null;
+  /** Galat seret-lepas dari Shell (mis. format tidak didukung). */
+  notice: string | null;
+  onFile: (path: string | null) => void;
   onClose: () => void;
-  onCreated: (p: Project) => void;
+  onCreated: (p: Project, file: string | null) => void;
 }): React.ReactElement {
   const { t } = useI18n();
-  const [name, setName] = useState("");
+  const [name, setName] = useState(() => (file ? fileStem(file) : ""));
+  const [nameEdited, setNameEdited] = useState(false);
   const [reciter, setReciter] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const valid = name.trim().length > 0;
+
+  useEffect(() => {
+    if (file && !nameEdited) setName(fileStem(file));
+  }, [file, nameEdited]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -218,12 +241,14 @@ function NewProjectSheet({
       const p = await unwrap(
         commands.projectCreate(name.trim(), reciter.trim() || null, "9:16")
       );
-      onCreated(p);
+      onCreated(p, file);
     } catch (err) {
       setError(errorText(err));
       setBusy(false);
     }
   };
+
+  const pickMedia = () => openFile(t("studio.source.pickFilter"), MEDIA_EXTENSIONS);
 
   return (
     <form onSubmit={(e) => void submit(e)}>
@@ -247,6 +272,54 @@ function NewProjectSheet({
         }
       >
         {error && <ErrorAlert title={t("app.new.failed")} message={error} />}
+        {notice && <ErrorAlert title={t("app.drop.failed")} message={notice} />}
+        <div className="qr-fieldset">
+          <span className="qr-label">{t("app.new.file")}</span>
+          {file ? (
+            <div className={dragging ? "qr-item is-dragover" : "qr-item"}>
+              <Icon name="audio-waveform" />
+              <span className="qr-item__name" title={file}>
+                {fileName(file)}
+              </span>
+              <PickButton
+                label={t("app.new.fileChange")}
+                disabled={busy}
+                pick={pickMedia}
+                onPicked={onFile}
+                onError={setError}
+              />
+              <button
+                type="button"
+                className="qr-btn qr-btn--ghost qr-btn--icon"
+                aria-label={t("app.new.fileRemove")}
+                disabled={busy}
+                onClick={() => onFile(null)}
+              >
+                <Icon name="x" />
+              </button>
+            </div>
+          ) : (
+            <div className={dragging ? "qr-drop qr-empty import-drop is-dragover" : "qr-drop qr-empty import-drop"}>
+              <Icon name="upload" />
+              <span className="qr-empty__title" aria-live="polite">
+                {dragging ? t("studio.source.dropRelease") : t("app.new.fileDrop")}
+              </span>
+              {dragging ? (
+                <span>{dragging.map(fileName).join(", ")}</span>
+              ) : (
+                <PickButton
+                  primary
+                  label={t("studio.source.pickButton")}
+                  disabled={busy}
+                  pick={pickMedia}
+                  onPicked={onFile}
+                  onError={setError}
+                />
+              )}
+            </div>
+          )}
+          <span className="qr-help">{t("app.new.fileHelp")}</span>
+        </div>
         <div className="qr-fieldset">
           <label className="qr-label" htmlFor="np-name">
             {t("app.new.name")}
@@ -257,7 +330,10 @@ function NewProjectSheet({
               value={name}
               data-autofocus
               autoComplete="off"
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                setName(e.target.value);
+                setNameEdited(true);
+              }}
             />
           </span>
         </div>
@@ -329,6 +405,25 @@ function DeleteSheet({
   );
 }
 
+type DropKind = "media" | "pack" | "image" | "multiple" | "unsupported";
+
+function dropKind(paths: string[]): DropKind {
+  if (paths.length !== 1) return "multiple";
+  const name = fileName(paths[0]);
+  const ext = name.includes(".") ? (name.split(".").pop() ?? "").toLowerCase() : "";
+  if (ext === PACK_EXTENSION) return "pack";
+  if (IMAGE_EXTENSIONS.includes(ext)) return "image";
+  return MEDIA_EXTENSIONS.includes(ext) ? "media" : "unsupported";
+}
+
+const DROP_TITLE = {
+  media: "app.drop.createProject",
+  pack: "app.drop.importPack",
+  image: "app.drop.imageShort",
+  multiple: "app.drop.multiple",
+  unsupported: "app.drop.unsupportedShort",
+} as const;
+
 function Shell(): React.ReactElement {
   const { t, error: langError, clearError: clearLangError } = useI18n();
   const [projects, setProjects] = useState<ProjectEntry[]>([]);
@@ -338,13 +433,52 @@ function Shell(): React.ReactElement {
   const [filter, setFilter] = useState<StatusFilter>("all");
   const [query, setQuery] = useState("");
   const [creating, setCreating] = useState(false);
-  const [importing, setImporting] = useState(false);
+  const [newFile, setNewFile] = useState<string | null>(null);
+  const [pendingAudio, setPendingAudio] = useState<string | null>(null);
+  /** Sumber awal lembar Impor paket (`""` = kosong); `null` = lembar tertutup. */
+  const [packSource, setPackSource] = useState<string | null>(null);
+  const [dropError, setDropError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<ProjectEntry | null>(null);
   const [exportingPack, setExportingPack] = useState<ProjectEntry | null>(null);
   const [batching, setBatching] = useState<ProjectEntry | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [queueCount, setQueueCount] = useState(0);
+
+  // Seret berkas ke Beranda: media membuka Proyek baru dengan berkas itu, .qrpack membuka Impor paket.
+  const acceptsDrop =
+    active === null && view === "projects" && packSource === null && !deleting && !exportingPack && !batching;
+  const drag = useFileDrop((paths) => {
+    if (!acceptsDrop) return;
+    const kind = dropKind(paths);
+    if (kind === "media") {
+      setDropError(null);
+      setNewFile(paths[0]);
+      setCreating(true);
+    } else if (kind === "pack") {
+      setDropError(null);
+      setCreating(false);
+      setNewFile(null);
+      setPackSource(paths[0]);
+    } else {
+      setDropError(
+        kind === "multiple"
+          ? t("app.drop.multiple")
+          : kind === "image"
+            ? t("app.drop.image")
+            : t("app.drop.unsupported", { name: fileName(paths[0]) })
+      );
+    }
+  }, setError);
+  const dragging = drag?.paths ?? null;
+  const shownDrag = acceptsDrop ? dragging : null;
+  const shownKind = shownDrag ? dropKind(shownDrag) : null;
+  const dropOk = shownKind === "media" || shownKind === "pack";
+  const closeCreate = () => {
+    setCreating(false);
+    setNewFile(null);
+    setDropError(null);
+  };
 
   const refresh = useCallback(async () => {
     try {
@@ -429,8 +563,10 @@ function Shell(): React.ReactElement {
     return (
       <Studio
         project={active}
+        initialAudio={pendingAudio ?? undefined}
         onBack={() => {
           setActive(null);
+          setPendingAudio(null);
           void refresh();
           void refreshQueueCount();
         }}
@@ -500,6 +636,9 @@ function Shell(): React.ReactElement {
           {error && (
             <ErrorAlert title={t("common.error")} message={error} onClose={() => setError(null)} />
           )}
+          {dropError && !creating && (
+            <ErrorAlert title={t("app.drop.failed")} message={dropError} onClose={() => setDropError(null)} />
+          )}
           {view === "queue" && <QueueScreen onActiveCount={setQueueCount} />}
           {view === "settings" && <SettingsScreen />}
           {view === "projects" && (
@@ -517,7 +656,7 @@ function Shell(): React.ReactElement {
                 <button
                   type="button"
                   className="qr-btn qr-btn--secondary"
-                  onClick={() => setImporting(true)}
+                  onClick={() => setPackSource("")}
                 >
                   <Icon name="upload" />
                   {t("app.home.importPack")}
@@ -540,10 +679,12 @@ function Shell(): React.ReactElement {
                   <span>{t("app.home.loading")}</span>
                 </div>
               ) : projects.length === 0 ? (
-                <div className="qr-drop qr-empty">
-                  <Icon name="file-input" />
-                  <span className="qr-empty__title">{t("app.home.empty.title")}</span>
-                  <span>{t("app.home.empty.body")}</span>
+                <div className={dropOk ? "qr-drop qr-empty is-dragover" : "qr-drop qr-empty"}>
+                  <Icon name={shownDrag ? "upload" : "file-input"} />
+                  <span className="qr-empty__title" aria-live="polite">
+                    {shownKind ? t(DROP_TITLE[shownKind]) : t("app.home.empty.title")}
+                  </span>
+                  <span>{shownDrag ? shownDrag.map(fileName).join(", ") : t("app.home.empty.body")}</span>
                   <button
                     type="button"
                     className="qr-btn qr-btn--primary"
@@ -578,20 +719,38 @@ function Shell(): React.ReactElement {
             </>
           )}
         </main>
+        {shownKind && !creating && projects.length > 0 && (
+          <div className={dropOk ? "qr-drop qr-empty home-drop is-dragover" : "qr-drop qr-empty home-drop"}>
+            <Icon name="upload" />
+            <span className="qr-empty__title" aria-live="polite">
+              {t(DROP_TITLE[shownKind])}
+            </span>
+            <span>{shownDrag?.map(fileName).join(", ")}</span>
+          </div>
+        )}
       </div>
       {creating && (
         <NewProjectSheet
-          onClose={() => setCreating(false)}
-          onCreated={(p) => {
-            setCreating(false);
+          file={newFile}
+          dragging={shownDrag}
+          notice={dropError}
+          onFile={(p) => {
+            setDropError(null);
+            setNewFile(p);
+          }}
+          onClose={closeCreate}
+          onCreated={(p, file) => {
+            closeCreate();
+            setPendingAudio(file);
             setActive(p);
             void refresh();
           }}
         />
       )}
-      {importing && (
+      {packSource !== null && (
         <ImportPackSheet
-          onClose={() => setImporting(false)}
+          initialPath={packSource}
+          onClose={() => setPackSource(null)}
           onImported={() => void refresh()}
         />
       )}

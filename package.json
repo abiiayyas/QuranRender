@@ -4,6 +4,8 @@
   "type": "module",
   "packageManager": "pnpm@11.22.0",
   "scripts": {
+    "app": "pnpm --filter @quranrender/desktop tauri dev",
+    "dmg": "pnpm --filter @quranrender/desktop tauri build --bundles dmg",
     "dev": "pnpm --filter @quranrender/desktop dev",
     "build": "pnpm --filter @quranrender/desktop build",
     "lint": "pnpm -r --if-present lint",

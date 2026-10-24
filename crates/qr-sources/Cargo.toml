@@ -17,3 +17,6 @@ serde.workspace = true
 minisign-verify.workspace = true
 rusqlite.workspace = true
 serde_json.workspace = true
+qr-core.workspace = true
+specta.workspace = true
+ureq.workspace = true

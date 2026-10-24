@@ -57,6 +57,7 @@ fn make_project(dir: &Path, name: &str, surah: u32, ayah: u32, seconds: i64) -> 
         confidence: 1.0,
         manual_override: false,
         word_range: None,
+        ..Default::default()
     });
     qr_core::save_project_atomic(&proj_dir, &mut p).unwrap();
     proj_dir

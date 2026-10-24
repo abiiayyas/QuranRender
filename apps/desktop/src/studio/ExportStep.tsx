@@ -3,6 +3,7 @@ import type { ExportValidationReport_Serialize as ValidationReport } from "../bi
 import { formatTime } from "../format";
 import { useI18n, type PlainKey } from "../i18n";
 import { ErrorAlert, Icon, Segmented } from "../ui";
+import { PickButton, safeFileName, saveFile } from "../pick";
 import { Summary } from "./parts";
 import { templateById, segCode, type Project, type Segment } from "./model";
 import type { ExportJob } from "./useExport";
@@ -230,6 +231,7 @@ export function ExportInspector({
   const [widthChoice, setWidthChoice] = useState<WidthChoice>("orig");
   const [overwrite, setOverwrite] = useState(false);
   const [preparing, setPreparing] = useState(false);
+  const [pickError, setPickError] = useState<string | null>(null);
 
   const tpl = templateById(project.template_id);
   const trimmed = path.trim();
@@ -277,6 +279,9 @@ export function ExportInspector({
         />
 
         {job.error && <ErrorAlert title={t("studio.export.jobError")} message={job.error} onClose={job.clearError} />}
+        {pickError && (
+          <ErrorAlert title={t("common.pickFailed")} message={pickError} onClose={() => setPickError(null)} />
+        )}
 
         <form
           className="export-form"
@@ -289,20 +294,31 @@ export function ExportInspector({
             <label className="qr-label" htmlFor={pathId}>
               {t("studio.export.pathLabel")}
             </label>
-            <span className={pathTouched && pathError ? "qr-field is-invalid" : "qr-field"}>
-              <input
-                id={pathId}
-                value={path}
-                placeholder={t("studio.export.pathPlaceholder")}
-                autoComplete="off"
-                spellCheck={false}
+            <div className="path-pick">
+              <span className={pathTouched && pathError ? "qr-field is-invalid" : "qr-field"}>
+                <input
+                  id={pathId}
+                  value={path}
+                  placeholder={t("studio.export.pathPlaceholder")}
+                  autoComplete="off"
+                  spellCheck={false}
+                  disabled={busy}
+                  aria-invalid={pathTouched && pathError !== null}
+                  aria-describedby={pathHelpId}
+                  onChange={(e) => setPath(e.target.value)}
+                  onBlur={() => setPathTouched(true)}
+                />
+              </span>
+              <PickButton
                 disabled={busy}
-                aria-invalid={pathTouched && pathError !== null}
-                aria-describedby={pathHelpId}
-                onChange={(e) => setPath(e.target.value)}
-                onBlur={() => setPathTouched(true)}
+                pick={() => saveFile(t("studio.export.pickFilter"), "mp4", safeFileName(project.name, "mp4"))}
+                onPicked={(p) => {
+                  setPath(p);
+                  setPathTouched(true);
+                }}
+                onError={setPickError}
               />
-            </span>
+            </div>
             {pathTouched && pathError ? (
               <span className="qr-error" id={pathHelpId}>
                 {pathError}

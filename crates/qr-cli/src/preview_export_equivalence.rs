@@ -22,6 +22,7 @@ use qr_render::{
 };
 use serde_json::Value;
 
+use crate::background::BackgroundPlan;
 use crate::render_job::{default_resources_dir, run_render_job, RenderPayload};
 
 const TICKS_PER_SECOND: i64 = 48_000;
@@ -103,10 +104,11 @@ fn fixture(spec: &Spec) -> Fixture {
                 (sid, n),
                 VerseContent {
                     ayah_text: a["aya_text"].as_str().unwrap().trim().to_string(),
-                    translation: Some(
+                    translations: std::collections::BTreeMap::from([(
+                        "id.kemenag".to_string(),
                         qr_quran::clean_translation(a["translation_aya_text"].as_str().unwrap())
                             .unwrap(),
-                    ),
+                    )]),
                     surah_name_ar: "الفاتحة".into(),
                     surah_name_latin: format!("Surah {sid}"),
                 },
@@ -121,6 +123,11 @@ fn fixture(spec: &Spec) -> Fixture {
     let mut p = Project::new("Kesetaraan");
     p.template_id = spec.template.into();
     assert!(p.canvas.set_aspect(spec.aspect), "rasio {}", spec.aspect);
+    // Spesifikasi rentang kata menguji teks Arab terbagi "tanpa terjemahan": terjemahan ayat utuh
+    // 2:255 (yang kini tampil pada segmen sebagian ayat bila belum dipotong) tidak muat satu layar.
+    if spec.segs.iter().any(|s| s.range.is_some()) {
+        p.translation_editions.clear();
+    }
     let mut t0 = 0i64;
     for (i, sg) in spec.segs.iter().enumerate() {
         let verse = verses.get(&(sg.surah, sg.ayah)).unwrap();
@@ -160,6 +167,7 @@ fn fixture(spec: &Spec) -> Fixture {
             confidence: 1.0,
             manual_override: false,
             word_range: sg.range,
+            ..Default::default()
         });
         t0 += dur;
     }
@@ -243,11 +251,24 @@ fn render_preview(fx: &Fixture, indices: &[u64], frame_offset: i64) -> Preview {
     project.canvas.height = h;
     let fonts = FontSet::load(&fx.resources.join("assets")).unwrap();
     let tpl = load_builtin_template(&fx.resources, &project.template_id).unwrap();
+    // Latar media lewat jalur preview produk (`BackgroundPlan::preview_frame`), bila proyek memilikinya.
+    let plan = BackgroundPlan::from_project(&project).unwrap();
     let frames = indices
         .iter()
         .map(|&i| {
             let tick = frame_tick((i as i64 + frame_offset) as u64);
-            let scene = SceneBuilder::build(&project, &tpl, &fonts, tick, &fx.verses).unwrap();
+            let bg = plan
+                .as_ref()
+                .and_then(|p| p.preview_frame("ffmpeg", tick, w, h).unwrap());
+            let scene = SceneBuilder::build_with_background(
+                &project,
+                &tpl,
+                &fonts,
+                tick,
+                &fx.verses,
+                bg.as_ref(),
+            )
+            .unwrap();
             let pm = SoftwareRenderer::render(&scene, &fonts).unwrap();
             pm.data()
                 .chunks_exact(4)
@@ -707,4 +728,189 @@ fn export_with_audio_is_equivalent_and_has_audio_stream() {
     );
     let _ = std::fs::remove_file(&audio);
     cleanup(&fx, &ex);
+}
+
+/// Latar uji: lanskap 640×360 berwarna halus (gradasi, tanpa tepi keras agar 4:2:0 tidak mendominasi)
+/// yang di-cover-fit ke kanvas potret. Video 1 dtk @30 fps dengan gradasi yang bergerak terhadap waktu.
+fn make_background_media(name: &str, video: bool) -> PathBuf {
+    let out = std::env::temp_dir().join(format!("qr_equiv_{}_{name}", std::process::id()));
+    let mut cmd = Command::new("ffmpeg");
+    cmd.args([
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-y",
+        "-f",
+        "lavfi",
+        "-i",
+    ]);
+    if video {
+        cmd.arg("color=c=black:s=320x180:r=30:d=1,format=rgb24,geq=r='127+120*sin(6.2832*(X/W+N/30))':g='127+120*cos(6.2832*(Y/H+N/30))':b='60+60*sin(6.2832*N/30)'")
+            .args(["-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "12"]);
+    } else {
+        cmd.arg("color=c=black:s=640x360,format=rgb24,geq=r='255*X/W':g='255*Y/H':b='128+60*sin(6.2832*X/W)'")
+            .args(["-frames:v", "1"]);
+    }
+    assert!(cmd.arg(&out).status().unwrap().success());
+    out
+}
+
+/// Mendaftarkan latar pada proyek fixture: aset absolut + satu klip penuh (0..`end`), dimmer 0,35 dalam
+/// bentuk string seperti yang ditulis UI (tipe bindings `{[k]: string}`).
+fn attach_background(fx: &Fixture, media: &std::path::Path, video: bool, end: i64) {
+    use qr_core::project::{AssetKind, AssetRef, Clip, TrackKind};
+    let mut p = qr_core::load_project(&fx.project_dir).unwrap();
+    let (kind, trim_out) = if video {
+        (AssetKind::Video, TICKS_PER_SECOND)
+    } else {
+        (AssetKind::Image, end)
+    };
+    p.assets.insert(
+        "bg_test".into(),
+        AssetRef {
+            id: "bg_test".into(),
+            path: media.to_string_lossy().into_owned(),
+            sha256: String::new(),
+            kind,
+            duration_ticks: if video { trim_out } else { 0 },
+            size_bytes: 0,
+        },
+    );
+    let track = p
+        .tracks
+        .iter_mut()
+        .find(|t| t.kind == TrackKind::Background)
+        .unwrap();
+    track.clips = vec![Clip {
+        id: "clip_bg_test".into(),
+        asset_id: Some("bg_test".into()),
+        start_tick: 0,
+        end_tick: end,
+        trim_in_tick: 0,
+        trim_out_tick: trim_out,
+        label: "bg".into(),
+    }];
+    p.style_overrides
+        .insert("background_dimmer".into(), serde_json::json!("0.35"));
+    qr_core::save_project_atomic(&fx.project_dir, &mut p).unwrap();
+}
+
+fn rgb_equal(a: &[u8], b: &[u8]) -> bool {
+    a == b
+}
+
+/// Latar gambar: ekspor lossless setara dengan preview (SSIM ≥ 0,995), dan frame berbeda dari latar warna.
+#[test]
+fn export_with_image_background_meets_rnd1_ssim() {
+    let spec = base_spec("bg_image");
+    let fx = fixture(&spec);
+    let media = make_background_media("bg.png", false);
+    attach_background(&fx, &media, false, 4 * TICKS_PER_SECOND);
+    let idx = sample_frames(120);
+    let ex = export(
+        &fx,
+        &spec.tag,
+        serde_json::json!({"encoder": "libx264", "crf": 0}),
+    );
+    assert_eq!(ex.frames, 120);
+    let preview = render_preview(&fx, &idx, 0);
+    let decoded = extract_rgb24_frames("ffmpeg", &ex.path, preview.w, preview.h, &idx).unwrap();
+    let m = compare(&preview, &decoded);
+    report("latar gambar lossless", &ex, &m);
+    assert!(m.min_ssim >= SSIM_RND1, "SSIM min < {SSIM_RND1}: {m:?}");
+    // Tanpa latar media, frame yang sama berbeda jauh (warna dasar rata).
+    let mut no_bg = qr_core::load_project(&fx.project_dir).unwrap();
+    for t in &mut no_bg.tracks {
+        t.clips.clear();
+    }
+    qr_core::save_project_atomic(&fx.project_dir, &mut no_bg).unwrap();
+    let flat = render_preview(&fx, &idx, 0);
+    assert!(!rgb_equal(&flat.frames[30], &preview.frames[30]));
+    let _ = std::fs::remove_file(&media);
+    cleanup(&fx, &ex);
+}
+
+/// Latar video 1 dtk pada ekspor 2 dtk (diputar berulang): MP4 valid (ffprobe), 60 frame, latar berubah
+/// terhadap waktu, dan setara dengan preview termasuk frame sesudah putaran ulang.
+#[test]
+fn export_with_video_background_loops_changes_over_time_and_matches_preview() {
+    let spec = Spec {
+        tag: "bg_video".into(),
+        template: "subuh",
+        aspect: "9:16",
+        width: WIDTH,
+        segs: vec![seg(1, 1, None, 2)],
+    };
+    let fx = fixture(&spec);
+    let media = make_background_media("bg.mp4", true);
+    attach_background(&fx, &media, true, 2 * TICKS_PER_SECOND);
+    let idx: Vec<u64> = (0..60).step_by(3).collect();
+    let ex = export(
+        &fx,
+        &spec.tag,
+        serde_json::json!({"encoder": "libx264", "crf": 0}),
+    );
+    assert_eq!(ex.frames, 60);
+    assert_eq!(
+        ffprobe(
+            &[
+                "-select_streams",
+                "v:0",
+                "-count_frames",
+                "-show_entries",
+                "stream=nb_read_frames",
+                "-of",
+                "csv=p=0"
+            ],
+            &ex.path
+        ),
+        "60"
+    );
+    let probed = qr_media::probe_media_with("ffprobe", &ex.path).unwrap();
+    assert!(probed.has_video && (probed.duration_sec - 2.0).abs() < 0.1);
+
+    let preview = render_preview(&fx, &idx, 0);
+    let decoded = extract_rgb24_frames("ffmpeg", &ex.path, preview.w, preview.h, &idx).unwrap();
+    let m = compare(&preview, &decoded);
+    report("latar video lossless", &ex, &m);
+    assert!(m.min_ssim >= SSIM_RND1, "SSIM min < {SSIM_RND1}: {m:?}");
+    // Latar berubah terhadap waktu pada ekspor (frame 3 vs 12) dan berulang pada awal putaran ke-2.
+    assert_ne!(decoded[1], decoded[4]);
+    let project = qr_core::load_project(&fx.project_dir).unwrap();
+    let plan = BackgroundPlan::from_project(&project).unwrap().unwrap();
+    let (w, h) = (preview.w, preview.h);
+    let bg_at = |tick: i64| plan.preview_frame("ffmpeg", tick, w, h).unwrap().unwrap();
+    assert_eq!(
+        bg_at(0).data(),
+        bg_at(TICKS_PER_SECOND).data(),
+        "putaran ke-2 tidak kembali ke frame awal"
+    );
+    assert_ne!(bg_at(0).data(), bg_at(TICKS_PER_SECOND / 2).data());
+    let _ = std::fs::remove_file(&media);
+    cleanup(&fx, &ex);
+}
+
+/// Berkas latar hilang → ekspor diblokir validasi aset sebelum frame pertama; preview jatuh ke warna.
+#[test]
+fn missing_background_file_blocks_export_and_preview_falls_back() {
+    let spec = base_spec("bg_missing");
+    let fx = fixture(&spec);
+    let media = make_background_media("bg_gone.png", false);
+    attach_background(&fx, &media, false, 4 * TICKS_PER_SECOND);
+    let with_bg = render_preview(&fx, &[30], 0);
+    std::fs::remove_file(&media).unwrap();
+    let fallback = render_preview(&fx, &[30], 0);
+    assert!(!rgb_equal(&with_bg.frames[0], &fallback.frames[0]));
+    let out = std::env::temp_dir().join(format!("qr_equiv_{}_bg_missing.mp4", std::process::id()));
+    let payload: RenderPayload = serde_json::from_value(serde_json::json!({
+        "project_dir": fx.project_dir,
+        "output_path": out,
+        "width": fx.width,
+        "resources_dir": fx.resources,
+    }))
+    .unwrap();
+    let err = run_render_job(&payload, &fx.verses, &AtomicBool::new(false), |_, _| {}).unwrap_err();
+    assert_eq!(err.code, "EXPORT_BLOCKED");
+    assert!(err.message.contains("EXP-MISSING-ASSET"), "{}", err.message);
+    let _ = std::fs::remove_dir_all(&fx.project_dir);
 }

@@ -38,6 +38,16 @@ export const commands = {
 	 *  ini VAD + timing proporsional, bukan forced alignment akustik.
 	 */
 	alignAuto: (projectId: string, surahId: number, fromAyah: number, toAyah: number) => typedError<AlignOutcomeDto_Serialize, string>(__TAURI_INVOKE("align_auto", { projectId, surahId, fromAyah, toAyah })),
+	verseWords: (surah: number, fromAyah: number, toAyah: number) => typedError<VerseWordsDto[], string>(__TAURI_INVOKE("verse_words", { surah, fromAyah, toAyah })),
+	surahList: () => typedError<SurahInfoDto[], string>(__TAURI_INVOKE("surah_list")),
+	backgroundImport: (projectId: string, path: string) => typedError<BackgroundInfo_Serialize, string>(__TAURI_INVOKE("background_import", { projectId, path })),
+	backgroundRemove: (projectId: string) => typedError<null, string>(__TAURI_INVOKE("background_remove", { projectId })),
+	/**
+	 *  Sinkron otomatis audio proyek lewat aligner cloud: ayat dikenali otomatis, timing per kata, segmen
+	 *  basmalah/isti'adzah. Butuh `sync.cloud_consent = true` (galat `CLOUD_CONSENT_REQUIRED:`); tanpa internet
+	 *  galat `CLOUD_OFFLINE:`. Memancarkan `align-progress`. Tidak menyimpan proyek.
+	 */
+	alignCloud: (projectId: string, options: CloudAlignOptions) => typedError<CloudAlignOutcome_Serialize, string>(__TAURI_INVOKE("align_cloud", { projectId, options })),
 	/**
 	 *  Memulai ekspor MP4 lewat antrean job persisten dan worker `qurender`. Mengembalikan `job_id`.
 	 *  Kemajuan: event `export-progress` {job_id, fraction, message}; hasil: `export-finished`
@@ -81,6 +91,27 @@ export const commands = {
 	settingsGet: (key: string) => typedError<SettingValue | null, string>(__TAURI_INVOKE("settings_get", { key })),
 	/**  Menyimpan pengaturan non-rahasia (boolean/angka/teks). Kunci memuat key/token/secret/password ditolak. */
 	settingsSet: (key: string, value: SettingValue) => typedError<null, string>(__TAURI_INVOKE("settings_set", { key, value })),
+	/**
+	 *  Daftar edisi: bawaan dataset, terpasang, dan remote Quran.com. Tanpa internet, katalog remote
+	 *  diambil dari salinan terakhir (bila pernah diambil); bila belum pernah, hanya bawaan + terpasang.
+	 */
+	translationEditionsList: () => typedError<EditionInfo_Serialize[], string>(__TAURI_INVOKE("translation_editions_list")),
+	/**  Mengunduh edisi Quran.com `remote_id` lengkap ke content.db (menggantikan versi lama bila ada). */
+	translationEditionInstall: (remoteId: number) => typedError<EditionInfo_Serialize, string>(__TAURI_INVOKE("translation_edition_install", { remoteId })),
+	/**  Menghapus edisi terpasang. Edisi bawaan dataset tidak dapat dihapus. */
+	translationEditionRemove: (key: string) => typedError<null, string>(__TAURI_INVOKE("translation_edition_remove", { key })),
+	/**  Terjemahan ayat utuh untuk edisi-edisi yang diminta (yang tidak tersedia dilewati). */
+	verseTranslations: (editionKeys: string[], refs: VerseRef[]) => typedError<VerseTranslationDto[], string>(__TAURI_INVOKE("verse_translations", { editionKeys, refs })),
+	/**  Potong terjemahan segmen sebagian ayat secara heuristik (status `AutoTrimmed`). Tidak menyimpan. */
+	translationAutoTrim: (projectId: string, segmentIds: string[], editionKey: string) => typedError<AyahSegment_Serialize[], string>(__TAURI_INVOKE("translation_auto_trim", { projectId, segmentIds, editionKey })),
+	/**  Potong terjemahan segmen sebagian ayat dengan AI (status `AiTrimmed`). Tidak menyimpan. */
+	translationAiTrim: (projectId: string, segmentIds: string[], editionKey: string) => typedError<AyahSegment_Serialize[], string>(__TAURI_INVOKE("translation_ai_trim", { projectId, segmentIds, editionKey })),
+	/**  Menyimpan kunci API layanan AI ke keychain OS (bukan ke app.db). */
+	aiKeySet: (key: string) => typedError<null, string>(__TAURI_INVOKE("ai_key_set", { key })),
+	/**  Menghapus kunci API layanan AI dari keychain OS. */
+	aiKeyClear: () => typedError<null, string>(__TAURI_INVOKE("ai_key_clear")),
+	/**  `true` bila kunci API layanan AI sudah tersimpan di keychain. */
+	aiKeyStatus: () => typedError<boolean, string>(__TAURI_INVOKE("ai_key_status")),
 };
 
 /* Types */
@@ -127,6 +158,15 @@ export type AlignOutcomeDto_Serialize = {
 	warnings: string[],
 };
 
+/**  Payload event Tauri `align-progress`. */
+export type AlignProgressEvent = {
+	stage: AlignStage,
+	message: string,
+};
+
+/**  Tahap proses untuk event `align-progress`. */
+export type AlignStage = "preparing" | "uploading" | "queued" | "processing" | "mapping" | "done";
+
 export type AppInfo = {
 	name: string,
 	version: string,
@@ -163,7 +203,9 @@ export type AyahSegment = AyahSegment_Serialize | AyahSegment_Deserialize;
 
 export type AyahSegment_Deserialize = {
 	id: string,
+	/**  Untuk segmen khusus (`kind` ≠ `Ayah`) bernilai 0. */
 	surah_id: number,
+	/**  Untuk segmen khusus (`kind` ≠ `Ayah`) bernilai 0. */
 	ayah_number: number,
 	start_tick: number | null,
 	end_tick: number | null,
@@ -175,11 +217,25 @@ export type AyahSegment_Deserialize = {
 	 *  Ayat panjang (mis. 2:282) dibagi ke beberapa segmen; pembagian hanya di batas kata (CNT-1).
 	 */
 	word_range?: number[] | null,
+	/**  Ayat dari dataset, atau segmen khusus di luar teks ayat (basmalah pembuka, isti'adzah). */
+	kind?: SegmentKind,
+	/**  Asal timing segmen. */
+	source?: SegmentSource,
+	/**  Aligner melaporkan kata yang terlewat/berulang di segmen ini: wajib ditinjau. */
+	has_missing_words?: boolean,
+	/**
+	 *  Terjemahan per edisi (kunci edisi) untuk segmen ini. Kosong untuk ayat utuh: teks diambil dari edisi
+	 *  apa adanya. Segmen sebagian ayat menyimpan potongan terjemahan beserta statusnya; bila edisi belum
+	 *  ada di sini, terjemahan ayat utuh dipakai dengan status `ToReview`.
+	 */
+	translations?: { [key in string]: SegmentTranslation },
 };
 
 export type AyahSegment_Serialize = {
 	id: string,
+	/**  Untuk segmen khusus (`kind` ≠ `Ayah`) bernilai 0. */
 	surah_id: number,
+	/**  Untuk segmen khusus (`kind` ≠ `Ayah`) bernilai 0. */
 	ayah_number: number,
 	start_tick: number | null,
 	end_tick: number | null,
@@ -191,6 +247,43 @@ export type AyahSegment_Serialize = {
 	 *  Ayat panjang (mis. 2:282) dibagi ke beberapa segmen; pembagian hanya di batas kata (CNT-1).
 	 */
 	word_range?: number[],
+	/**  Ayat dari dataset, atau segmen khusus di luar teks ayat (basmalah pembuka, isti'adzah). */
+	kind: SegmentKind,
+	/**  Asal timing segmen. */
+	source: SegmentSource,
+	/**  Aligner melaporkan kata yang terlewat/berulang di segmen ini: wajib ditinjau. */
+	has_missing_words?: boolean,
+	/**
+	 *  Terjemahan per edisi (kunci edisi) untuk segmen ini. Kosong untuk ayat utuh: teks diambil dari edisi
+	 *  apa adanya. Segmen sebagian ayat menyimpan potongan terjemahan beserta statusnya; bila edisi belum
+	 *  ada di sini, terjemahan ayat utuh dipakai dengan status `ToReview`.
+	 */
+	translations?: { [key in string]: SegmentTranslation },
+};
+
+/**  Hasil impor latar. */
+export type BackgroundInfo = BackgroundInfo_Serialize | BackgroundInfo_Deserialize;
+
+/**  Hasil impor latar. */
+export type BackgroundInfo_Deserialize = {
+	asset_id: string,
+	/**  `Image` atau `Video`. */
+	kind: AssetKind,
+	width: number,
+	height: number,
+	/**  Durasi video (detik); `None` untuk gambar. */
+	duration_sec?: number | null,
+};
+
+/**  Hasil impor latar. */
+export type BackgroundInfo_Serialize = {
+	asset_id: string,
+	/**  `Image` atau `Video`. */
+	kind: AssetKind,
+	width: number,
+	height: number,
+	/**  Durasi video (detik); `None` untuk gambar. */
+	duration_sec: number | null,
 };
 
 /**  Satu klip hasil pemecahan. */
@@ -245,6 +338,82 @@ export type Clip_Serialize = {
 	trim_out_tick: number | null,
 	label: string,
 };
+
+/**  Opsi sinkron cloud (nilai bawaan sama dengan Quran Caption). */
+export type CloudAlignOptions = {
+	model: CloudModel,
+	/**  Jeda minimum (ms) yang memisahkan segmen. */
+	min_silence_ms: number,
+	/**  Durasi suara minimum (ms) sebuah segmen. */
+	min_speech_ms: number,
+	/**  Bantalan (ms) di kedua sisi segmen. */
+	pad_ms: number,
+	/**  Perpanjang akhir setiap segmen sampai awal segmen berikutnya (subtitle tetap tampil saat jeda). */
+	fill_silence: boolean,
+};
+
+/**  Hasil sinkron cloud; belum disimpan ke proyek. */
+export type CloudAlignOutcome = CloudAlignOutcome_Serialize | CloudAlignOutcome_Deserialize;
+
+/**  Hasil sinkron cloud; belum disimpan ke proyek. */
+export type CloudAlignOutcome_Deserialize = {
+	segments: AyahSegment_Deserialize[],
+	detected: DetectedRange[],
+	warnings: string[],
+};
+
+/**  Hasil sinkron cloud; belum disimpan ke proyek. */
+export type CloudAlignOutcome_Serialize = {
+	segments: AyahSegment_Serialize[],
+	detected: DetectedRange[],
+	warnings: string[],
+};
+
+/**  Model pengenal di Space. */
+export type CloudModel = "Base" | "Large";
+
+/**  Rentang ayat berurutan yang dikenali dalam satu surah. */
+export type DetectedRange = {
+	surah: number,
+	from_ayah: number,
+	to_ayah: number,
+};
+
+export type EditionInfo = EditionInfo_Serialize | EditionInfo_Deserialize;
+
+export type EditionInfo_Deserialize = {
+	/**  Kunci edisi untuk `Project::translation_editions` (mis. `id.kemenag`, `en.qdc20`). */
+	key: string,
+	name: string,
+	/**  Kode bahasa ISO 639-1 (mis. `id`, `en`); nama bahasa bila kodenya tidak dikenal. */
+	language: string,
+	author?: string | null,
+	origin: EditionOrigin,
+	installed: boolean,
+	/**  Id Quran.com (untuk `translation_edition_install`). */
+	remote_id?: number | null,
+};
+
+export type EditionInfo_Serialize = {
+	/**  Kunci edisi untuk `Project::translation_editions` (mis. `id.kemenag`, `en.qdc20`). */
+	key: string,
+	name: string,
+	/**  Kode bahasa ISO 639-1 (mis. `id`, `en`); nama bahasa bila kodenya tidak dikenal. */
+	language: string,
+	author: string | null,
+	origin: EditionOrigin,
+	installed: boolean,
+	/**  Id Quran.com (untuk `translation_edition_install`). */
+	remote_id: number | null,
+};
+
+export type EditionOrigin = 
+/**  Terbundel di dataset (mis. `id.kemenag`); tidak dapat dihapus. */
+"Dataset" | 
+/**  Diunduh pengguna ke content.db. */
+"Installed" | 
+/**  Tersedia di Quran.com, belum diunduh. */
+"Remote";
 
 /**  Payload event `export-finished` (sekali per job; `ok=false` untuk gagal maupun dibatalkan). */
 export type ExportFinishedEvent = ExportFinishedEvent_Serialize | ExportFinishedEvent_Deserialize;
@@ -466,6 +635,11 @@ export type Project_Deserialize = {
 	tracks?: Track_Deserialize[],
 	segments?: AyahSegment_Deserialize[],
 	style_overrides?: { [key in string]: string },
+	/**
+	 *  Edisi terjemahan yang ditampilkan, berurutan; yang pertama adalah utama. Kunci = `translation_edition.key`
+	 *  (dataset) atau edisi unduhan di content.db.
+	 */
+	translation_editions?: string[],
 };
 
 export type Project_Serialize = {
@@ -482,6 +656,30 @@ export type Project_Serialize = {
 	tracks: Track_Serialize[],
 	segments: AyahSegment_Serialize[],
 	style_overrides: { [key in string]: string },
+	/**
+	 *  Edisi terjemahan yang ditampilkan, berurutan; yang pertama adalah utama. Kunci = `translation_edition.key`
+	 *  (dataset) atau edisi unduhan di content.db.
+	 */
+	translation_editions: string[],
+};
+
+export type SegmentKind = "Ayah" | 
+/**  Basmalah pembuka surah (bukan ayat, kecuali Al-Fatihah 1:1 yang tetap `Ayah`). */
+"Basmala" | 
+/**  Isti'adzah sebelum bacaan. */
+"Istiadha";
+
+export type SegmentSource = 
+/**  Dibuat atau diatur pengguna (sinkron manual / papan ketik). */
+"Manual" | 
+/**  VAD lokal + timing proporsional (cadangan offline). */
+"Vad" | 
+/**  Aligner akustik cloud (pengenalan ayat + timing per kata). */
+"Cloud";
+
+export type SegmentTranslation = {
+	text: string,
+	status: TranslationStatus,
 };
 
 /**  Nilai pengaturan skalar. Objek/array/null tidak didukung. */
@@ -502,6 +700,17 @@ export type SubtitleExportOptions = {
 export type SubtitleFormat = "Srt" | "Vtt" | "Ass";
 
 export type SubtitleTrackSelection = "AyahOnly" | "TranslationOnly" | "Bilingual";
+
+/**  Satu surah untuk dropdown rentang ayat di UI. */
+export type SurahInfoDto = {
+	id: number,
+	name_ar: string,
+	name_latin: string,
+	name_en: string,
+	meaning_id: string,
+	meaning_en: string,
+	ayah_count: number,
+};
 
 export type TelemetryStatus = {
 	/**  Persetujuan pengguna; default `false`. */
@@ -538,6 +747,35 @@ export type Track_Serialize = {
 	visible: boolean,
 	locked: boolean,
 	muted: boolean,
+};
+
+export type TranslationStatus = 
+/**  Terjemahan ayat utuh belum dipotong untuk segmen sebagian ayat: perlu ditinjau. */
+"ToReview" | 
+/**  Dipotong otomatis (heuristik) dari terjemahan ayat utuh: perlu ditinjau. */
+"AutoTrimmed" | 
+/**  Dipotong AI: perlu ditinjau. */
+"AiTrimmed" | 
+/**  Disunting atau disetujui pengguna. */
+"Reviewed";
+
+export type VerseRef = {
+	surah: number,
+	ayah: number,
+};
+
+export type VerseTranslationDto = {
+	surah: number,
+	ayah: number,
+	edition_key: string,
+	text: string,
+};
+
+/**  Kata-kata satu ayat dalam urutan tampil (indeks 1-based = `WordTiming.word_idx` = batas `word_range`). */
+export type VerseWordsDto = {
+	surah: number,
+	ayah: number,
+	words: string[],
 };
 
 /**  Tingkat keparahan temuan validasi. */

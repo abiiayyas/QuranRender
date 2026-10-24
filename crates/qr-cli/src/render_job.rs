@@ -2,11 +2,15 @@
 
 use std::path::{Path, PathBuf};
 use std::sync::atomic::AtomicBool;
+use std::sync::Arc;
 
+use crate::background::BackgroundPlan;
 use qr_media::{
     export_mp4, rgba_to_yuv420_bt709, ExportError, Mp4ExportConfig, RawFrameFormat, VideoEncoder,
 };
-use qr_render::{load_builtin_template, FontSet, SceneBuilder, SoftwareRenderer, VerseSource};
+use qr_render::{
+    load_builtin_template, FontSet, Pixmap, SceneBuilder, SoftwareRenderer, VerseSource,
+};
 use serde::Deserialize;
 
 /// Tick proyek = sampel pada 48 kHz.
@@ -135,6 +139,9 @@ pub fn run_render_job(
         .map_err(|e| JobError::new("FONT_LOAD", e.to_string()))?;
     let tpl = load_builtin_template(&resources, &project.template_id)
         .map_err(|e| JobError::new("TEMPLATE_LOAD", e.to_string()))?;
+    // Latar media (gambar/video); hilang/rusak ditolak lebih dulu oleh validasi aset (EXP-MISSING-ASSET).
+    let background = BackgroundPlan::from_project(&project)
+        .map_err(|e| JobError::new("BACKGROUND_FAILED", e))?;
 
     let (cw, ch) = (project.canvas.width.max(2), project.canvas.height.max(2));
     let width = payload.width.unwrap_or(cw).max(2) & !1; // yuv420p butuh dimensi genap
@@ -161,9 +168,9 @@ pub fn run_render_job(
         ));
     }
 
-    // Konteks sekali pakai: pastikan seluruh ayat ada sebelum menjalankan FFmpeg.
+    // Konteks sekali pakai: pastikan seluruh teks segmen (ayat atau teks khusus) ada sebelum FFmpeg.
     for s in &project.segments {
-        if verses.verse(s.surah_id, s.ayah_number).is_none() {
+        if qr_render::segment_content(s, &project.translation_editions, verses).is_none() {
             return Err(JobError::new(
                 "MISSING_VERSE",
                 format!("Ayat {}:{} tidak ada di dataset", s.surah_id, s.ayah_number),
@@ -181,7 +188,7 @@ pub fn run_render_job(
             return Err(JobError::new(
                 "CNT-5-OVERFLOW",
                 format!(
-                    "Teks ayat {}:{} terlalu panjang untuk satu layar pada template '{}'. Bagi segmen per rentang kata.",
+                    "Teks ayat {}:{} beserta terjemahannya terlalu panjang untuk satu layar pada template '{}'. Bagi segmen per rentang kata atau potong terjemahannya.",
                     s.surah_id, s.ayah_number, project.template_id
                 ),
             ));
@@ -227,12 +234,20 @@ pub fn run_render_job(
         .or_else(|| std::thread::available_parallelism().ok().map(usize::from))
         .unwrap_or(1)
         .clamp(1, 8);
-    let render_one = |i: u64| -> Result<Vec<u8>, String> {
-        let scene = SceneBuilder::build(&project, &tpl, &fonts, frame_ticks(i), verses)
-            .map_err(|e| e.to_string())?;
+    let render_one = |i: u64, bg: Option<Arc<Pixmap>>| -> Result<Vec<u8>, String> {
+        let scene = SceneBuilder::build_with_background(
+            &project,
+            &tpl,
+            &fonts,
+            frame_ticks(i),
+            verses,
+            bg.as_ref(),
+        )
+        .map_err(|e| e.to_string())?;
         let pm = SoftwareRenderer::render(&scene, &fonts).map_err(|e| e.to_string())?;
         Ok(rgba_to_yuv420_bt709(pm.data(), width, height))
     };
+    let (background_ref, ffmpeg_ref, ticks_ref) = (&background, &ffmpeg, &frame_ticks);
     // Frame independen: satu thread produsen merender `threads` frame sekaligus secara paralel dan
     // mengirimkannya berurutan lewat kanal berbatas, sehingga render tumpang tindih dengan penulisan
     // ke FFmpeg. Bila pemanggil mengulang dari frame lain (fallback encoder), produsen dimulai ulang.
@@ -245,12 +260,39 @@ pub fn run_render_job(
                 let (tx, r) = std::sync::mpsc::sync_channel(threads * 2);
                 rx = Some(r); // receiver lama dilepas: produsen lama berhenti saat send gagal
                 sc.spawn(move || {
+                    // Frame latar diambil berurutan oleh produsen ini (satu aliran FFmpeg), lalu
+                    // dibagikan ke render paralel per potongan.
+                    let mut bg_frames = match background_ref {
+                        Some(plan) => match plan.export_frames(ffmpeg_ref, width, height) {
+                            Ok(f) => Some(f),
+                            Err(e) => {
+                                let _ = tx.send(Err(format!("Latar media gagal dimuat: {e}")));
+                                return;
+                            }
+                        },
+                        None => None,
+                    };
                     let mut start = i;
                     while start < total_frames {
                         let end = (start + threads as u64).min(total_frames);
+                        let mut inputs: Vec<(u64, Option<Arc<Pixmap>>)> = Vec::new();
+                        for k in start..end {
+                            let bg = match bg_frames.as_mut() {
+                                Some(f) => match f.frame(ticks_ref(k)) {
+                                    Ok(bg) => bg,
+                                    Err(e) => {
+                                        let _ = tx.send(Err(format!("Frame latar gagal: {e}")));
+                                        return;
+                                    }
+                                },
+                                None => None,
+                            };
+                            inputs.push((k, bg));
+                        }
                         let chunk: Vec<Result<Vec<u8>, String>> = std::thread::scope(|inner| {
-                            let handles: Vec<_> = (start..end)
-                                .map(|k| inner.spawn(move || render_ref(k)))
+                            let handles: Vec<_> = inputs
+                                .into_iter()
+                                .map(|(k, bg)| inner.spawn(move || render_ref(k, bg)))
                                 .collect();
                             handles
                                 .into_iter()

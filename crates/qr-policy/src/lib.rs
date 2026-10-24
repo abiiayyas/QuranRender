@@ -5,7 +5,7 @@ pub mod package;
 
 pub use package::{generate_credits_text, generate_upload_text, validate_cnt3_cnt4_metadata};
 
-use qr_core::project::{Project, TrackKind};
+use qr_core::project::{Project, SegmentKind, TrackKind, TranslationStatus};
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use std::path::Path;
@@ -116,7 +116,12 @@ pub fn validate_cnt1_word_boundaries(project: &Project, report: &mut ExportValid
 pub fn validate_cnt1_word_ranges(project: &Project, report: &mut ExportValidationReport) {
     use std::collections::BTreeMap;
     let mut by_ayah: BTreeMap<(u32, u32), Vec<&qr_core::project::AyahSegment>> = BTreeMap::new();
-    for seg in &project.segments {
+    // Segmen khusus (basmalah/isti'adzah) bukan ayat: tidak punya rentang kata ayat.
+    for seg in project
+        .segments
+        .iter()
+        .filter(|s| s.kind == SegmentKind::Ayah)
+    {
         if let Some((a, b)) = seg.word_range {
             if a == 0 || a > b {
                 report.add(PolicyViolation {
@@ -172,9 +177,14 @@ pub fn validate_cnt1_word_ranges(project: &Project, report: &mut ExportValidatio
 }
 
 /// Validator CNT-2: Larangan perubahan teks Al-Qur'an.
-/// Nomor surah dan ayat harus valid (surah 1..=114, ayat >= 1).
+/// Nomor surah dan ayat harus valid (surah 1..=114, ayat >= 1). Segmen khusus (basmalah/isti'adzah)
+/// bernomor 0 dan teksnya bawaan aplikasi, jadi tidak diperiksa di sini.
 pub fn validate_cnt2_text_integrity(project: &Project, report: &mut ExportValidationReport) {
-    for seg in &project.segments {
+    for seg in project
+        .segments
+        .iter()
+        .filter(|s| s.kind == SegmentKind::Ayah)
+    {
         if seg.surah_id == 0 || seg.surah_id > 114 {
             report.add(PolicyViolation {
                 code: "CNT-2".into(),
@@ -203,6 +213,49 @@ pub fn validate_cnt2_text_integrity(project: &Project, report: &mut ExportValida
     }
 }
 
+/// Peninjauan terjemahan (peringatan, tidak memblokir): segmen sebagian ayat yang terjemahan edisi
+/// utamanya (`translation_editions[0]`) belum berstatus `Reviewed` — belum dipotong (masih terjemahan
+/// ayat utuh), dipotong otomatis, atau dipotong AI. Ayat utuh dan teks bawaan segmen khusus dianggap
+/// lengkap.
+pub fn validate_translation_review(project: &Project, report: &mut ExportValidationReport) {
+    let Some(primary) = project.translation_editions.first() else {
+        return;
+    };
+    for seg in &project.segments {
+        let entry = seg.translations.get(primary);
+        let status = match (seg.kind, seg.word_range, entry) {
+            (_, _, Some(t)) if seg.kind != SegmentKind::Ayah || seg.word_range.is_some() => {
+                t.status
+            }
+            (SegmentKind::Ayah, Some(_), None) => TranslationStatus::ToReview,
+            _ => continue,
+        };
+        let reason = match status {
+            TranslationStatus::Reviewed => continue,
+            TranslationStatus::ToReview => "masih memakai terjemahan ayat utuh",
+            TranslationStatus::AutoTrimmed => "dipotong otomatis",
+            TranslationStatus::AiTrimmed => "dipotong AI",
+        };
+        let label = match (seg.kind, seg.word_range) {
+            (SegmentKind::Basmala, _) => "Basmalah".to_string(),
+            (SegmentKind::Istiadha, _) => "Isti'adzah".to_string(),
+            (SegmentKind::Ayah, Some((a, b))) => {
+                format!("{}:{} kata {a}–{b}", seg.surah_id, seg.ayah_number)
+            }
+            (SegmentKind::Ayah, None) => format!("{}:{}", seg.surah_id, seg.ayah_number),
+        };
+        report.add(PolicyViolation {
+            code: "TRN-REVIEW".into(),
+            title: "Terjemahan belum ditinjau".into(),
+            description: format!(
+                "Segmen '{label}': terjemahan edisi '{primary}' {reason}. Periksa dan setujui potongan terjemahannya agar sesuai dengan bagian ayat yang dibaca."
+            ),
+            severity: ViolationSeverity::Warning,
+            segment_id: Some(seg.id.clone()),
+        });
+    }
+}
+
 /// Validator CNT-5: Keterbacaan dan kontras teks Arab Al-Qur'an.
 /// Teks ayat Al-Qur'an harus selalu terbaca jelas, memiliki kontras minimal,
 /// dan tidak boleh dijadikan ornamen semata.
@@ -217,16 +270,7 @@ pub fn validate_cnt5_legibility_and_contrast(
         .any(|t| t.kind == TrackKind::Background && t.clips.iter().any(|c| c.asset_id.is_some()));
 
     if has_media_background {
-        let has_dimmer = project
-            .style_overrides
-            .get("background_dimmer")
-            .is_some_and(|v| {
-                if let Some(num) = v.as_f64() {
-                    num >= 0.20 // Minimal 20% dimmer untuk latar media
-                } else {
-                    false
-                }
-            });
+        let has_dimmer = project.background_dimmer().is_some_and(|num| num >= 0.20); // Minimal 20% dimmer untuk latar media
 
         if !has_dimmer {
             report.add(PolicyViolation {
@@ -311,6 +355,9 @@ pub fn validate_export_readiness(project: &Project) -> ExportValidationReport {
     // 6. Validasi EXP-6 (Durasi nol)
     validate_zero_duration(project, &mut report);
 
+    // 6b. Peninjauan terjemahan segmen sebagian ayat (peringatan)
+    validate_translation_review(project, &mut report);
+
     // 7. Validasi status peninjauan (Confidence < 0.80 yang belum diverifikasi)
     for seg in &project.segments {
         if seg.confidence < 0.80 && !seg.manual_override {
@@ -320,6 +367,19 @@ pub fn validate_export_readiness(project: &Project) -> ExportValidationReport {
                 description: format!(
                     "Segmen '{}:{}' memiliki tingkat keyakinan rendah ({:.0}%) dan belum ditinjau secara manual.",
                     seg.surah_id, seg.ayah_number, seg.confidence * 100.0
+                ),
+                severity: ViolationSeverity::Warning,
+                segment_id: Some(seg.id.clone()),
+            });
+        }
+        // Aligner cloud melaporkan kata yang terlewat/berulang: rentang kata dan timing perlu dicek.
+        if seg.has_missing_words && !seg.manual_override {
+            report.add(PolicyViolation {
+                code: "SYN-MISSING-WORDS".into(),
+                title: "Ada kata terlewat atau berulang".into(),
+                description: format!(
+                    "Segmen '{}:{}': penyelaras melaporkan ada kata yang terlewat atau dibaca berulang. Dengarkan ulang dan periksa rentang kata segmen ini.",
+                    seg.surah_id, seg.ayah_number
                 ),
                 severity: ViolationSeverity::Warning,
                 segment_id: Some(seg.id.clone()),
@@ -344,6 +404,7 @@ mod tests {
             confidence: 1.0,
             manual_override: false,
             word_range: range,
+            ..Default::default()
         }
     }
 
@@ -381,12 +442,122 @@ mod tests {
         assert_eq!(cnt1_blocking(vec![seg("a", None)]), 0);
     }
 
+    fn review_warnings(p: &Project) -> Vec<PolicyViolation> {
+        validate_export_readiness(p)
+            .violations
+            .into_iter()
+            .filter(|v| v.code == "TRN-REVIEW")
+            .collect()
+    }
+
+    #[test]
+    fn unreviewed_primary_translation_on_partial_segments_warns_without_blocking() {
+        use qr_core::project::{SegmentTranslation, TranslationStatus};
+        let entry = |status| SegmentTranslation {
+            text: "potongan".into(),
+            status,
+        };
+        let mut p = Project::new("x");
+        let mut a = seg("a", Some((1, 20)));
+        a.translations
+            .insert("id.kemenag".into(), entry(TranslationStatus::Reviewed));
+        let b = seg("b", Some((21, 40))); // tanpa entri → masih terjemahan ayat utuh
+        let mut c = seg("c", Some((41, 60)));
+        c.translations
+            .insert("id.kemenag".into(), entry(TranslationStatus::AiTrimmed));
+        let mut d = seg("d", Some((61, 80)));
+        // Hanya edisi utama yang menentukan; edisi kedua yang belum ditinjau tidak dihitung.
+        d.translations
+            .insert("id.kemenag".into(), entry(TranslationStatus::Reviewed));
+        d.translations
+            .insert("en.qdc20".into(), entry(TranslationStatus::AutoTrimmed));
+        let mut whole = seg("w", None);
+        whole.ayah_number = 1;
+        p.segments = vec![a, b, c, d, whole];
+        p.translation_editions = vec!["id.kemenag".into(), "en.qdc20".into()];
+
+        let w = review_warnings(&p);
+        let ids: Vec<_> = w.iter().filter_map(|v| v.segment_id.as_deref()).collect();
+        assert_eq!(ids, ["b", "c"]);
+        assert!(w.iter().all(|v| v.severity == ViolationSeverity::Warning));
+        assert!(
+            w[0].description.contains("ayat utuh"),
+            "{}",
+            w[0].description
+        );
+        assert!(
+            w[1].description.contains("dipotong AI"),
+            "{}",
+            w[1].description
+        );
+        assert!(w[0].description.contains("2:282 kata 21–40"));
+        assert!(validate_export_readiness(&p).is_ready);
+
+        // Edisi utama berganti → status mengikuti edisi baru.
+        p.translation_editions = vec!["en.qdc20".into()];
+        let ids: Vec<_> = review_warnings(&p)
+            .into_iter()
+            .filter_map(|v| v.segment_id)
+            .collect();
+        assert_eq!(ids, ["a", "b", "c", "d"]);
+
+        p.translation_editions.clear();
+        assert!(review_warnings(&p).is_empty());
+    }
+
+    #[test]
+    fn special_segments_are_not_blocked_as_invalid_ayah_numbers() {
+        use qr_core::project::SegmentKind;
+        let mut p = Project::new("x");
+        let mut s = seg("basmalah", None);
+        s.kind = SegmentKind::Basmala;
+        s.surah_id = 0;
+        s.ayah_number = 0;
+        let mut t = s.clone();
+        t.id = "istiadzah".into();
+        t.kind = SegmentKind::Istiadha;
+        p.segments = vec![t, s];
+        let r = validate_export_readiness(&p);
+        assert!(r.is_ready, "{:?}", r.violations);
+        assert!(review_warnings(&p).is_empty());
+        // Segmen ayat dengan nomor 0 tetap diblokir.
+        let mut bad = seg("x", None);
+        bad.surah_id = 0;
+        p.segments.push(bad);
+        assert!(!validate_export_readiness(&p).is_ready);
+    }
+
     #[test]
     fn mixed_whole_and_ranged_segments_of_one_ayah_warn() {
         let mut p = Project::new("x");
         p.segments = vec![seg("a", None), seg("b", Some((1, 5)))];
         let r = validate_export_readiness(&p);
         assert!(r.violations.iter().any(|v| v.title.contains("ambigu")));
+    }
+
+    #[test]
+    fn missing_words_warn_until_reviewed_without_blocking() {
+        let missing = |manual_override| AyahSegment {
+            has_missing_words: true,
+            manual_override,
+            ..seg("a", Some((5, 6)))
+        };
+        let mut p = Project::new("x");
+        p.segments = vec![missing(false)];
+        let r = validate_export_readiness(&p);
+        let found: Vec<_> = r
+            .violations
+            .iter()
+            .filter(|v| v.code == "SYN-MISSING-WORDS")
+            .collect();
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].severity, ViolationSeverity::Warning);
+        assert_eq!(found[0].segment_id.as_deref(), Some("a"));
+        assert!(r.is_ready);
+
+        p.segments = vec![missing(true)];
+        let r = validate_export_readiness(&p);
+        assert!(r.violations.iter().all(|v| v.code != "SYN-MISSING-WORDS"));
     }
 
     use super::*;
@@ -411,6 +582,7 @@ mod tests {
             confidence: 0.98,
             manual_override: true,
             word_range: None,
+            ..Default::default()
         });
 
         let report = validate_export_readiness(&project);
@@ -432,6 +604,7 @@ mod tests {
             confidence: 0.98,
             manual_override: true,
             word_range: None,
+            ..Default::default()
         });
 
         project.assets.insert(
@@ -467,6 +640,7 @@ mod tests {
             confidence: 0.98,
             manual_override: true,
             word_range: None,
+            ..Default::default()
         });
 
         let track = Track {
@@ -494,5 +668,53 @@ mod tests {
             .violations
             .iter()
             .any(|v| v.code == "EXP-ZERO-DURATION"));
+    }
+
+    /// CNT-5: dimmer ≥ 0,20 diterima sebagai angka JSON maupun string numerik (tipe bindings UI).
+    #[test]
+    fn cnt5_reads_dimmer_as_number_or_numeric_string() {
+        let mut project = Project::new("Latar");
+        project.assets.insert(
+            "bg_1".into(),
+            AssetRef {
+                id: "bg_1".into(),
+                path: "/".into(),
+                sha256: String::new(),
+                kind: AssetKind::Image,
+                duration_ticks: 0,
+                size_bytes: 0,
+            },
+        );
+        let bg = project
+            .tracks
+            .iter_mut()
+            .find(|t| t.kind == TrackKind::Background)
+            .expect("proyek baru punya trek latar");
+        bg.clips.push(Clip {
+            id: "clip_bg_1".into(),
+            asset_id: Some("bg_1".into()),
+            start_tick: 0,
+            end_tick: 48_000,
+            trim_in_tick: 0,
+            trim_out_tick: 48_000,
+            label: String::new(),
+        });
+        let cnt5 = |p: &Project| {
+            let mut r = ExportValidationReport::default();
+            validate_cnt5_legibility_and_contrast(p, &mut r);
+            r.violations.iter().any(|v| v.code == "CNT-5")
+        };
+        assert!(cnt5(&project), "tanpa dimmer harus memperingatkan");
+        for (v, warns) in [
+            (serde_json::json!(0.35), false),
+            (serde_json::json!("0.35"), false),
+            (serde_json::json!("0.1"), true),
+            (serde_json::json!("abc"), true),
+        ] {
+            project
+                .style_overrides
+                .insert("background_dimmer".into(), v);
+            assert_eq!(cnt5(&project), warns);
+        }
     }
 }

@@ -2,6 +2,7 @@
 //! Mengacu ke PRD SRC-1, SRC-2, SRC-5, TML-2, SYN-9 dan docs/engineering/01_TECHNICAL_HANDOFF.md §10.2.
 
 pub mod audio_engine;
+pub mod background;
 pub mod clock;
 pub mod decode;
 pub mod encoder;
@@ -16,6 +17,10 @@ pub mod waveform;
 pub use audio_engine::{
     frames_to_ticks, ticks_to_frames, AudioEngine, AudioEngineError, AudioSource, BufferSource,
     PlaybackControl, PlayerCore,
+};
+pub use background::{
+    background_kind_for, cover_filter, extract_cover_frame, probe_image_with, BackgroundKind,
+    LoopingCoverVideo, BACKGROUND_IMAGE_EXTENSIONS, BACKGROUND_VIDEO_EXTENSIONS,
 };
 pub use clock::{frame_to_tick, tick_to_frame, AudioClock};
 pub use decode::decode_audio_mono_f32;

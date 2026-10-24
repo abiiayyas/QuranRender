@@ -376,6 +376,7 @@ mod tests {
             confidence,
             manual_override: false,
             word_range: None,
+            ..Default::default()
         }
     }
 

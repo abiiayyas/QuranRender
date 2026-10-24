@@ -1,4 +1,6 @@
+mod align_api;
 mod audio_api;
+mod background_api;
 mod batch_api;
 mod crashlog;
 mod export_api;
@@ -8,6 +10,7 @@ mod project_io;
 mod render_api;
 mod settings_api;
 mod tools;
+mod translation_api;
 
 use std::fs;
 use std::path::PathBuf;
@@ -42,6 +45,8 @@ pub struct AppState {
     pub jobs: export_api::ExportService,
     /// Playback audio pada thread engine khusus.
     pub playback: playback_api::PlaybackService,
+    /// content.db (edisi terjemahan unduhan): koneksi tulis aplikasi; dataset meng-ATTACH berkas yang sama.
+    pub content: translation_api::ContentStore,
 }
 
 const DATASET_PUBKEY: &str = include_str!("../../../../assets/keys/dataset.pub");
@@ -59,6 +64,7 @@ impl AppState {
             dataset: Mutex::new(None),
             jobs,
             playback,
+            content: translation_api::ContentStore::new(translation_api::content_db_path()),
         }
     }
 
@@ -68,10 +74,14 @@ impl AppState {
     ) -> Result<T, String> {
         let mut guard = self.dataset.lock().map_err(|e| e.to_string())?;
         if guard.is_none() {
-            *guard = Some(render_api::open_dataset(
-                &render_api::dataset_dir(),
-                DATASET_PUBKEY,
-            )?);
+            let db = render_api::open_dataset(&render_api::dataset_dir(), DATASET_PUBKEY)?;
+            // Edisi unduhan (bila sudah ada); gagal membaca content.db tidak boleh mematikan dataset.
+            if let Err(e) = db.attach_installed_translations(self.content.path()) {
+                eprintln!(
+                    "[Quran Render] PERINGATAN: edisi terjemahan unduhan tidak dapat dibaca: {e}"
+                );
+            }
+            *guard = Some(db);
         }
         match guard.as_ref() {
             Some(db) => f(db),
@@ -336,10 +346,7 @@ fn subtitle_export(
     state: tauri::State<'_, AppState>,
 ) -> Result<String, String> {
     state.with_dataset(|db| {
-        let verses = QuranDbVerses {
-            db,
-            edition_key: Some(render_api::DEFAULT_TRANSLATION_EDITION),
-        };
+        let verses = QuranDbVerses { db };
         let cues = render_api::subtitle_cues(&project, &verses, options.track)?;
         Ok(export_subtitles(&project, &cues, &options, &project.name))
     })
@@ -348,23 +355,23 @@ fn subtitle_export(
 /// Satu frame preview dari renderer Rust yang sama dengan ekspor (prinsip #3: tanpa preview DOM).
 #[tauri::command]
 #[specta::specta]
-fn preview_frame(
+async fn preview_frame(
     project: Project,
     tick: f64,
     max_width: u32,
     state: tauri::State<'_, AppState>,
 ) -> Result<render_api::PreviewFrame, String> {
+    // Async: dekode frame latar (FFmpeg) memblokir, jangan di thread utama UI.
+    let ffmpeg = audio_api::MediaTools::discover().ffmpeg;
     state.with_dataset(|db| {
-        let verses = QuranDbVerses {
-            db,
-            edition_key: Some(render_api::DEFAULT_TRANSLATION_EDITION),
-        };
+        let verses = QuranDbVerses { db };
         render_api::render_preview(
             &project,
             &render_api::resources_root(),
             &verses,
             tick.max(0.0) as i64,
             max_width,
+            &ffmpeg,
         )
     })
 }
@@ -418,6 +425,11 @@ fn create_specta_builder() -> Builder<tauri::Wry> {
             crashlog::telemetry_set_opt_in,
             audio_api::audio_import,
             audio_api::align_auto,
+            audio_api::verse_words,
+            audio_api::surah_list,
+            background_api::background_import,
+            background_api::background_remove,
+            align_api::align_cloud,
             export_api::export_start,
             export_api::export_cancel,
             export_api::export_status,
@@ -433,14 +445,36 @@ fn create_specta_builder() -> Builder<tauri::Wry> {
             playback_api::playback_seek,
             playback_api::playback_status,
             settings_api::settings_get,
-            settings_api::settings_set
+            settings_api::settings_set,
+            translation_api::translation_editions_list,
+            translation_api::translation_edition_install,
+            translation_api::translation_edition_remove,
+            translation_api::verse_translations,
+            translation_api::translation_auto_trim,
+            translation_api::translation_ai_trim,
+            translation_api::ai_key_set,
+            translation_api::ai_key_clear,
+            translation_api::ai_key_status
         ])
         // Payload event Tauri `export-progress` / `export-finished` (dipancarkan lewat `EventSink`).
         .typ::<export_api::ExportProgressEvent>()
         .typ::<export_api::ExportFinishedEvent>()
+        // Payload event Tauri `align-progress` (sinkron cloud).
+        .typ::<qr_sources::AlignProgressEvent>()
 }
 
 fn main() {
+    // Mode worker ekspor: antrean menjalankan executable ini sendiri (`<app> worker`) sebagai proses
+    // terpisah, jadi aplikasi cukup satu biner. Harus paling awal: worker tidak boleh membuka app.db
+    // (membuka antrean mengembalikan job `running` ke `queued`) atau mengekspor binding.
+    if std::env::args().nth(1).as_deref() == Some(qr_jobs::WORKER_ARG) {
+        if let Err(e) = qr_cli::run_worker() {
+            eprintln!("{e:#}");
+            std::process::exit(1);
+        }
+        return;
+    }
+
     // Pertama-tama: panic apa pun (termasuk saat membuka app.db) tercatat di crash log lokal.
     crashlog::install_panic_hook(crashlog::default_log_path());
     let builder = create_specta_builder();
@@ -459,6 +493,7 @@ fn main() {
     let jobs = export_api::ExportService::new(supervisor, export_api::default_resolver());
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .manage(AppState::new(
             db,
             projects_dir,
@@ -624,6 +659,7 @@ mod tests {
             confidence: 1.0,
             manual_override: false,
             word_range: None,
+            ..Default::default()
         });
         assert!(project_save_impl(&db, tmp.path(), edited).unwrap());
 

@@ -42,6 +42,7 @@ qr-policy = { path = "crates/qr-policy", version = "0.1.0" }
 qr-jobs = { path = "crates/qr-jobs", version = "0.1.0" }
 qr-store = { path = "crates/qr-store", version = "0.1.0" }
 qr-sources = { path = "crates/qr-sources", version = "0.1.0" }
+qr-cli = { path = "crates/qr-cli", version = "0.1.0" }
 
 # Error handling
 thiserror = "2.0"
@@ -65,3 +66,7 @@ harfrust = "0.15"
 read-fonts = "0.46"
 sha2 = "0.10"
 zip = { version = "9", default-features = false, features = ["deflate"] }
+# HTTP klien blocking (rustls) untuk adapter jaringan qr-sources
+ureq = { version = "3", default-features = false, features = ["rustls", "json", "gzip"] }
+# Keychain OS untuk rahasia (kunci API AI) — PRD SET-2; MIT OR Apache-2.0
+keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service", "crypto-rust"] }

@@ -35,6 +35,7 @@ fn valid_json() -> Vec<u8> {
         confidence: 0.9,
         manual_override: false,
         word_range: Some((1, 3)),
+        ..Default::default()
     });
     serde_json::to_vec_pretty(&p).unwrap()
 }

@@ -630,13 +630,20 @@ impl ExportService {
 }
 
 /// Setelan worker untuk biner `program`: env worker dan payload membawa lokasi sumber daya/dataset serta
-/// `ffmpeg` yang sudah diselesaikan (PATH aplikasi GUI macOS minimal).
+/// `ffmpeg` yang sudah diselesaikan (PATH aplikasi GUI macOS minimal). `QR_CONTENT_DB` menunjuk ke
+/// content.db aplikasi agar worker membaca edisi terjemahan unduhan yang sama dengan preview.
 pub fn worker_setup_for(program: PathBuf) -> WorkerSetup {
     let resources = crate::render_api::resources_root();
     let dataset = crate::render_api::dataset_dir();
     let spec = WorkerSpec::qurender(program)
         .with_env("QR_RESOURCES_DIR", resources.to_string_lossy().to_string())
-        .with_env("QR_DATASET_DIR", dataset.to_string_lossy().to_string());
+        .with_env("QR_DATASET_DIR", dataset.to_string_lossy().to_string())
+        .with_env(
+            qr_cli::CONTENT_DB_ENV,
+            crate::translation_api::content_db_path()
+                .to_string_lossy()
+                .to_string(),
+        );
     WorkerSetup {
         spec,
         resources_dir: Some(resources),
@@ -644,7 +651,7 @@ pub fn worker_setup_for(program: PathBuf) -> WorkerSetup {
     }
 }
 
-/// Pemecah worker produksi: `QR_WORKER_BIN` → saudara `current_exe` → PATH (lihat `tools::resolve_worker`).
+/// Pemecah worker produksi: `QR_WORKER_BIN`, selain itu executable aplikasi ini (lihat `tools::resolve_worker`).
 pub fn default_resolver() -> WorkerResolver {
     Arc::new(|| Ok(worker_setup_for(crate::tools::resolve_worker()?)))
 }
@@ -1236,6 +1243,7 @@ wait
             confidence: 1.0,
             manual_override: false,
             word_range: None,
+            ..Default::default()
         }
     }
 
@@ -1300,7 +1308,7 @@ wait
         assert!(st.success(), "cargo build -p qr-cli gagal");
         let exe = std::env::current_exe().unwrap();
         let profile_dir = exe.parent().unwrap().parent().unwrap();
-        let bin = profile_dir.join(crate::tools::worker_file_name());
+        let bin = profile_dir.join(format!("qurender{}", std::env::consts::EXE_SUFFIX));
         assert!(
             bin.is_file(),
             "qurender tidak ditemukan di {}",
@@ -1480,8 +1488,8 @@ wait
     }
 
     #[test]
-    #[ignore = "butuh bundel .app: scripts/prepare-worker-sidecar.sh lalu `cd apps/desktop && pnpm tauri build --bundles app --config src-tauri/tauri.sidecar.conf.json`"]
-    fn bundled_app_worker_is_found_next_to_the_executable_and_exports_with_bundled_resources() {
+    #[ignore = "butuh bundel .app: `pnpm dmg` (atau `pnpm --filter @quranrender/desktop tauri build --bundles app`)"]
+    fn bundled_app_runs_itself_as_the_worker_and_exports_with_bundled_resources() {
         let contents = Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../../../target/release/bundle/macos/Quran Render.app/Contents");
         let app_exe = contents.join("MacOS/quranrender");
@@ -1490,10 +1498,15 @@ wait
             "bundel belum dibangun: {}",
             app_exe.display()
         );
+        let macos_dir: Vec<_> = std::fs::read_dir(contents.join("MacOS"))
+            .unwrap()
+            .map(|e| e.unwrap().file_name())
+            .collect();
+        assert_eq!(macos_dir, ["quranrender"], "bundel hanya berisi satu biner");
 
-        // Urutan resolusi produksi: tanpa env dan tanpa PATH, saudara dari executable aplikasi.
-        let worker = crate::tools::resolve_worker_with(None, Some(&app_exe), None).unwrap();
-        assert_eq!(worker, contents.join("MacOS/qurender"));
+        // Urutan resolusi produksi tanpa env: executable aplikasi itu sendiri, dijalankan `<app> worker`.
+        let worker = crate::tools::resolve_worker_with(None, Some(&app_exe)).unwrap();
+        assert_eq!(worker, app_exe);
 
         // Lingkungan mirip aplikasi yang dibuka dari Finder: PATH minimal, sumber daya dari bundel.
         let resources = contents.join("Resources");

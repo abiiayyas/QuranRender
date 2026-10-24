@@ -13,6 +13,10 @@ use std::time::{Duration, Instant};
 
 use crate::{JobError, JobRecord, JobState, JobSupervisor, WorkerCommand, WorkerEvent};
 
+/// Argumen pertama yang membuat sebuah executable berjalan sebagai worker ekspor
+/// (`qurender worker`, atau executable aplikasi desktop itu sendiri).
+pub const WORKER_ARG: &str = "worker";
+
 /// Cara menjalankan worker: biner + argumen + environment tambahan.
 #[derive(Debug, Clone)]
 pub struct WorkerSpec {
@@ -22,11 +26,11 @@ pub struct WorkerSpec {
 }
 
 impl WorkerSpec {
-    /// `<program> worker`, sesuai CLI `qurender worker`.
+    /// `<program> worker`: CLI `qurender` atau executable aplikasi desktop.
     pub fn qurender(program: impl Into<PathBuf>) -> Self {
         Self {
             program: program.into(),
-            args: vec!["worker".into()],
+            args: vec![WORKER_ARG.into()],
             envs: Vec::new(),
         }
     }

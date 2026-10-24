@@ -6,9 +6,10 @@ use std::io;
 use std::path::Path;
 
 use minisign_verify::{PublicKey, Signature};
-use rusqlite::{params, Connection, OpenFlags};
+use rusqlite::{params, Connection, OpenFlags, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use std::sync::atomic::{AtomicBool, Ordering};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -128,9 +129,22 @@ pub struct SearchResult {
     pub surah_name: String,
 }
 
+/// Edisi terjemahan bawaan dataset (`translation_edition` di quran.db).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct DatasetEdition {
+    pub key: String,
+    /// Kode bahasa (mis. `id`).
+    pub language: String,
+    pub direction: String,
+    pub name: String,
+    pub translator: String,
+}
+
 /// Instance koneksi read-only ke quran.db yang telah terverifikasi integritasnya.
 pub struct QuranDatabase {
     conn: Connection,
+    /// `content.db` (edisi unduhan pengguna) sudah di-ATTACH sebagai skema `user` (02 §4).
+    installed_attached: AtomicBool,
 }
 
 impl std::fmt::Debug for QuranDatabase {
@@ -212,7 +226,12 @@ impl QuranDatabase {
 
         conn.execute_batch("PRAGMA query_only = ON;")?;
 
-        Ok(Self { conn })
+        conn.busy_timeout(std::time::Duration::from_secs(2))?;
+
+        Ok(Self {
+            conn,
+            installed_attached: AtomicBool::new(false),
+        })
     }
 
     /// Mendapatkan metadata dataset dari tabel `dataset_info`.
@@ -473,6 +492,79 @@ impl QuranDatabase {
             })
     }
 
+    /// Menyambungkan `content.db` (edisi terjemahan unduhan) sebagai skema `user` secara read-only
+    /// (02 §4 "akses gabungan"). Idempoten; `Ok(false)` bila berkas belum ada (belum ada edisi terpasang).
+    /// Koneksi ini tetap read-only: penulisan content.db hanya lewat koneksi milik aplikasi.
+    pub fn attach_installed_translations(&self, content_db: &Path) -> Result<bool, DatasetError> {
+        if self.installed_attached.load(Ordering::Acquire) {
+            return Ok(true);
+        }
+        if !content_db.is_file() {
+            return Ok(false);
+        }
+        self.conn.execute(
+            "ATTACH DATABASE ?1 AS user",
+            params![content_db.to_string_lossy()],
+        )?;
+        self.installed_attached.store(true, Ordering::Release);
+        Ok(true)
+    }
+
+    /// Daftar edisi terjemahan bawaan dataset.
+    pub fn list_dataset_editions(&self) -> Result<Vec<DatasetEdition>, DatasetError> {
+        let mut stmt = self.conn.prepare(
+            "SELECT key, language, direction, name, translator FROM translation_edition ORDER BY key",
+        )?;
+        let rows = stmt.query_map([], |r| {
+            Ok(DatasetEdition {
+                key: r.get(0)?,
+                language: r.get(1)?,
+                direction: r.get(2)?,
+                name: r.get(3)?,
+                translator: r.get(4)?,
+            })
+        })?;
+        Ok(rows.collect::<Result<_, _>>()?)
+    }
+
+    /// Terjemahan bersih satu ayat untuk edisi mana pun: edisi dataset lebih dulu, lalu edisi unduhan
+    /// (`content.db`, bila sudah di-attach). `Ok(None)` bila edisi atau ayat tidak tersedia.
+    pub fn verse_translation(
+        &self,
+        edition_key: &str,
+        surah_id: u32,
+        ayah_number: u32,
+    ) -> Result<Option<String>, DatasetError> {
+        let bundled: Option<String> = self
+            .conn
+            .prepare_cached(
+                "SELECT t.text FROM translation_text t JOIN ayah a ON a.id = t.ayah_id
+                 WHERE t.edition_key = ?1 AND a.surah_id = ?2 AND a.number = ?3",
+            )?
+            .query_row(params![edition_key, surah_id, ayah_number], |r| r.get(0))
+            .optional()?;
+        if bundled.is_some() || !self.installed_attached.load(Ordering::Acquire) {
+            return Ok(bundled);
+        }
+        Ok(self
+            .conn
+            .prepare_cached(
+                "SELECT clean_text FROM user.translation_text
+                 WHERE edition_id = ?1 AND surah_id = ?2 AND ayah_number = ?3",
+            )?
+            .query_row(params![edition_key, surah_id, ayah_number], |r| r.get(0))
+            .optional()?)
+    }
+
+    /// Seluruh `(surah, ayat)` dalam urutan mushaf (untuk memvalidasi unduhan edisi lengkap).
+    pub fn all_verse_refs(&self) -> Result<Vec<(u32, u32)>, DatasetError> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT surah_id, number FROM ayah ORDER BY id ASC")?;
+        let rows = stmt.query_map([], |r| Ok((r.get(0)?, r.get(1)?)))?;
+        Ok(rows.collect::<Result<_, _>>()?)
+    }
+
     /// Mengambil ayat lengkap: teks Arab, daftar kata beserta offset, dan terjemahan Kemenag.
     pub fn get_full_ayah(&self, ayah_id: u32) -> Result<FullAyah, DatasetError> {
         let ayah = self.get_ayah(ayah_id)?;
@@ -649,5 +741,62 @@ mod tests {
         assert!(!res.is_empty());
         assert!(res.iter().any(|r| r.ayah_id == 1));
         assert_eq!(res[0].surah_name, "Al-Fatihah");
+    }
+
+    /// quran.db mini sintetis + content.db (skema qr-sources) untuk menguji akses gabungan tanpa dataset.
+    #[test]
+    fn installed_editions_are_read_through_attached_content_db() {
+        let dir = std::env::temp_dir().join(format!("qr_attach_{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let quran = dir.join("quran.db");
+        let c = Connection::open(&quran).unwrap();
+        c.execute_batch(
+            "CREATE TABLE ayah (id INTEGER PRIMARY KEY, surah_id INTEGER, number INTEGER);
+             CREATE TABLE translation_edition (key TEXT PRIMARY KEY, language TEXT, direction TEXT,
+                 name TEXT, translator TEXT);
+             CREATE TABLE translation_text (edition_key TEXT, ayah_id INTEGER, text TEXT);
+             INSERT INTO ayah VALUES (1, 1, 1), (2, 1, 2);
+             INSERT INTO translation_edition VALUES ('id.kemenag', 'id', 'ltr', 'Kemenag', 'Tim');
+             INSERT INTO translation_text VALUES ('id.kemenag', 2, 'Segala puji bagi Allah.');",
+        )
+        .unwrap();
+        drop(c);
+        let content = dir.join("content.db");
+
+        let db = QuranDatabase::open_unverified_for_test(&quran).unwrap();
+        assert_eq!(db.all_verse_refs().unwrap(), vec![(1, 1), (1, 2)]);
+        assert_eq!(db.list_dataset_editions().unwrap()[0].language, "id");
+        assert_eq!(
+            db.verse_translation("id.kemenag", 1, 2).unwrap().as_deref(),
+            Some("Segala puji bagi Allah.")
+        );
+        // Belum ada content.db: edisi unduhan tidak ada, tanpa galat.
+        assert!(!db.attach_installed_translations(&content).unwrap());
+        assert_eq!(db.verse_translation("en.qdc20", 1, 2).unwrap(), None);
+
+        let w = Connection::open(&content).unwrap();
+        w.execute_batch(
+            "CREATE TABLE edition (id TEXT PRIMARY KEY);
+             CREATE TABLE translation_text (edition_id TEXT, surah_id INTEGER, ayah_number INTEGER,
+                 text TEXT, clean_text TEXT, footnotes_json TEXT);
+             INSERT INTO edition VALUES ('en.qdc20');
+             INSERT INTO translation_text VALUES ('en.qdc20', 1, 2, 'raw<sup>1</sup>', '[All] praise is [due] to Allah', NULL);",
+        )
+        .unwrap();
+        assert!(db.attach_installed_translations(&content).unwrap());
+        assert!(
+            db.attach_installed_translations(&content).unwrap(),
+            "idempoten"
+        );
+        assert_eq!(
+            db.verse_translation("en.qdc20", 1, 2).unwrap().as_deref(),
+            Some("[All] praise is [due] to Allah")
+        );
+        // Perubahan dari koneksi tulis aplikasi langsung terlihat (hapus edisi).
+        w.execute("DELETE FROM translation_text", []).unwrap();
+        assert_eq!(db.verse_translation("en.qdc20", 1, 2).unwrap(), None);
+        drop(db);
+        let _ = fs::remove_dir_all(&dir);
     }
 }

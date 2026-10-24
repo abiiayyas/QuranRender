@@ -5,6 +5,7 @@ import type {
 } from "../bindings";
 import type { PlainKey, TFunction } from "../i18n";
 import { TICKS_PER_SECOND } from "../format";
+import { translationPending } from "./translation";
 
 export type { Segment, Project };
 
@@ -68,16 +69,43 @@ export function segmentAt(segments: ReadonlyArray<Segment>, tick: number): Segme
   return segments.find((s) => tick >= segStart(s) && tick < segEnd(s));
 }
 
-export function needsReview(s: Segment): boolean {
-  return !s.manual_override && (s.confidence === null || s.confidence < REVIEW_THRESHOLD);
+/** Segmen berurutan menurut waktu mulai (daftar proyek tidak dijamin terurut setelah sisipan). */
+export function sortSegments(segments: ReadonlyArray<Segment>): Segment[] {
+  return [...segments].sort((a, b) => segStart(a) - segStart(b));
+}
+
+/** Segmen khusus (basmalah pembuka, isti'adzah): bukan teks ayat, `surah_id`/`ayah_number` = 0. */
+export function isSpecial(s: Segment): boolean {
+  return s.kind !== "Ayah";
+}
+
+export type ReviewReason = "lowConfidence" | "missingWords";
+
+/** Alasan waktu segmen perlu ditinjau; kosong bila sudah diterima/diatur manual. */
+export function reviewReasons(s: Segment): ReviewReason[] {
+  if (s.manual_override) return [];
+  const out: ReviewReason[] = [];
+  if (s.confidence === null || s.confidence < REVIEW_THRESHOLD) out.push("lowConfidence");
+  if (s.has_missing_words) out.push("missingWords");
+  return out;
+}
+
+/**
+ * Segmen perlu ditinjau: waktunya (lihat `reviewReasons`) atau terjemahan edisi utama `primary`
+ * pada segmen sebagian ayat belum disetujui/disunting. Menerima waktu tidak menyetujui terjemahan.
+ */
+export function needsReview(s: Segment, primary: string | null): boolean {
+  return reviewReasons(s).length > 0 || translationPending(s, primary);
 }
 
 export function confidenceText(s: Segment): string {
   return s.confidence === null ? "—" : `${Math.round(s.confidence * 100)}%`;
 }
 
-/** `2:282` atau `2:282 (kata 1–5)` untuk segmen yang dibagi per rentang kata. */
+/** `2:282`, `2:282 (kata 1–5)`, atau nama segmen khusus (Basmalah/Isti'adzah). */
 export function segCode(s: Segment, t: TFunction): string {
+  if (s.kind === "Basmala") return t("studio.seg.basmala");
+  if (s.kind === "Istiadha") return t("studio.seg.istiadha");
   const base = `${s.surah_id}:${s.ayah_number}`;
   if (!s.word_range) return base;
   return `${base} ${t("studio.seg.wordRange", { from: s.word_range[0] ?? 0, to: s.word_range[1] ?? 0 })}`;
@@ -118,12 +146,15 @@ export function splitSegmentAt(
   const pivot = s.word_timings.find((w) => w.word_idx === k)?.start_tick;
   if (pivot === null || pivot === undefined) return null;
   if (pivot <= segStart(s) || pivot >= segEnd(s)) return null;
+  // Potongan terjemahan lama tidak berlaku untuk rentang kata baru: kedua bagian kembali ke teks ayat
+  // utuh berstatus "perlu ditinjau" sampai dipotong/disunting.
   const head: Segment = {
     ...s,
     end_tick: pivot,
     word_timings: s.word_timings.filter((w) => w.word_idx < k),
     word_range: [span.first, k - 1],
     manual_override: true,
+    translations: {},
   };
   const tail: Segment = {
     ...s,
@@ -132,6 +163,7 @@ export function splitSegmentAt(
     word_timings: s.word_timings.filter((w) => w.word_idx >= k),
     word_range: [k, span.last],
     manual_override: true,
+    translations: {},
   };
   return [head, tail];
 }
@@ -159,6 +191,145 @@ export function retimeSegment(s: Segment, start: number, end: number): Segment {
       end_tick: map(w.end_tick),
     })),
   };
+}
+
+/** Panjang satu frame proyek dalam tick (48 kHz). */
+export function frameTicks(project: Project): number {
+  const { fps_num, fps_den } = project.canvas;
+  return fps_num > 0 && fps_den > 0 ? (TICKS_PER_SECOND * fps_den) / fps_num : TICKS_PER_SECOND / 30;
+}
+
+export function snapToFrame(tick: number, frame: number): number {
+  return Math.round(Math.round(tick / frame) * frame);
+}
+
+export type Edge = "start" | "end";
+
+/**
+ * Memindah satu tepi segmen ke `tick` (di-clamp supaya segmen dan tetangganya minimal `minTicks`).
+ * Tetangga yang tertimpa atau bersambung dengan tepi itu ikut digeser, jadi segmen tidak pernah
+ * tumpang tindih. `null` bila segmen tidak ada atau tidak ada ruang.
+ */
+export function setSegmentEdge(
+  segments: ReadonlyArray<Segment>,
+  id: string,
+  edge: Edge,
+  tick: number,
+  minTicks: number,
+  maxTick: number
+): { segments: Segment[]; tick: number } | null {
+  const list = sortSegments(segments);
+  const i = list.findIndex((s) => s.id === id);
+  const seg = list[i];
+  if (!seg) return null;
+  const start = segStart(seg);
+  const end = segEnd(seg);
+  if (edge === "start") {
+    const prev = list[i - 1];
+    const lo = prev ? segStart(prev) + minTicks : 0;
+    const hi = end - minTicks;
+    if (lo > hi) return null;
+    const at = Math.min(Math.max(tick, lo), hi);
+    list[i] = retimeSegment(seg, at, end);
+    if (prev && (segEnd(prev) > at || segEnd(prev) === start)) list[i - 1] = retimeSegment(prev, segStart(prev), at);
+    return { segments: list, tick: at };
+  }
+  const next = list[i + 1];
+  const lo = start + minTicks;
+  const hi = next ? segEnd(next) - minTicks : maxTick;
+  if (lo > hi) return null;
+  const at = Math.min(Math.max(tick, lo), hi);
+  list[i] = retimeSegment(seg, start, at);
+  if (next && (segStart(next) < at || segStart(next) === end)) list[i + 1] = retimeSegment(next, at, segEnd(next));
+  return { segments: list, tick: at };
+}
+
+/** Waktu kata proporsional terhadap panjang huruf (seperti `align_verse_words` di crate Rust align). */
+export function proportionalTimings(
+  words: ReadonlyArray<string>,
+  firstIdx: number,
+  start: number,
+  end: number
+): WordTiming[] {
+  const weights = words.map((w) => Math.max([...w].length, 1));
+  const total = weights.reduce((a, b) => a + b, 0);
+  const span = end - start;
+  let acc = 0;
+  return words.map((text, i) => {
+    const a = start + Math.round((span * acc) / total);
+    acc += weights[i] ?? 1;
+    const b = i === words.length - 1 ? end : start + Math.round((span * acc) / total);
+    return { word_idx: firstIdx + i, start_tick: a, end_tick: b, text, confidence: null };
+  });
+}
+
+/** Pilihan kata sinkron manual: ayat `surah:ayah`, kata `from..=to` (1-based). */
+export type WordSelection = { surah: number; ayah: number; from: number; to: number };
+
+/** Segmen sinkron manual untuk kata terpilih; `word_range` dikosongkan bila seluruh ayat. */
+export function manualSegment(sel: WordSelection, words: ReadonlyArray<string>, start: number, end: number): Segment {
+  const whole = sel.from === 1 && sel.to >= words.length;
+  return {
+    id: newSegmentId(),
+    surah_id: sel.surah,
+    ayah_number: sel.ayah,
+    start_tick: start,
+    end_tick: end,
+    word_timings: proportionalTimings(words.slice(sel.from - 1, sel.to), sel.from, start, end),
+    confidence: null,
+    manual_override: true,
+    ...(whole ? {} : { word_range: [sel.from, sel.to] }),
+    kind: "Ayah",
+    source: "Manual",
+    has_missing_words: false,
+  };
+}
+
+export function specialSegment(kind: "Basmala" | "Istiadha", start: number, end: number): Segment {
+  return {
+    id: newSegmentId(),
+    surah_id: 0,
+    ayah_number: 0,
+    start_tick: start,
+    end_tick: end,
+    word_timings: [],
+    confidence: null,
+    manual_override: true,
+    kind,
+    source: "Manual",
+    has_missing_words: false,
+  };
+}
+
+export function verseKey(surah: number, ayah: number): string {
+  return `${surah}:${ayah}`;
+}
+
+/**
+ * Posisi lanjut sinkron manual: kata setelah segmen ayat terakhir, atau ayat berikutnya bila ayat itu
+ * sudah lengkap. Tanpa segmen ayat: `fallback` kata 1. `wordCount` mengembalikan `undefined` bila
+ * kata ayat belum dimuat (hasil `undefined` = tunggu); `null` = sudah melewati akhir mushaf.
+ */
+export function nextWordStart(
+  segments: ReadonlyArray<Segment>,
+  wordCount: (surah: number, ayah: number) => number | undefined,
+  ayahsIn: (surah: number) => number | null,
+  fallback: { surah: number; ayah: number }
+): { surah: number; ayah: number; from: number } | null | undefined {
+  const last = sortSegments(segments)
+    .filter((s) => !isSpecial(s))
+    .pop();
+  if (!last) return { ...fallback, from: 1 };
+  const { surah_id: surah, ayah_number: ayah } = last;
+  const lastWord = last.word_range?.[1];
+  if (lastWord !== undefined) {
+    const count = wordCount(surah, ayah);
+    if (count === undefined) return undefined;
+    if (lastWord < count) return { surah, ayah, from: lastWord + 1 };
+  }
+  const inSurah = ayahsIn(surah);
+  if (inSurah !== null && ayah < inSurah) return { surah, ayah: ayah + 1, from: 1 };
+  return ayahsIn(surah + 1) === null ? null : { surah: surah + 1, ayah: 1, from: 1 };
 }
 
 /** Kunci cache overflow: berubah bila templat, rasio, atau rentang kata segmen berubah. */

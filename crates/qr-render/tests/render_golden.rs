@@ -197,8 +197,12 @@ fn long_ayah_2_282_overflow_is_flagged_and_word_range_split_fits() {
             "rentang harus menyambung tanpa celah/tumpang tindih"
         );
     }
+    // Bagian ini menguji pembagian teks Arab saja: proyek tanpa edisi terjemahan. (Segmen sebagian
+    // ayat kini menampilkan terjemahan ayat utuh berstatus "perlu ditinjau" bila belum dipotong;
+    // terjemahan 2:282 utuh memang tidak muat dan harus dipotong lewat fitur pemotongan terjemahan.)
     for (a, b) in ranges {
         let mut p = common::project_with(2, 282, &text, "9:16", None);
+        p.translation_editions.clear();
         p.segments[0].word_range = Some((a, b));
         let scene = SceneBuilder::build(&p, &tpl, &fonts, 48_000 * 5, &verses).unwrap();
         assert!(!scene.text_overflow, "rentang {a}-{b} masih overflow");

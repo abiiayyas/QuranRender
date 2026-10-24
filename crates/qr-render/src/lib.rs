@@ -11,6 +11,7 @@ pub mod scene;
 pub mod subtitle;
 pub mod template;
 pub mod text;
+pub mod translation;
 
 pub use anim::{
     calculate_slide_y_offset, calculate_transition_alpha, ease, evaluate_verse_karaoke,
@@ -19,8 +20,9 @@ pub use anim::{
 pub use collision::{calculate_autofit_scale, resolve_vertical_collision, LayoutBox};
 pub use font::{FontCoverageValidator, FontGlyphReport};
 pub use scene::{
-    parse_color, pixmap_digest, FontSet, Primitive, QuranDbVerses, RenderError, RenderScene,
-    SceneBuilder, SoftwareRenderer, VerseContent, VerseSource,
+    background_pixmap, parse_color, pixmap_digest, segment_content, FontSet, Primitive,
+    QuranDbVerses, RenderError, RenderScene, SceneBuilder, SoftwareRenderer, VerseContent,
+    VerseSource,
 };
 pub use subtitle::{
     export_subtitles, generate_ass, generate_srt, generate_vtt, SubtitleCue, SubtitleExportOptions,
@@ -34,4 +36,9 @@ pub use template::{
 pub use text::{
     fit_text, layout_words, suggest_word_ranges, words_of_ayah, FontFace, ShapedGlyph,
     TextDirection,
+};
+pub use tiny_skia::Pixmap;
+pub use translation::{
+    auto_trim_translation, edition_language, needs_review, resolve_segment_translations,
+    special_translation, ResolvedTranslation, ISTIADHA_AR,
 };

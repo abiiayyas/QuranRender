@@ -40,11 +40,18 @@ Build bersifat reproducible: dua kali build menghasilkan SHA-256 `quran.db` yang
 dataset yang **tidak ada di repositori**. Tanpa kunci rahasia Anda sendiri, dataset hasil build lokal tidak lolos
 verifikasi aplikasi. Lihat bagian 7 (kunci tanda tangan).
 
-## 3. Menjalankan aplikasi (mode pengembangan)
+## 3. Perintah utama
 
-```bash
-pnpm --filter @quranrender/desktop tauri dev
-```
+Dua perintah dari akar repositori, tanpa langkah lain:
+
+| Tujuan | Perintah | Hasil |
+|---|---|---|
+| Menjalankan aplikasi untuk dicoba (mode pengembangan, muat ulang otomatis) | `pnpm app` | jendela Quran Render |
+| Membuat installer macOS | `pnpm dmg` | `target/release/bundle/dmg/Quran Render_<versi>_<arsitektur>.dmg` |
+
+Ekspor video berjalan di proses terpisah, tetapi proses itu adalah **executable aplikasi yang sama** yang
+dijalankan ulang dengan argumen `worker`. Tidak ada biner kedua yang perlu dibangun atau dibundel: `pnpm app`
+langsung bisa mengekspor, dan `.app` di dalam `.dmg` hanya berisi `Contents/MacOS/quranrender`.
 
 Mode dev mencari font, template, dan dataset di akar repositori. Folder proyek disimpan di `~/QuranRender/Projects`
 dan indeks di `~/QuranRender/app.db`.
@@ -55,48 +62,40 @@ Variabel lingkungan:
 |---|---|
 | `QR_RESOURCES_DIR` | akar sumber daya (berisi `assets/fonts`, `crates/qr-render/templates`, `build/dataset`) |
 | `QR_DATASET_DIR` | folder dataset (default: `<resources>/build/dataset`) |
-| `QR_WORKER_BIN` | biner worker `qurender` untuk ekspor/antrean. Urutan pencarian: variabel ini → saudara executable aplikasi (`Contents/MacOS/qurender` di bundel; `target/<profil>/qurender` saat dev, setelah `cargo build -p qr-cli`) → `qurender` di `PATH` → galat yang menyebut semua tempat yang dicari. Bila diset tetapi salah, galat (tidak jatuh diam-diam ke kandidat lain). |
+| `QR_CONTENT_DB` | `content.db` edisi terjemahan unduhan (default aplikasi: `~/QuranRender/content.db`). Aplikasi meneruskannya ke worker ekspor; worker meng-ATTACH berkas ini read-only ke `quran.db`, jadi preview, ekspor, dan subtitle membaca edisi yang sama tanpa teks terjemahan di payload job. |
+| `QR_WORKER_BIN` | menimpa worker ekspor (mis. biner `qurender` atau worker palsu saat uji). Default: executable aplikasi itu sendiri (`<app> worker`). Bila diset tetapi berkasnya tidak ada, galat (tidak jatuh diam-diam ke aplikasi). |
 | `QR_FFMPEG_BIN`, `QR_FFPROBE_BIN` | jalur `ffmpeg`/`ffprobe`. Default: `PATH`, lalu `/opt/homebrew/bin`, `/usr/local/bin`, `/usr/bin` (aplikasi macOS yang dibuka dari Finder tidak mewarisi `PATH` Homebrew). |
 
-## 4. Build bundel aplikasi
-
-macOS (menghasilkan `Quran Render.app`, ±25 MiB):
+## 4. Installer `.dmg` (macOS)
 
 ```bash
-cd apps/desktop
-pnpm tauri build --bundles app
-# hasil: target/release/bundle/macos/Quran Render.app
+pnpm dmg
+# hasil: target/release/bundle/dmg/Quran Render_0.1.0_x64.dmg
 ```
 
-Bundel membawa font, template, dan dataset (lihat `bundle.resources` di `apps/desktop/src-tauri/tauri.conf.json`),
-sehingga **`build/dataset` harus sudah ada sebelum build bundel**. Saat start, aplikasi mencetak ringkasan
-pemeriksaan sumber daya ke stderr (`[Quran Render] sumber daya OK ...`).
+Prasyarat: `build/dataset` sudah ada (lihat §2), karena bundel membawa font, template, dan dataset
+(`bundle.resources` di `apps/desktop/src-tauri/tauri.conf.json`). Tanpa dataset, build berhenti dengan galat yang
+menyebut berkas yang hilang.
 
-Menjalankan biner di dalam bundel dari terminal untuk melihat log:
+- Aplikasi ditandatangani **ad-hoc** (`bundle.macOS.signingIdentity: "-"`), belum dengan sertifikat Developer ID dan
+  belum dinotarisasi. Di Mac lain, buka pertama kali lewat klik kanan › *Buka* (Gatekeeper).
+- Arsitektur mengikuti mesin yang membangun (`x64` di Mac Intel, `aarch64` di Apple Silicon). Universal binary
+  belum dibuat.
+- FFmpeg belum dibundel: `ffmpeg`/`ffprobe` tetap diambil dari `PATH` atau lokasi Homebrew umum.
+
+Hanya `.app` tanpa `.dmg`: `pnpm --filter @quranrender/desktop tauri build --bundles app`
+(`target/release/bundle/macos/Quran Render.app`). Log saat start (`[Quran Render] sumber daya OK ...`) terlihat bila
+biner di dalam bundel dijalankan dari terminal:
 
 ```bash
 "target/release/bundle/macos/Quran Render.app/Contents/MacOS/quranrender"
 ```
 
-Installer Windows (NSIS) dan Linux (AppImage/.deb): didefinisikan di CI, **belum pernah dibangun**. FFmpeg belum
-dibundel; aplikasi memakai `ffmpeg`/`ffprobe` dari `PATH` (atau lokasi umum di atas).
+Installer Windows (NSIS) dan Linux (AppImage/.deb): didefinisikan di CI, **belum pernah dibangun**.
 
-### Worker ekspor sebagai sidecar (macOS, terverifikasi)
+## 5. CLI pengembang `qurender` (opsional)
 
-Ekspor video berjalan lewat proses `qurender worker`. Agar bundel membawanya, bangun sidecar lalu bundel dengan
-konfigurasi tambahan (config terpisah agar `cargo test -p quranrender` tidak mensyaratkan biner sidecar):
-
-```bash
-scripts/prepare-worker-sidecar.sh          # build rilis qr-cli → apps/desktop/src-tauri/binaries/qurender-<triple>
-cd apps/desktop
-pnpm tauri build --bundles app --config src-tauri/tauri.sidecar.conf.json
-ls "../../target/release/bundle/macos/Quran Render.app/Contents/MacOS"   # quranrender  qurender
-```
-
-Tanpa `--config src-tauri/tauri.sidecar.conf.json`, bundel **tidak** membawa worker dan ekspor hanya jalan bila
-`QR_WORKER_BIN`/`PATH` menyediakannya. Hanya macOS x86_64 yang diuji; Windows/Linux belum.
-
-## 5. Build dan pakai CLI/worker (`qurender`)
+Tidak diperlukan untuk aplikasi maupun installer. Berguna untuk render tanpa UI (PRD RND-4) dan uji regresi:
 
 ```bash
 cargo build --release -p qr-cli
@@ -109,7 +108,7 @@ cargo build --release -p qr-cli
 # Validasi proyek terhadap kebijakan konten
 ./target/release/qurender validate <path/project.json>
 
-# Worker NDJSON (stdin/stdout), dipakai oleh antrean job
+# Worker NDJSON (stdin/stdout); protokol yang sama dengan `<app> worker`
 ./target/release/qurender worker
 ```
 
@@ -154,12 +153,28 @@ Di `quranrender` (`cargo test -p quranrender -- --ignored`):
 | Tes | Syarat |
 |---|---|
 | `real_worker_exports_a_valid_mp4_*`, `real_worker_cancel_mid_export_*` | dataset bertanda tangan; `cargo build -p qr-cli` dijalankan otomatis oleh tes. Ekspor 2 dtk diverifikasi `ffprobe` (h264, 270×480, 60 frame, aac); pembatalan di tengah ekspor tidak meninggalkan berkas |
-| `bundled_app_worker_is_found_next_to_the_executable_*` | bundel `.app` dengan sidecar (lihat §4); worker dan sumber daya diambil dari bundel dengan `PATH` minimal |
+| `bundled_app_runs_itself_as_the_worker_*` | bundel `.app` (lihat §4); bundel hanya berisi satu biner, worker = executable aplikasi, sumber daya diambil dari bundel dengan `PATH` minimal |
 | `real_engine_plays_a_sine_at_volume_zero_through_the_service` | perangkat audio keluaran (volume 0) |
 
 Varian tanpa dataset/perangkat (jalan di `cargo test` biasa): worker palsu berbasis skrip `sh` (Unix) yang berbicara
 protokol NDJSON membuktikan alur `export_start` → event `export-progress` → `export-finished`, pembatalan,
 jeda/lanjut antrean, dan antrean batch; controller playback diuji dengan engine palsu.
+
+Aligner cloud (`qr-sources`, butuh internet dan klip audio; jangan komit audionya):
+
+```bash
+ffmpeg -i surah.mp3 -t 40 -ac 1 -ar 16000 -c:a flac /tmp/klip.flac
+QR_CLOUD_ALIGNER_CLIP=/tmp/klip.flac cargo test -p qr-sources live_space -- --ignored --nocapture
+```
+
+Tabel pemetaan kata aligner → dataset dibangkitkan ulang dengan `node scripts/gen-cloud-aligner-word-map.mjs`
+(petunjuk unduhan `digital_khatt_v2_script.json` ada di kepala skrip).
+
+Pemasangan edisi Quran.com nyata (butuh internet + `build/dataset/quran.db`):
+
+```bash
+cargo test -p qr-sources --test live_quran_com -- --ignored --nocapture
+```
 
 ### 6.3 Per area
 
@@ -172,7 +187,8 @@ jeda/lanjut antrean, dan antrean batch; controller playback diuji dengan engine 
 | Worker render, antrean, kesetaraan preview–ekspor | `cargo test --release -p qr-cli` |
 | Antrean job persisten | `cargo test -p qr-store -p qr-jobs` |
 | `.qrpack`, migrasi skema | `cargo test -p qr-core` |
-| Command desktop (subtitle, preview, pack, crash log, impor audio, align_auto, ekspor/antrean/batch, playback, settings) | `cargo test -p quranrender` |
+| Command desktop (subtitle, preview, pack, crash log, impor audio, align_auto, align_cloud, ekspor/antrean/batch, playback, settings) | `cargo test -p quranrender` |
+| Aligner cloud: SSE, pemetaan fixture → segmen, tabel kata 138 ayat | `cargo test -p qr-sources cloud_aligner` |
 
 ## 7. Kunci tanda tangan (dataset dan updater)
 

@@ -54,7 +54,8 @@ pub struct SubtitleCue {
 
 impl SubtitleCue {
     pub fn format_text(&self, options: &SubtitleExportOptions) -> String {
-        let prefix = if options.include_ayah_number {
+        // Segmen khusus (basmalah/isti'adzah) bernomor 0: tanpa nomor ayat.
+        let prefix = if options.include_ayah_number && self.ayah_number > 0 {
             format!("[{}] ", self.ayah_number)
         } else {
             String::new()

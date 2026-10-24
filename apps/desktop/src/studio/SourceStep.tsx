@@ -1,44 +1,166 @@
-import React, { useId, useState } from "react";
+import React, { useId, useRef, useState } from "react";
 import type { AssetRef, AudioInfo } from "../bindings";
 import { fileName, formatTime } from "../format";
+import { cssPoint, useFileDrop, type DragPosition } from "../hooks";
+import {
+  AUDIO_ONLY_EXTENSIONS,
+  BACKGROUND_EXTENSIONS,
+  extOf,
+  IMAGE_EXTENSIONS,
+  MEDIA_EXTENSIONS,
+  openFile,
+  PickButton,
+  VIDEO_EXTENSIONS,
+} from "../pick";
+import { formatBytes } from "../Packs";
 import { useI18n } from "../i18n";
 import { ErrorAlert, Icon } from "../ui";
 import { Summary } from "./parts";
-import { ayahCount, SURAH_COUNT } from "./surahs";
+import { ayahCount, useSurahs } from "./surahs";
 import type { Project } from "./model";
 
 export type AyahRange = { surah: number; from: number; to: number };
 
-/** Panel kiri langkah Sumber: aset proyek dan impor audio (path teks: pemilih berkas bawaan belum ada). */
+type DropTarget = "audio" | "background";
+
+/**
+ * Tujuan seretan menurut ekstensi dan zona di bawah kursor: gambar selalu latar, audio murni selalu
+ * audio; video (mp4/mov/mkv/webm) ke zona audio = audio (suaranya dipakai), selain itu latar.
+ */
+function routeDrop(path: string, over: DropTarget | null): DropTarget | null {
+  const ext = extOf(path);
+  if (IMAGE_EXTENSIONS.includes(ext)) return "background";
+  if (AUDIO_ONLY_EXTENSIONS.includes(ext)) return "audio";
+  if (VIDEO_EXTENSIONS.includes(ext)) return over === "audio" ? "audio" : "background";
+  return null;
+}
+
+function contains(el: HTMLElement | null, p: { x: number; y: number } | null): boolean {
+  if (!el || !p) return false;
+  const r = el.getBoundingClientRect();
+  return p.x >= r.left && p.x <= r.right && p.y >= r.top && p.y <= r.bottom;
+}
+
+/**
+ * Panel kiri langkah Sumber: aset proyek, impor audio, dan latar (gambar/video). Berkas diseret ke
+ * jendela selama langkah ini aktif dan dialihkan menurut ekstensi dan zona lepas; tombol pemilih
+ * berkas bawaan tersedia di tiap zona.
+ */
 export function SourcePanel({
   assets,
   importing,
   error,
   onDismissError,
   onImport,
+  background,
+  dimmer,
+  bgImporting,
+  bgError,
+  onDismissBgError,
+  onBackground,
+  onRemoveBackground,
+  onDimmer,
 }: {
   assets: AssetRef[];
-  importing: boolean;
+  /** Path berkas yang sedang diimpor, atau `null`. */
+  importing: string | null;
   error: string | null;
   onDismissError: () => void;
   onImport: (path: string) => void;
+  /** Latar proyek (klip jalur Latar), atau `null`. */
+  background: { assetId: string; asset: AssetRef | null } | null;
+  /** Dimmer di atas latar media, 0..1. */
+  dimmer: number;
+  bgImporting: string | null;
+  bgError: string | null;
+  onDismissBgError: () => void;
+  onBackground: (path: string) => void;
+  onRemoveBackground: () => void;
+  onDimmer: (value: number) => void;
 }): React.ReactElement {
-  const { t } = useI18n();
-  const [path, setPath] = useState("");
-  const inputId = useId();
-  const helpId = useId();
-  const valid = path.trim().length > 0;
+  const { t, locale } = useI18n();
+  const dimmerId = useId();
+  const audioZone = useRef<HTMLDivElement>(null);
+  const bgZone = useRef<HTMLDivElement>(null);
+  const [localError, setLocalError] = useState<string | null>(null);
+  const [bgLocalError, setBgLocalError] = useState<string | null>(null);
+  const hasAudio = assets.some((a) => a.kind === "Audio");
+  const busy = importing !== null || bgImporting !== null;
+
+  const zoneAt = (position: DragPosition | null): DropTarget | null => {
+    const p = cssPoint(position);
+    return contains(audioZone.current, p) ? "audio" : contains(bgZone.current, p) ? "background" : null;
+  };
+
+  const startAudio = (p: string) => {
+    setLocalError(null);
+    onImport(p);
+  };
+  const startBackground = (p: string) => {
+    setBgLocalError(null);
+    onBackground(p);
+  };
+
+  const drag = useFileDrop((paths, position) => {
+    if (busy) return;
+    if (paths.length > 1) {
+      setLocalError(t("studio.source.dropMultiple"));
+      return;
+    }
+    const target = routeDrop(paths[0], zoneAt(position));
+    if (target === "audio") startAudio(paths[0]);
+    else if (target === "background") startBackground(paths[0]);
+    else setBgLocalError(t("studio.background.unsupported", { name: fileName(paths[0]) }));
+  }, setLocalError);
+
+  const dragging = drag?.paths ?? null;
+  const dragTarget = drag && drag.paths.length === 1 ? routeDrop(drag.paths[0], zoneAt(drag.position)) : null;
+  const audioOver = dragging !== null && !busy && dragTarget === "audio";
+  const bgOver = dragging !== null && !busy && dragTarget === "background";
+
+  const shownError = error ?? localError;
+  const shownBgError = bgError ?? bgLocalError;
+
+  let dropTitle: string;
+  let dropBody: string;
+  if (importing !== null) {
+    dropTitle = t("studio.source.dropImporting");
+    dropBody = fileName(importing);
+  } else if (audioOver && dragging) {
+    dropTitle = t("studio.source.dropRelease");
+    dropBody = dragging.map(fileName).join(", ");
+  } else {
+    dropTitle = t("studio.source.dropTitle");
+    dropBody = hasAudio ? t("studio.source.dropReplaces") : t("studio.source.dropFormats");
+  }
+
+  let bgTitle: string;
+  let bgBody: string;
+  if (bgImporting !== null) {
+    bgTitle = t("studio.background.importing");
+    bgBody = fileName(bgImporting);
+  } else if (bgOver && dragging) {
+    bgTitle = t("studio.source.dropRelease");
+    bgBody = dragging.map(fileName).join(", ");
+  } else {
+    bgTitle = t("studio.background.dropTitle");
+    bgBody = t("studio.background.dropFormats");
+  }
+
+  const bgAsset = background?.asset ?? null;
+  const listed = assets.filter((a) => a.id !== background?.assetId);
+  const pct = Math.round(dimmer * 100);
 
   return (
     <div className="st-left__body">
       <p className="pn-h">{t("studio.source.assets")}</p>
-      {assets.length === 0 ? (
+      {listed.length === 0 ? (
         <div className="qr-empty">
           <Icon name="file-input" />
           <span>{t("studio.source.noAssets")}</span>
         </div>
       ) : (
-        assets.map((a) => (
+        listed.map((a) => (
           <div key={a.id} className="qr-item">
             <Icon name={a.kind === "Audio" ? "audio-waveform" : a.kind === "Video" ? "film" : "image"} />
             <span className="qr-item__name" title={a.path}>
@@ -49,52 +171,124 @@ export function SourcePanel({
         ))
       )}
 
-      <form
-        className="import-form"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (valid && !importing) onImport(path.trim());
-        }}
-      >
+      <div className="import-form">
         <p className="pn-h">{t("studio.source.importTitle")}</p>
-        {error && <ErrorAlert title={t("studio.source.importError")} message={error} onClose={onDismissError} />}
-        <div className="qr-fieldset">
-          <label className="qr-label" htmlFor={inputId}>
-            {t("studio.source.pathLabel")}
-          </label>
-          <span className="qr-field">
-            <input
-              id={inputId}
-              value={path}
-              placeholder={t("studio.source.pathPlaceholder")}
-              autoComplete="off"
-              spellCheck={false}
-              aria-describedby={helpId}
-              onChange={(e) => setPath(e.target.value)}
-            />
-          </span>
-          <span className="qr-help" id={helpId}>
-            {t("studio.source.pathHelp")}
-          </span>
-        </div>
-        <button
-          type="submit"
-          className={importing ? "qr-btn qr-btn--secondary is-loading" : "qr-btn qr-btn--secondary"}
-          disabled={!valid || importing}
+        {shownError && (
+          <ErrorAlert
+            title={t("studio.source.importError")}
+            message={shownError}
+            onClose={() => {
+              setLocalError(null);
+              onDismissError();
+            }}
+          />
+        )}
+        <div
+          ref={audioZone}
+          data-drop-zone="audio"
+          className={audioOver ? "qr-drop qr-empty import-drop is-dragover" : "qr-drop qr-empty import-drop"}
         >
-          {importing ? <span className="qr-spin" /> : <Icon name="file-input" />}
-          {t("studio.source.importButton")}
-        </button>
-      </form>
+          {importing ? <span className="qr-spin" /> : <Icon name="upload" />}
+          <span className="qr-empty__title" aria-live="polite">
+            {dropTitle}
+          </span>
+          <span>{dropBody}</span>
+          {!importing && !audioOver && (
+            <PickButton
+              primary
+              label={t("studio.source.pickButton")}
+              disabled={busy}
+              pick={() => openFile(t("studio.source.pickFilter"), MEDIA_EXTENSIONS)}
+              onPicked={startAudio}
+              onError={setLocalError}
+            />
+          )}
+        </div>
+      </div>
+
+      <div className="import-form">
+        <p className="pn-h">{t("studio.background.title")}</p>
+        {shownBgError && (
+          <ErrorAlert
+            title={t("studio.background.error")}
+            message={shownBgError}
+            onClose={() => {
+              setBgLocalError(null);
+              onDismissBgError();
+            }}
+          />
+        )}
+        <div
+          ref={bgZone}
+          data-drop-zone="background"
+          className={bgOver ? "qr-drop qr-empty import-drop is-dragover" : "qr-drop qr-empty import-drop"}
+        >
+          {bgImporting ? <span className="qr-spin" /> : <Icon name="image" />}
+          <span className="qr-empty__title" aria-live="polite">
+            {bgTitle}
+          </span>
+          <span>{bgBody}</span>
+          {!bgImporting && !bgOver && (
+            <PickButton
+              primary={!background}
+              label={background ? t("studio.background.replace") : t("studio.background.pickButton")}
+              disabled={busy}
+              pick={() => openFile(t("studio.background.pickFilter"), BACKGROUND_EXTENSIONS)}
+              onPicked={startBackground}
+              onError={setBgLocalError}
+            />
+          )}
+        </div>
+        {background && (
+          <>
+            <div className="qr-item">
+              <Icon name={bgAsset?.kind === "Video" ? "film" : "image"} />
+              <span className="qr-item__name" title={bgAsset?.path}>
+                {bgAsset ? fileName(bgAsset.path) : t("studio.background.missing")}
+              </span>
+              <span className="qr-item__meta">
+                {bgAsset ? `${bgAsset.kind} · ${formatBytes(bgAsset.size_bytes, locale)}` : "—"}
+              </span>
+              <button
+                type="button"
+                className="qr-btn qr-btn--ghost qr-btn--icon qr-btn--sm"
+                disabled={busy}
+                aria-label={t("studio.background.remove")}
+                title={t("studio.background.remove")}
+                onClick={onRemoveBackground}
+              >
+                <Icon name="trash-2" />
+              </button>
+            </div>
+            <div className="qr-fieldset">
+              <label className="qr-label" htmlFor={dimmerId}>
+                {t("studio.background.dimmer")}
+              </label>
+              <span className="inline">
+                <input
+                  id={dimmerId}
+                  type="range"
+                  className="qr-slider"
+                  min={0}
+                  max={100}
+                  step={5}
+                  value={pct}
+                  style={{ "--v": dimmer } as React.CSSProperties}
+                  aria-valuetext={`${pct}%`}
+                  onChange={(e) => onDimmer(Number(e.target.value) / 100)}
+                />
+                <span className="qr-tc">{pct}%</span>
+              </span>
+              <span className="qr-help">{t("studio.background.dimmerHelp")}</span>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }
 
-function parseInt10(text: string): number | null {
-  return /^\d+$/.test(text.trim()) ? Number(text) : null;
-}
-
-/** Pemilih rentang surah/ayat; hanya meneruskan nilai yang valid ke atas. */
+/** Pemilih rentang: surah dari dropdown nama, ayat dari dropdown yang dibatasi jumlah ayat surah. */
 function RangeForm({
   range,
   onChange,
@@ -102,75 +296,75 @@ function RangeForm({
   range: AyahRange;
   onChange: (range: AyahRange) => void;
 }): React.ReactElement {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const ids = [useId(), useId(), useId()];
-  const [draft, setDraft] = useState({
-    surah: String(range.surah),
-    from: String(range.from),
-    to: String(range.to),
-  });
+  const surahs = useSurahs();
+  const info = surahs[range.surah - 1];
+  const count = info?.ayah_count ?? ayahCount(range.surah) ?? 1;
+  const ayat = Array.from({ length: count }, (_, i) => i + 1);
 
-  const surah = parseInt10(draft.surah);
-  const count = surah === null ? null : ayahCount(surah);
-  const from = parseInt10(draft.from);
-  const to = parseInt10(draft.to);
-  const surahError = count === null ? t("studio.range.surahInvalid", { max: SURAH_COUNT }) : null;
-  const fromError =
-    count !== null && (from === null || from < 1 || from > count)
-      ? t("studio.range.ayahInvalid", { max: count })
-      : null;
-  const toError =
-    count !== null && !fromError && (to === null || to < (from ?? 1) || to > count)
-      ? t("studio.range.toInvalid", { max: count })
-      : null;
-
-  const update = (next: { surah: string; from: string; to: string }) => {
-    setDraft(next);
-    const s = parseInt10(next.surah);
-    const n = s === null ? null : ayahCount(s);
-    const f = parseInt10(next.from);
-    const e = parseInt10(next.to);
-    if (s !== null && n !== null && f !== null && e !== null && f >= 1 && f <= e && e <= n) {
-      onChange({ surah: s, from: f, to: e });
-    }
+  const setSurah = (id: number) => {
+    const n = surahs[id - 1]?.ayah_count ?? ayahCount(id) ?? 1;
+    onChange({ surah: id, from: 1, to: n });
   };
-
-  const fields: ReadonlyArray<{
-    key: "surah" | "from" | "to";
-    label: string;
-    error: string | null;
-    min: number;
-    max: number;
-  }> = [
-    { key: "surah", label: t("studio.range.surah"), error: surahError, min: 1, max: SURAH_COUNT },
-    { key: "from", label: t("studio.range.from"), error: fromError, min: 1, max: count ?? 286 },
-    { key: "to", label: t("studio.range.to"), error: toError, min: 1, max: count ?? 286 },
-  ];
+  const setFrom = (from: number) => onChange({ ...range, from, to: Math.max(range.to, from) });
+  const setTo = (to: number) => onChange({ ...range, to, from: Math.min(range.from, to) });
 
   return (
     <div className="insp-pad range-form">
-      {fields.map((f, i) => (
-        <div key={f.key} className="qr-fieldset">
-          <label className="qr-label" htmlFor={ids[i]}>
-            {f.label}
-          </label>
-          <span className={f.error ? "qr-field is-invalid" : "qr-field"}>
-            <input
-              id={ids[i]}
-              type="number"
-              inputMode="numeric"
-              min={f.min}
-              max={f.max}
-              step={1}
-              value={draft[f.key]}
-              aria-invalid={f.error !== null}
-              onChange={(e) => update({ ...draft, [f.key]: e.target.value })}
-            />
+      <div className="qr-fieldset">
+        <label className="qr-label" htmlFor={ids[0]}>
+          {t("studio.range.surah")}
+        </label>
+        <span className="qr-field">
+          <select id={ids[0]} value={range.surah} onChange={(e) => setSurah(Number(e.target.value))}>
+            {surahs.length === 0 && <option value={range.surah}>{range.surah}</option>}
+            {surahs.map((s) => (
+              <option key={s.id} value={s.id}>
+                {`${s.id}. ${s.name_latin} (${s.name_ar})`}
+              </option>
+            ))}
+          </select>
+        </span>
+        {info && (
+          <span className="qr-help">
+            <span lang="ar" dir="rtl">
+              {info.name_ar}
+            </span>
+            {" — "}
+            {lang === "en" ? info.meaning_en : info.meaning_id}
           </span>
-          {f.error && <span className="qr-error">{f.error}</span>}
-        </div>
-      ))}
-      {count !== null && <span className="qr-help">{t("studio.range.count", { surah: surah ?? 0, count })}</span>}
+        )}
+      </div>
+      <div className="qr-fieldset">
+        <label className="qr-label" htmlFor={ids[1]}>
+          {t("studio.range.from")}
+        </label>
+        <span className="qr-field">
+          <select id={ids[1]} value={range.from} onChange={(e) => setFrom(Number(e.target.value))}>
+            {ayat.map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+        </span>
+      </div>
+      <div className="qr-fieldset">
+        <label className="qr-label" htmlFor={ids[2]}>
+          {t("studio.range.to")}
+        </label>
+        <span className="qr-field">
+          <select id={ids[2]} value={range.to} onChange={(e) => setTo(Number(e.target.value))}>
+            {ayat.map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+        </span>
+      </div>
+      <span className="qr-help">{t("studio.range.count", { surah: info?.name_latin ?? range.surah, count })}</span>
       <span className="qr-help">{t("studio.range.note")}</span>
     </div>
   );

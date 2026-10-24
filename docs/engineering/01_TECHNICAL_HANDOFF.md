@@ -152,7 +152,7 @@ flowchart TB
     JQ["Job supervisor (qr-jobs)"]
     DB[("app.db / quran.db / content.db")]
   end
-  subgraph WORK["Proses worker (qurender, satu per job)"]
+  subgraph WORK["Proses worker (executable aplikasi + argumen worker, satu per job)"]
     EXP["render → encode"]
     ALN["align"]
   end
@@ -168,8 +168,9 @@ flowchart TB
 
 Keputusan:
 
-- **Export dan alignment berjalan di proses worker** (`qurender`, biner yang sama dengan CLI RND-4,
-  dibundel sebagai sidecar). Alasannya:
+- **Export dan alignment berjalan di proses worker**: executable aplikasi itu sendiri yang dijalankan ulang
+  dengan argumen `worker` (kode `qr_cli::run_worker`, sama dengan `qurender worker` di CLI RND-4), sehingga
+  bundel hanya berisi satu biner tanpa sidecar. Alasan proses terpisah:
   - crash di encoder, driver GPU, atau ONNX tidak menjatuhkan editor;
   - membatalkan job cukup dengan mematikan proses (EXP-7);
   - batch headless dan uji CI memakai jalur yang persis sama.
@@ -414,6 +415,27 @@ model-pack/
 - Tingkat lain diunduh dan diverifikasi tanda tangannya (SYN-8).
 - Model mana yang dipakai ditentukan lewat spike S3 (PRD D8).
 
+### 11.3 Aligner cloud (terimplementasi)
+
+- **Layanan:** HF Space publik `hetchyy/quranic-universal-aligner` (MIT), sama dengan Quran Caption.
+  Klien di `crates/qr-sources/src/cloud_aligner.rs` (ureq + rustls, host di allowlist): unggah
+  (`/gradio_api/upload`) → `/gradio_api/call/process_audio_session` → SSE sampai `complete`/`error`
+  (batas diam per baca 180 dtk, total 60 mnt). Contoh jawaban nyata ada di
+  `crates/qr-sources/tests/fixtures/cloud_aligner/`.
+- **Command:** `align_cloud(project_id, options)` (`apps/desktop/src-tauri/src/align_api.rs`). Wajib
+  pengaturan `sync.cloud_consent = true` (galat `CLOUD_CONSENT_REQUIRED:`); tanpa internet galat
+  `CLOUD_OFFLINE:`. Audio proyek diringkas ke FLAC mono 16 kHz di folder sementara (dihapus setelahnya).
+  Event `align-progress { stage: preparing|uploading|queued|processing|mapping|done, message }`. Tidak
+  menyimpan proyek.
+- **Pemetaan:** segmen dipecah per ayat bila melewati batas ayat; `word_range = None` bila segmen memuat
+  seluruh ayat; timing kata absolut (waktu relatif + `time_from`); segmen khusus menjadi `kind`
+  `Basmala`/`Istiadha` dengan surah/ayat 0; `fill_silence` memperpanjang akhir segmen sampai awal segmen
+  berikutnya. Penomoran kata aligner = Digital Khatt v2 (tanpa penanda ayat): 1:1 dengan dataset, kecuali
+  138 ayat yang dipetakan lewat tabel `crates/qr-sources/src/cloud_aligner_word_map.rs`, dibangkitkan oleh
+  `scripts/gen-cloud-aligner-word-map.mjs` (penjajaran kerangka huruf; jalankan ulang bila dataset berubah).
+- **Kinerja terukur (Al-Mulk, Alaa Aqel):** klip 40 dtk ≈ 4 dtk; surah utuh 6 mnt 22 dtk (8,4 MB FLAC)
+  ≈ 11 dtk, 52 segmen, 30/30 ayat terdeteksi.
+
 ---
 
 ## 12. Keamanan, privasi, diagnostik
@@ -423,7 +445,8 @@ model-pack/
   - webview hanya memuat aset lokal aplikasi;
   - CSP ketat tanpa `unsafe-eval` dan tanpa origin remote;
   - akses file hanya lewat dialog atau scope folder proyek dan folder data aplikasi;
-  - plugin `shell` hanya mengizinkan sidecar `qurender` dan `yt-dlp` (P1).
+  - plugin `shell` hanya mengizinkan sidecar `yt-dlp` (P1); worker ekspor tidak memakai plugin `shell`
+    karena merupakan executable aplikasi sendiri yang dijalankan Rust.
 - **Jaringan:**
   - satu `HttpClient` di `qr-sources` dengan allowlist domain (PRD §8.4): `api.quran.com`, host update,
     host paket model, serta endpoint milik pengguna (LLM, cloud aligner);

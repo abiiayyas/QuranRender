@@ -5,7 +5,8 @@ pub mod dataset;
 pub mod text;
 
 pub use dataset::{
-    Ayah, DatasetError, DatasetInfo, FullAyah, Juz, QuranDatabase, SearchResult, Surah, Word,
+    Ayah, DatasetEdition, DatasetError, DatasetInfo, FullAyah, Juz, QuranDatabase, SearchResult,
+    Surah, Word,
 };
 pub use text::{
     clean_translation, is_letter_token, search_form, tokenize_ayah_v1, validate_arabic_allowlist,

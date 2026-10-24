@@ -1,19 +1,16 @@
-//! Pencarian biner eksternal: worker `qurender`, `ffmpeg`, `ffprobe`.
+//! Pencarian biner: worker ekspor, `ffmpeg`, `ffprobe`.
 //!
-//! Aplikasi macOS yang dibuka dari Finder mewarisi `PATH` minimal (`/usr/bin:/bin:/usr/sbin:/sbin`),
-//! tanpa `/usr/local/bin` atau `/opt/homebrew/bin` tempat Homebrew memasang FFmpeg. Karena itu pencarian
-//! juga memeriksa folder umum tersebut; hasilnya diteruskan ke worker lewat payload (`ffmpeg_bin`).
+//! Worker ekspor adalah executable aplikasi ini sendiri (`<app> worker`, lihat `main`), sehingga bundel
+//! cukup satu biner. Aplikasi macOS yang dibuka dari Finder mewarisi `PATH` minimal
+//! (`/usr/bin:/bin:/usr/sbin:/sbin`), tanpa `/usr/local/bin` atau `/opt/homebrew/bin` tempat Homebrew
+//! memasang FFmpeg. Karena itu pencarian FFmpeg juga memeriksa folder umum tersebut; hasilnya
+//! diteruskan ke worker lewat payload (`ffmpeg_bin`).
 
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
-/// Variabel lingkungan untuk menunjuk biner worker secara eksplisit.
+/// Variabel lingkungan untuk menunjuk biner worker lain (mis. `qurender` atau worker palsu saat uji).
 pub const WORKER_ENV: &str = "QR_WORKER_BIN";
-
-/// Nama berkas worker di platform ini (`qurender` atau `qurender.exe`).
-pub fn worker_file_name() -> String {
-    format!("qurender{}", std::env::consts::EXE_SUFFIX)
-}
 
 fn exe_name(name: &str) -> String {
     format!("{name}{}", std::env::consts::EXE_SUFFIX)
@@ -64,15 +61,12 @@ pub fn media_tool(name: &str) -> String {
     .map_or_else(|| name.to_string(), |p| p.to_string_lossy().to_string())
 }
 
-/// Urutan pencarian worker: `env_value` (`QR_WORKER_BIN`) → saudara dari `current_exe`
-/// (`Contents/MacOS/qurender` pada bundel, atau `target/<profil>/qurender` saat dev) → `qurender` di `PATH`.
-/// Nilai `QR_WORKER_BIN` yang diset tetapi salah adalah galat (tidak jatuh diam-diam ke kandidat lain).
+/// Worker ekspor: `env_value` (`QR_WORKER_BIN`) bila diset, selain itu executable aplikasi ini sendiri.
+/// Nilai `QR_WORKER_BIN` yang diset tetapi salah adalah galat (tidak jatuh diam-diam ke aplikasi).
 pub fn resolve_worker_with(
     env_value: Option<&str>,
     current_exe: Option<&Path>,
-    path_var: Option<&OsStr>,
 ) -> Result<PathBuf, String> {
-    let mut tried: Vec<String> = Vec::new();
     if let Some(v) = env_value.filter(|v| !v.trim().is_empty()) {
         let p = PathBuf::from(v);
         if is_file(&p) {
@@ -82,33 +76,15 @@ pub fn resolve_worker_with(
             "{WORKER_ENV} menunjuk '{v}' tetapi berkas itu tidak ada. Perbaiki atau hapus variabel tersebut."
         ));
     }
-    let file = worker_file_name();
-    if let Some(dir) = current_exe.and_then(Path::parent) {
-        let sibling = dir.join(&file);
-        if is_file(&sibling) {
-            return Ok(sibling);
-        }
-        tried.push(sibling.display().to_string());
-    }
-    if let Some(p) = find_executable("qurender", path_var, &[]) {
-        return Ok(p);
-    }
-    tried.push("qurender di PATH".to_string());
-    Err(format!(
-        "Worker ekspor (qurender) tidak ditemukan. Dicari: {}. Bangun dengan `cargo build -p qr-cli` \
-         atau set {WORKER_ENV} ke lokasi biner.",
-        tried.join("; ")
-    ))
+    current_exe.map(Path::to_path_buf).ok_or_else(|| {
+        format!("Lokasi executable aplikasi tidak diketahui; set {WORKER_ENV} ke biner worker.")
+    })
 }
 
 /// [`resolve_worker_with`] dengan lingkungan proses saat ini.
 pub fn resolve_worker() -> Result<PathBuf, String> {
     let exe = std::env::current_exe().ok();
-    resolve_worker_with(
-        std::env::var(WORKER_ENV).ok().as_deref(),
-        exe.as_deref(),
-        std::env::var_os("PATH").as_deref(),
-    )
+    resolve_worker_with(std::env::var(WORKER_ENV).ok().as_deref(), exe.as_deref())
 }
 
 #[cfg(test)]
@@ -136,15 +112,12 @@ mod tests {
     }
 
     #[test]
-    fn env_variable_wins_over_sibling_and_path() {
+    fn env_variable_wins_over_the_app_executable() {
         let d = tmp("env");
         let env_bin = touch(&d, "kustom");
-        let exe_dir = tmp("env_exe");
-        touch(&exe_dir, &worker_file_name());
         let got = resolve_worker_with(
             Some(env_bin.to_str().unwrap()),
-            Some(&exe_dir.join("quranrender")),
-            None,
+            Some(Path::new("/app/quranrender")),
         )
         .unwrap();
         assert_eq!(got, env_bin);
@@ -152,12 +125,9 @@ mod tests {
 
     #[test]
     fn wrong_env_value_is_an_error_not_a_silent_fallback() {
-        let exe_dir = tmp("badenv");
-        touch(&exe_dir, &worker_file_name());
         let err = resolve_worker_with(
             Some("/tidak/ada/qurender"),
-            Some(&exe_dir.join("quranrender")),
-            None,
+            Some(Path::new("/app/quranrender")),
         )
         .unwrap_err();
         assert!(
@@ -167,47 +137,13 @@ mod tests {
     }
 
     #[test]
-    fn sibling_of_current_exe_is_found_before_path() {
-        let exe_dir = tmp("sib");
-        let sib = touch(&exe_dir, &worker_file_name());
-        let path_dir = tmp("sib_path");
-        touch(&path_dir, &worker_file_name());
-        let path_var = std::env::join_paths([&path_dir]).unwrap();
-        let got = resolve_worker_with(
-            None,
-            Some(&exe_dir.join("quranrender")),
-            Some(path_var.as_os_str()),
-        )
-        .unwrap();
-        assert_eq!(got, sib);
-    }
-
-    #[test]
-    fn falls_back_to_path_then_fails_with_every_place_tried() {
-        let exe_dir = tmp("nosib");
-        let path_dir = tmp("nosib_path");
-        let in_path = touch(&path_dir, &worker_file_name());
-        let path_var = std::env::join_paths([&path_dir]).unwrap();
-        let got = resolve_worker_with(
-            None,
-            Some(&exe_dir.join("quranrender")),
-            Some(path_var.as_os_str()),
-        )
-        .unwrap();
-        assert_eq!(got, in_path);
-
-        let empty = std::env::join_paths([tmp("kosong")]).unwrap();
-        let err = resolve_worker_with(
-            None,
-            Some(&exe_dir.join("quranrender")),
-            Some(empty.as_os_str()),
-        )
-        .unwrap_err();
-        assert!(
-            err.contains("tidak ditemukan") && err.contains("PATH") && err.contains(WORKER_ENV),
-            "{err}"
-        );
-        assert!(err.contains(exe_dir.to_str().unwrap()), "{err}");
+    fn without_env_the_app_executable_is_the_worker() {
+        let app = Path::new("/Applications/Quran Render.app/Contents/MacOS/quranrender");
+        assert_eq!(resolve_worker_with(None, Some(app)).unwrap(), app);
+        assert_eq!(resolve_worker_with(Some("  "), Some(app)).unwrap(), app);
+        assert!(resolve_worker_with(None, None)
+            .unwrap_err()
+            .contains(WORKER_ENV));
     }
 
     #[test]

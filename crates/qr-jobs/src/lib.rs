@@ -13,7 +13,7 @@ pub use batch::{
     enqueue_batch_jobs, split_project_into_batch_clips, BatchClipItem, BatchSplitMethod,
 };
 pub use protocol::{WorkerCommand, WorkerEvent};
-pub use runner::{QueueRunner, RunSummary, WorkerSpec};
+pub use runner::{QueueRunner, RunSummary, WorkerSpec, WORKER_ARG};
 pub use supervisor::{JobSupervisor, NewJob};
 
 use qr_store::JobRow;

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useId, useState } from "react";
 import { commands, type AppInfo, type TelemetryStatus } from "./bindings";
 import { useI18n } from "./i18n";
 import { errorText, unwrap } from "./tauri";
+import { AiSection, EditionsSection } from "./TranslationSettings";
 import { ErrorAlert, Icon, LangSwitch, ThemeSwitch } from "./ui";
 
 function UnavailableRow({ what }: { what: string }): React.ReactElement {
@@ -223,6 +224,10 @@ export function SettingsScreen(): React.ReactElement {
         </div>
       </section>
 
+      <EditionsSection />
+
+      <AiSection />
+
       <PrivacySection />
 
       <section className="qr-section" aria-labelledby={`${uid}-unavailable`}>
@@ -230,7 +235,6 @@ export function SettingsScreen(): React.ReactElement {
           {t("app.settings.unavailable")}
         </h2>
         <UnavailableRow what={t("app.settings.unavailable.upload")} />
-        <UnavailableRow what={t("app.settings.unavailable.saheeh")} />
         <UnavailableRow what={t("app.settings.unavailable.transparent")} />
         <UnavailableRow what={t("app.settings.unavailable.gpu")} />
       </section>

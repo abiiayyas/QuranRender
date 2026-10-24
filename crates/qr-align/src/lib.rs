@@ -208,6 +208,7 @@ pub fn align_recitation(
             confidence: conf,
             manual_override: false,
             word_range: None,
+            ..Default::default()
         });
     }
     if verses.len() > regions.len() {

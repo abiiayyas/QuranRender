@@ -8,6 +8,8 @@ export const commonId = {
   "common.copied": "Tersalin",
   "common.delete": "Hapus",
   "common.loading": "Memuat…",
+  "common.choose": "Pilih…",
+  "common.pickFailed": "Dialog pemilih berkas gagal dibuka",
   "common.unavailable": "Belum tersedia",
   "common.unavailableNote": "{what}: Belum tersedia.",
   "common.error": "Terjadi kesalahan",

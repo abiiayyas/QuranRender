@@ -36,9 +36,9 @@ pub enum TimelineOperation {
         new_end: i64,
     },
     SplitSegment {
-        original: AyahSegment,
-        first_half: AyahSegment,
-        second_half: AyahSegment,
+        original: Box<AyahSegment>,
+        first_half: Box<AyahSegment>,
+        second_half: Box<AyahSegment>,
     },
     SetStyleOverride {
         key: String,
@@ -87,9 +87,9 @@ impl TimelineOperation {
                 first_half,
                 second_half,
             } => Self::Batch(vec![
-                Self::RemoveSegment(second_half.clone()),
-                Self::RemoveSegment(first_half.clone()),
-                Self::AddSegment(original.clone()),
+                Self::RemoveSegment(second_half.as_ref().clone()),
+                Self::RemoveSegment(first_half.as_ref().clone()),
+                Self::AddSegment(original.as_ref().clone()),
             ]),
             Self::SetStyleOverride {
                 key,
@@ -239,8 +239,8 @@ impl ProjectSession {
                     .ok_or_else(|| CoreError::SegmentNotFound(original.id.clone()))?;
 
                 project.segments.remove(pos);
-                project.segments.insert(pos, second_half.clone());
-                project.segments.insert(pos, first_half.clone());
+                project.segments.insert(pos, second_half.as_ref().clone());
+                project.segments.insert(pos, first_half.as_ref().clone());
             }
             TimelineOperation::SetStyleOverride { key, new_val, .. } => {
                 if let Some(val) = new_val {
@@ -291,6 +291,7 @@ mod tests {
             confidence: 0.94,
             manual_override: false,
             word_range: None,
+            ..Default::default()
         }
     }
 

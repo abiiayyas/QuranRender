@@ -60,6 +60,17 @@ pub struct Project {
     #[serde(default)]
     #[specta(type = std::collections::HashMap<String, String>)]
     pub style_overrides: HashMap<String, serde_json::Value>,
+    /// Edisi terjemahan yang ditampilkan, berurutan; yang pertama adalah utama. Kunci = `translation_edition.key`
+    /// (dataset) atau edisi unduhan di content.db.
+    #[serde(default = "default_translation_editions")]
+    pub translation_editions: Vec<String>,
+}
+
+/// Edisi bawaan dataset (Kemenag) untuk proyek lama dan proyek baru.
+pub const DEFAULT_TRANSLATION_EDITION: &str = "id.kemenag";
+
+pub fn default_translation_editions() -> Vec<String> {
+    vec![DEFAULT_TRANSLATION_EDITION.to_string()]
 }
 
 #[derive(Serialize, Deserialize, JsonSchema, Type, Debug, Clone, PartialEq, Eq)]
@@ -158,10 +169,12 @@ pub struct Clip {
     pub label: String,
 }
 
-#[derive(Serialize, Deserialize, JsonSchema, Type, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, JsonSchema, Type, Debug, Clone, PartialEq, Default)]
 pub struct AyahSegment {
     pub id: String,
+    /// Untuk segmen khusus (`kind` ≠ `Ayah`) bernilai 0.
     pub surah_id: u32,
+    /// Untuk segmen khusus (`kind` ≠ `Ayah`) bernilai 0.
     pub ayah_number: u32,
     #[specta(type = f64)]
     pub start_tick: i64,
@@ -176,6 +189,59 @@ pub struct AyahSegment {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[specta(type = Option<Vec<u32>>)]
     pub word_range: Option<(u32, u32)>,
+    /// Ayat dari dataset, atau segmen khusus di luar teks ayat (basmalah pembuka, isti'adzah).
+    #[serde(default)]
+    pub kind: SegmentKind,
+    /// Asal timing segmen.
+    #[serde(default)]
+    pub source: SegmentSource,
+    /// Aligner melaporkan kata yang terlewat/berulang di segmen ini: wajib ditinjau.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub has_missing_words: bool,
+    /// Terjemahan per edisi (kunci edisi) untuk segmen ini. Kosong untuk ayat utuh: teks diambil dari edisi
+    /// apa adanya. Segmen sebagian ayat menyimpan potongan terjemahan beserta statusnya; bila edisi belum
+    /// ada di sini, terjemahan ayat utuh dipakai dengan status `ToReview`.
+    #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub translations: std::collections::BTreeMap<String, SegmentTranslation>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema, Type, Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum SegmentKind {
+    #[default]
+    Ayah,
+    /// Basmalah pembuka surah (bukan ayat, kecuali Al-Fatihah 1:1 yang tetap `Ayah`).
+    Basmala,
+    /// Isti'adzah sebelum bacaan.
+    Istiadha,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema, Type, Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum SegmentSource {
+    /// Dibuat atau diatur pengguna (sinkron manual / papan ketik).
+    #[default]
+    Manual,
+    /// VAD lokal + timing proporsional (cadangan offline).
+    Vad,
+    /// Aligner akustik cloud (pengenalan ayat + timing per kata).
+    Cloud,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema, Type, Debug, Clone, PartialEq, Eq)]
+pub struct SegmentTranslation {
+    pub text: String,
+    pub status: TranslationStatus,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema, Type, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TranslationStatus {
+    /// Terjemahan ayat utuh belum dipotong untuk segmen sebagian ayat: perlu ditinjau.
+    ToReview,
+    /// Dipotong otomatis (heuristik) dari terjemahan ayat utuh: perlu ditinjau.
+    AutoTrimmed,
+    /// Dipotong AI: perlu ditinjau.
+    AiTrimmed,
+    /// Disunting atau disetujui pengguna.
+    Reviewed,
 }
 
 #[derive(Serialize, Deserialize, JsonSchema, Type, Debug, Clone, PartialEq)]
@@ -212,6 +278,22 @@ fn now_ms() -> u64 {
 }
 
 impl Project {
+    /// Kunci `style_overrides` untuk peredup latar media (0..1).
+    pub const BACKGROUND_DIMMER_KEY: &'static str = "background_dimmer";
+
+    /// Peredup latar media (0..1) dari `style_overrides`. Tipe bindings memetakan nilai override ke
+    /// string, sehingga angka JSON (`0.35`) maupun string numerik (`"0.35"`) diterima; nilai tidak
+    /// valid → `None`. Hasil dijepit ke 0..1.
+    pub fn background_dimmer(&self) -> Option<f64> {
+        let v = self.style_overrides.get(Self::BACKGROUND_DIMMER_KEY)?;
+        let n = match v {
+            serde_json::Value::Number(n) => n.as_f64()?,
+            serde_json::Value::String(s) => s.trim().parse::<f64>().ok()?,
+            _ => return None,
+        };
+        n.is_finite().then(|| n.clamp(0.0, 1.0))
+    }
+
     /// Membuat proyek baru dengan nilai default.
     pub fn new(name: impl Into<String>) -> Self {
         let ts = now_ms();
@@ -275,6 +357,7 @@ impl Project {
             ],
             segments: Vec::new(),
             style_overrides: HashMap::new(),
+            translation_editions: default_translation_editions(),
         }
     }
 }

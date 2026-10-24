@@ -9,6 +9,8 @@ export const commonEn: Record<keyof typeof commonId, string> = {
   "common.copied": "Copied",
   "common.delete": "Delete",
   "common.loading": "Loading…",
+  "common.choose": "Choose…",
+  "common.pickFailed": "The file dialog could not be opened",
   "common.unavailable": "Not available yet",
   "common.unavailableNote": "{what}: Not available yet.",
   "common.error": "Something went wrong",

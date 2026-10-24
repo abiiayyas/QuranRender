@@ -2,7 +2,11 @@
 //! Mengacu ke docs/design/05_VIDEO_TEMPLATES.md §2–§6 dan PRD RND-1, RND-2, STY-1..4, STY-8.
 //!
 //! Scene dibangun dari `Project` + `TemplateDoc` + tick + teks ayat nyata (`VerseSource`). Tidak ada
-//! teks bawaan: bila teks ayat segmen aktif tidak tersedia, pembangunan scene gagal.
+//! teks bawaan untuk ayat: bila teks ayat segmen aktif tidak tersedia, pembangunan scene gagal.
+//! Pengecualian: segmen khusus — basmalah memakai teks Arab 1:1 dataset, isti'adzah memakai
+//! [`crate::translation::ISTIADHA_AR`] (bukan ayat). Keduanya tanpa label surah/ayat.
+//! Terjemahan mengikuti `Project::translation_editions` lewat
+//! [`crate::translation::resolve_segment_translations`].
 
 use crate::anim::{ease, template_transition_alpha, HighlightStyle};
 use crate::template::{Layer, LayerKind, TemplateDoc};
@@ -10,14 +14,18 @@ use crate::text::{
     fit_text, layout_words, paint_layout, words_of_ayah, FontFace, InputWord, TextDirection,
     TextLayout,
 };
-use qr_core::project::{AyahSegment, Project};
+use crate::translation::{resolve_segment_translations, ISTIADHA_AR};
+use qr_core::project::{AyahSegment, Project, SegmentKind};
 use qr_core::style::resolve;
 use serde_json::Value;
 use sha2::{Digest, Sha256};
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::Path;
+use std::sync::Arc;
 use thiserror::Error;
-use tiny_skia::{Color, FillRule, Paint, PathBuilder, Pixmap, Rect, Stroke, Transform};
+use tiny_skia::{
+    Color, FillRule, Paint, PathBuilder, Pixmap, PixmapPaint, Rect, Stroke, Transform,
+};
 
 #[derive(Error, Debug)]
 pub enum RenderError {
@@ -75,50 +83,104 @@ impl FontSet {
 }
 
 /// Konten satu ayat yang akan ditampilkan (diambil dari `quran.db`, tidak pernah diketik ulang).
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct VerseContent {
     pub ayah_text: String,
-    pub translation: Option<String>,
+    /// Terjemahan ayat utuh yang dibawa langsung oleh sumber (kunci edisi → teks bersih). Sumber
+    /// berbasis database membiarkannya kosong dan menjawab lewat [`VerseSource::translation`].
+    pub translations: BTreeMap<String, String>,
     pub surah_name_ar: String,
     pub surah_name_latin: String,
 }
 
 pub trait VerseSource {
     fn verse(&self, surah: u32, ayah: u32) -> Option<VerseContent>;
+
+    /// Terjemahan bersih ayat utuh untuk `edition_key`; `None` bila edisi/ayat tidak tersedia.
+    fn translation(&self, edition_key: &str, surah: u32, ayah: u32) -> Option<String> {
+        self.verse(surah, ayah)?.translations.remove(edition_key)
+    }
 }
 
 impl VerseSource for HashMap<(u32, u32), VerseContent> {
     fn verse(&self, surah: u32, ayah: u32) -> Option<VerseContent> {
         self.get(&(surah, ayah)).cloned()
     }
+
+    fn translation(&self, edition_key: &str, surah: u32, ayah: u32) -> Option<String> {
+        self.get(&(surah, ayah))?
+            .translations
+            .get(edition_key)
+            .cloned()
+    }
 }
 
-/// Sumber ayat dari `quran.db` terverifikasi (`qr-quran`) dengan satu edisi terjemahan.
+/// Sumber ayat dari `quran.db` terverifikasi (`qr-quran`). Terjemahan dari edisi dataset maupun edisi
+/// unduhan (`content.db` yang sudah di-attach, lihat `QuranDatabase::attach_installed_translations`).
 #[derive(Debug)]
 pub struct QuranDbVerses<'a> {
     pub db: &'a qr_quran::QuranDatabase,
-    pub edition_key: Option<&'a str>,
 }
 
 impl VerseSource for QuranDbVerses<'_> {
     fn verse(&self, surah: u32, ayah: u32) -> Option<VerseContent> {
         let a = self.db.get_ayah_by_surah(surah, ayah).ok()?;
         let s = self.db.get_surah(surah).ok()?;
-        let translation = self
-            .edition_key
-            .and_then(|k| self.db.get_translation(k, a.id).ok());
         Some(VerseContent {
             ayah_text: a.text,
-            translation,
+            translations: BTreeMap::new(),
             surah_name_ar: s.name_ar,
             surah_name_latin: s.name_latin,
         })
+    }
+
+    fn translation(&self, edition_key: &str, surah: u32, ayah: u32) -> Option<String> {
+        self.db
+            .verse_translation(edition_key, surah, ayah)
+            .ok()
+            .flatten()
+    }
+}
+
+/// Teks yang ditampilkan untuk satu segmen: teks Arab (verbatim dari sumber) + terjemahan ayat utuh
+/// per edisi proyek. Segmen khusus mendapat teks Arab khususnya dan nama surah kosong.
+/// `None` bila teks Arab tidak tersedia (ayat tidak ada di dataset).
+pub fn segment_content(
+    seg: &AyahSegment,
+    editions: &[String],
+    verses: &dyn VerseSource,
+) -> Option<VerseContent> {
+    match seg.kind {
+        SegmentKind::Ayah => {
+            let mut c = verses.verse(seg.surah_id, seg.ayah_number)?;
+            c.translations = editions
+                .iter()
+                .filter_map(|k| {
+                    verses
+                        .translation(k, seg.surah_id, seg.ayah_number)
+                        .map(|t| (k.clone(), t))
+                })
+                .collect();
+            Some(c)
+        }
+        SegmentKind::Basmala => Some(VerseContent {
+            ayah_text: verses.verse(1, 1)?.ayah_text,
+            ..VerseContent::default()
+        }),
+        SegmentKind::Istiadha => Some(VerseContent {
+            ayah_text: ISTIADHA_AR.to_string(),
+            ..VerseContent::default()
+        }),
     }
 }
 
 /// Primitif gambar bernormalisasi piksel yang dihasilkan scene builder.
 #[derive(Debug, Clone)]
 pub enum Primitive {
+    /// Gambar/frame latar yang sudah di-cover-fit ke ukuran kanvas, digambar penuh dari (0,0).
+    Image {
+        pixmap: Arc<Pixmap>,
+    },
     Fill {
         rgba: [u8; 4],
     },
@@ -173,6 +235,8 @@ pub struct RenderScene {
     /// `true` bila teks ayat tetap melebihi area aman pada ukuran minimum auto-fit (65%).
     /// Pemanggil (validator pra-ekspor) wajib menolak atau meminta segmen dibagi per rentang kata.
     pub text_overflow: bool,
+    /// Terjemahan yang digambar (urut edisi proyek), untuk inspeksi dan uji.
+    pub translations: Vec<String>,
 }
 
 /// Menguraikan warna `#RRGGBB`, `#RRGGBBAA`, atau `rgba(r, g, b, a)`.
@@ -280,6 +344,32 @@ impl SceneBuilder {
         tick: i64,
         verses: &dyn VerseSource,
     ) -> Result<RenderScene, RenderError> {
+        Self::build_with_background(project, template, fonts, tick, verses, None)
+    }
+
+    /// Seperti [`SceneBuilder::build`], dengan latar media. `background` harus berukuran persis kanvas
+    /// proyek (cover-fit dilakukan pemanggil, lihat `qr-media::background`); `None` = latar warna.
+    /// Dengan latar media, dimmer efektif = `style_overrides["background_dimmer"]` (0..1, kosong = 0);
+    /// dimmer milik template hanya berlaku tanpa latar media.
+    pub fn build_with_background(
+        project: &Project,
+        template: &TemplateDoc,
+        fonts: &FontSet,
+        tick: i64,
+        verses: &dyn VerseSource,
+        background: Option<&Arc<Pixmap>>,
+    ) -> Result<RenderScene, RenderError> {
+        if let Some(bg) = background {
+            if bg.width() != project.canvas.width || bg.height() != project.canvas.height {
+                return Err(RenderError::Rasterization(format!(
+                    "Ukuran latar {}x{} berbeda dari kanvas {}x{}",
+                    bg.width(),
+                    bg.height(),
+                    project.canvas.width,
+                    project.canvas.height
+                )));
+            }
+        }
         let ratio = project.canvas.aspect_ratio.as_str();
         if !template.supported_ratios.iter().any(|r| r == ratio) {
             return Err(RenderError::InvalidTemplate(format!(
@@ -308,14 +398,17 @@ impl SceneBuilder {
             ch,
         };
         let content = match seg {
-            Some(s) => Some(verses.verse(s.surah_id, s.ayah_number).ok_or(
-                RenderError::MissingVerse {
-                    surah: s.surah_id,
-                    ayah: s.ayah_number,
-                },
-            )?),
+            Some(s) => Some(
+                segment_content(s, &project.translation_editions, verses).ok_or(
+                    RenderError::MissingVerse {
+                        surah: s.surah_id,
+                        ayah: s.ayah_number,
+                    },
+                )?,
+            ),
             None => None,
         };
+        let mut translations_out: Vec<String> = Vec::new();
 
         // Transisi masuk/keluar (doc 05 §5.1).
         let anim = &template.animations;
@@ -384,7 +477,12 @@ impl SceneBuilder {
             let area = abox.unwrap_or(safe);
             let max_w = (ctx.f(al, "max_width_cw", 0.80) * cw).min(area.w);
             let all_words = words_of_ayah(&c.ayah_text)?;
-            let words: Vec<InputWord> = match sg.word_range {
+            // Segmen khusus selalu tampil utuh (rentang kata hanya berlaku untuk ayat).
+            let range = match sg.kind {
+                SegmentKind::Ayah => sg.word_range,
+                SegmentKind::Basmala | SegmentKind::Istiadha => None,
+            };
+            let words: Vec<InputWord> = match range {
                 Some((a, b)) => all_words
                     .into_iter()
                     .filter(|w| w.word_idx >= a && w.word_idx <= b)
@@ -398,33 +496,45 @@ impl SceneBuilder {
                 )));
             }
 
-            // Terjemahan lebih dulu: tingginya menentukan ruang yang tersisa untuk ayat.
+            // Terjemahan lebih dulu: tingginya menentukan ruang yang tersisa untuk ayat. Tiap edisi
+            // proyek ditata sebagai paragraf sendiri (urut edisi, yang utama di atas) dengan parameter
+            // yang sama, lalu baris-barisnya disusun menjadi satu blok.
             let mut tr_h = 0.0f32;
             let mut tr_margin = 0.0f32;
             let mut tr_layout: Option<(TextLayout, Option<Px>)> = None;
-            // Terjemahan tidak dapat dipetakan ke rentang kata tanpa fitur pemotongan terjemahan (PRD
-            // QRN, P1). Pada segmen yang dibagi per rentang kata, terjemahan sengaja tidak ditampilkan
-            // daripada menampilkan seluruh terjemahan ayat yang meluber atau menyesatkan.
-            let show_translation = sg.word_range.is_none();
-            if let (Some(tl), Some(t)) = (tr_layer, &c.translation) {
-                if ctx.visible(tl) && show_translation {
-                    let tface = fonts
-                        .family(&ctx.s(tl, "font_family").unwrap_or_else(|| "Inter".into()))?;
-                    let tbox = ctx.box_px(tl);
-                    let tmax =
-                        (ctx.f(tl, "max_width_cw", 0.76) * cw).min(tbox.map_or(safe.w, |b| b.w));
-                    let tpx = ctx.f(tl, "font_size_cw", 0.040)
-                        * cw
-                        * ctx.f(tl, "font_size_scale", 1.0)
-                        * scale;
+            let resolved =
+                resolve_segment_translations(sg, &project.translation_editions, &c.translations);
+            if let Some(tl) = tr_layer.filter(|tl| ctx.visible(tl) && !resolved.is_empty()) {
+                let tface =
+                    fonts.family(&ctx.s(tl, "font_family").unwrap_or_else(|| "Inter".into()))?;
+                let tbox = ctx.box_px(tl);
+                let tmax = (ctx.f(tl, "max_width_cw", 0.76) * cw).min(tbox.map_or(safe.w, |b| b.w));
+                let tpx = ctx.f(tl, "font_size_cw", 0.040)
+                    * cw
+                    * ctx.f(tl, "font_size_scale", 1.0)
+                    * scale;
+                let tlh = ctx.f(tl, "line_height_multiplier", 1.45);
+                let mut block: Option<TextLayout> = None;
+                for r in &resolved {
                     let l = layout_words(
                         tface,
-                        &split_plain_words(t),
+                        &split_plain_words(&r.text),
                         TextDirection::LatinLtr,
                         tpx,
                         tmax,
-                        ctx.f(tl, "line_height_multiplier", 1.45),
+                        tlh,
                     )?;
+                    block = Some(match block {
+                        None => l,
+                        Some(mut acc) => {
+                            acc.lines.extend(l.lines);
+                            acc.height_px += l.height_px;
+                            acc
+                        }
+                    });
+                    translations_out.push(r.text.clone());
+                }
+                if let Some(l) = block {
                     if tbox.is_none() {
                         tr_h = l.height_px;
                         tr_margin = ctx.f(tl, "margin_top_ch", 0.025) * ch;
@@ -435,7 +545,7 @@ impl SceneBuilder {
             let mut ref_layout: Option<(TextLayout, String)> = None;
             let mut ref_h = 0.0f32;
             let mut ref_margin = 0.0f32;
-            if let Some(rl) = ref_layer {
+            if let Some(rl) = ref_layer.filter(|_| sg.kind == SegmentKind::Ayah) {
                 if ctx.visible(rl) {
                     let text = format!("{} : {}", c.surah_name_latin, sg.ayah_number);
                     let rface = fonts
@@ -552,7 +662,7 @@ impl SceneBuilder {
                     text_overflow = true;
                 }
             }
-            ayah_text_out = Some(match sg.word_range {
+            ayah_text_out = Some(match range {
                 None => c.ayah_text.clone(),
                 Some(_) => words
                     .iter()
@@ -571,7 +681,15 @@ impl SceneBuilder {
                 LayerKind::Background => {
                     let base = ctx.color(layer, "default_color", [16, 17, 20, 255]);
                     prims.push(Primitive::Fill { rgba: base });
-                    let dim = ctx.f(layer, "dimmer_opacity", 0.0).clamp(0.0, 1.0);
+                    let dim = match background {
+                        Some(bg) => {
+                            prims.push(Primitive::Image {
+                                pixmap: Arc::clone(bg),
+                            });
+                            project.background_dimmer().map_or(0.0, |v| v as f32)
+                        }
+                        None => ctx.f(layer, "dimmer_opacity", 0.0).clamp(0.0, 1.0),
+                    };
                     if dim > 0.0 {
                         let dc = ctx.color(layer, "dimmer_color", [0, 0, 0, 255]);
                         match ctx.s(layer, "dimmer_type").as_deref() {
@@ -608,7 +726,7 @@ impl SceneBuilder {
                     });
                 }
                 LayerKind::SurahTitle => {
-                    if let Some(c) = &content {
+                    if let Some(c) = content.as_ref().filter(|c| !c.surah_name_ar.is_empty()) {
                         let face = fonts.family(
                             &ctx.s(layer, "font_family")
                                 .unwrap_or_else(|| "Amiri".into()),
@@ -827,6 +945,7 @@ impl SceneBuilder {
             ayah_text: ayah_text_out,
             ayah_fit_iterations: fit_iter,
             text_overflow,
+            translations: translations_out,
         })
     }
 }
@@ -915,6 +1034,16 @@ impl SoftwareRenderer {
             match p {
                 Primitive::Fill { rgba } => {
                     pm.fill(Color::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]));
+                }
+                Primitive::Image { pixmap } => {
+                    pm.draw_pixmap(
+                        0,
+                        0,
+                        pixmap.as_ref().as_ref(),
+                        &PixmapPaint::default(),
+                        Transform::identity(),
+                        None,
+                    );
                 }
                 Primitive::DimmerVertical {
                     rgb,
@@ -1074,6 +1203,29 @@ fn find_word(layout: &TextLayout, idx: u32) -> Option<(usize, &crate::text::Plac
         .iter()
         .enumerate()
         .find_map(|(li, ln)| ln.words.iter().find(|w| w.word_idx == idx).map(|w| (li, w)))
+}
+
+/// Membungkus piksel RGBA mentah (frame latar yang sudah di-cover-fit, lurus/non-premultiplied) menjadi
+/// `Pixmap` buram untuk [`SceneBuilder::build_with_background`]. Piksel transparan dicampur ke hitam,
+/// sehingga hasilnya selalu opak (deterministik, tidak bergantung pada latar warna template).
+pub fn background_pixmap(width: u32, height: u32, rgba: &[u8]) -> Result<Arc<Pixmap>, RenderError> {
+    let expected = width as usize * height as usize * 4;
+    if rgba.len() != expected {
+        return Err(RenderError::Rasterization(format!(
+            "Piksel latar {} byte, diharapkan {expected} ({width}x{height} RGBA)",
+            rgba.len()
+        )));
+    }
+    let mut pm = Pixmap::new(width, height)
+        .ok_or_else(|| RenderError::Rasterization("Alokasi pixmap latar gagal".into()))?;
+    for (dst, src) in pm.data_mut().chunks_exact_mut(4).zip(rgba.chunks_exact(4)) {
+        let a = u32::from(src[3]);
+        for (d, s) in dst.iter_mut().zip(src).take(3) {
+            *d = ((u32::from(*s) * a + 127) / 255) as u8;
+        }
+        dst[3] = 255;
+    }
+    Ok(Arc::new(pm))
 }
 
 /// Digest SHA-256 piksel RGBA (premultiplied) untuk uji golden.

@@ -10,6 +10,8 @@ pub const DEFAULT_ALLOWED_DOMAINS: &[&str] = &[
     "github.com",
     "raw.githubusercontent.com",
     "huggingface.co",
+    // HF Space aligner cloud (sinkron otomatis; hanya dengan persetujuan pengguna `sync.cloud_consent`).
+    "hetchyy-quranic-universal-aligner.hf.space",
 ];
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -20,6 +22,29 @@ pub struct NetworkPolicy {
 impl NetworkPolicy {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Mengizinkan host endpoint yang dikonfigurasi pengguna secara eksplisit (mis. server LLM
+    /// OpenAI-compatible). Endpoint jarak jauh wajib `https://` agar kunci API tidak terkirim tanpa
+    /// enkripsi; `http://` hanya diterima untuk mesin sendiri (`localhost`, `127.0.0.1`).
+    pub fn with_user_endpoint(mut self, endpoint: &str) -> Result<Self, String> {
+        let trimmed = endpoint.trim();
+        let lower = trimmed.to_ascii_lowercase();
+        let host = extract_host(trimmed);
+        if host.is_empty() {
+            return Err(format!("Alamat endpoint '{trimmed}' tidak valid."));
+        }
+        let local = matches!(host.as_str(), "localhost" | "127.0.0.1");
+        if lower.starts_with("https://") || (lower.starts_with("http://") && local) {
+            if !self.custom_allowed_domains.contains(&host) {
+                self.custom_allowed_domains.push(host);
+            }
+            Ok(self)
+        } else {
+            Err(format!(
+                "Alamat endpoint '{trimmed}' harus diawali https:// (http:// hanya untuk server di komputer ini)."
+            ))
+        }
     }
 
     /// Memeriksa apakah URL atau host diizinkan oleh kebijakan jaringan.
@@ -60,6 +85,11 @@ impl NetworkPolicy {
     }
 }
 
+/// Nama host (huruf kecil, tanpa skema/port/path) dari URL atau host.
+pub fn host_of(input: &str) -> String {
+    extract_host(input)
+}
+
 fn extract_host(input: &str) -> String {
     let clean = input.trim();
     let without_scheme = if let Some(stripped) = clean.strip_prefix("https://") {
@@ -82,6 +112,7 @@ fn extract_host(input: &str) -> String {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 
@@ -105,6 +136,23 @@ mod tests {
         assert!(policy
             .validate_outbound_url("https://unauthorized.tracker.org")
             .is_err());
+    }
+
+    #[test]
+    fn user_endpoint_is_allowed_explicitly_and_must_be_https_unless_local() {
+        let p = NetworkPolicy::new()
+            .with_user_endpoint("https://llm.example.net/v1")
+            .unwrap();
+        assert!(p.is_url_allowed("https://llm.example.net/v1/chat/completions"));
+        assert!(!p.is_url_allowed("https://other.example.net/v1"));
+        assert!(NetworkPolicy::new()
+            .with_user_endpoint("http://localhost:11434/v1")
+            .is_ok());
+        let err = NetworkPolicy::new()
+            .with_user_endpoint("http://llm.example.net/v1")
+            .unwrap_err();
+        assert!(err.contains("https://"), "{err}");
+        assert!(NetworkPolicy::new().with_user_endpoint("  ").is_err());
     }
 
     #[test]

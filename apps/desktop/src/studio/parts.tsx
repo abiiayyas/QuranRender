@@ -30,8 +30,19 @@ export const KEYS = {
   save: "S",
   up: "↑",
   down: "↓",
+  left: "←",
+  right: "→",
   prev: "[",
   following: "]",
+  backspace: "⌫",
+  wholeAyah: "V",
+  reset: "R",
+  basmala: "B",
+  istiadha: "A",
+  gap: "S",
+  setStart: "N",
+  setEnd: "M",
+  editTranslation: "E",
 } as const;
 
 /** Tombol pengubah menurut platform: ⌘ di macOS, Ctrl di tempat lain. */
