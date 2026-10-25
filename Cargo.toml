@@ -70,3 +70,24 @@ zip = { version = "9", default-features = false, features = ["deflate"] }
 ureq = { version = "3", default-features = false, features = ["rustls", "json", "gzip"] }
 # Keychain OS untuk rahasia (kunci API AI) — PRD SET-2; MIT OR Apache-2.0
 keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service", "crypto-rust"] }
+
+# Mode pengembangan (`pnpm app`): dependensi berat (rasterisasi tiny-skia, shaping teks, dekode/enkode
+# PNG, SQLite) tanpa optimasi membuat preview 20× lebih lambat (≈3,5 dtk vs ≈0,17 dtk per frame),
+# sedangkan kode proyek sendiri tetap cepat dikompilasi ulang.
+[profile.dev.package."*"]
+opt-level = 3
+
+[profile.dev.package.qr-render]
+opt-level = 3
+
+[profile.dev.package.qr-media]
+opt-level = 3
+
+[profile.dev.package.qr-align]
+opt-level = 3
+
+[profile.dev.package.qr-quran]
+opt-level = 3
+
+[profile.dev.package.qr-cli]
+opt-level = 3
