@@ -1,0 +1,37 @@
+appId: id.quranrender.app
+productName: Quran Render
+directories:
+  buildResources: design/brand/icons/tauri
+  output: dist
+files:
+  - out/**
+  - package.json
+  - '!**/*.map'
+  - '!node_modules/ffmpeg-static/{README.md,example.js,install.js}'
+extraResources:
+  - from: resources/quran.db
+    to: quran.db
+  - from: assets/fonts/quran
+    to: fonts
+  # The export render loads Inter from the same fonts folder (paths.uiFontPath).
+  - from: assets/fonts/ui/Inter-Variable.ttf
+    to: fonts/Inter-Variable.ttf
+  - from: resources-gen/remotion-bundle
+    to: remotion/bundle
+  - from: node_modules/.remotion/chrome-headless-shell
+    to: remotion/chrome
+  - from: node_modules/ffmpeg-static/ffmpeg.LICENSE
+    to: licenses/FFmpeg-LICENSE.txt
+asarUnpack:
+  - node_modules/ffmpeg-static/**
+  - node_modules/ffprobe-static/**
+  - node_modules/@remotion/compositor-*/**
+  - '**/*.node'
+mac:
+  # Built on and for the host architecture: ffmpeg-static and the Remotion compositor download host binaries only.
+  target:
+    - target: dmg
+  category: public.app-category.video
+  identity: null
+  artifactName: QuranRender-${version}-mac-${arch}.${ext}
+npmRebuild: true

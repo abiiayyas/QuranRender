@@ -1,5 +1,7 @@
 # 06 — v1.0 Hardening: status dan bukti
 
+> **Arsip.** Berlaku untuk stack Tauri + Rust yang dihapus di 0.2.0; lihat `08_MIGRASI_ELECTRON.md`.
+
 | Item | Nilai |
 |---|---|
 | Tanggal | 2026-10-23 |

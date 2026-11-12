@@ -1,6 +1,6 @@
 # ADR-0002: Spike S1 — Integrasi Frame Render di Jendela Tauri
 
-- **Status:** Belum dikerjakan (tidak ada keputusan final)
+- **Status:** Digantikan oleh [ADR-0007](0007-pindah-ke-electron.md)
 - **Tanggal koreksi:** 2026-10-23
 - **Terkait:** PRD §9.1 (S1), `01_TECHNICAL_HANDOFF.md` §9, plan §3.2
 

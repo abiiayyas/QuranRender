@@ -1,6 +1,6 @@
 # ADR-0004: Spike S3 — Model Alignment dan Model Pack
 
-- **Status:** Belum dikerjakan (tidak ada keputusan final)
+- **Status:** Digantikan oleh [ADR-0007](0007-pindah-ke-electron.md)
 - **Tanggal koreksi:** 2026-10-23
 - **Terkait:** PRD §8.2, SYN-1..9, `01_TECHNICAL_HANDOFF.md` §11, plan §3.2
 

@@ -16,13 +16,3 @@ roles = ["surah_name", "ui_arabic"]
 key = "amiri-bold"
 file = "assets/fonts/quran/Amiri-Bold.ttf"
 roles = ["surah_name", "ui_arabic"]
-
-[[font]]
-key = "me-quran"
-file = "assets/fonts/quran/Uthmanic.ttf"
-roles = ["reserved_uthmani"]
-
-[[font]]
-key = "indopak"
-file = "assets/fonts/quran/IndoPak.ttf"
-roles = ["style_indopak_non_ayah"]

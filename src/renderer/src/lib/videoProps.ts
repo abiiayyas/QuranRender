@@ -1,0 +1,44 @@
+import { useMemo } from 'react'
+import type { Asset, Project } from '@shared/types'
+import { canvasSize, type VideoProps } from '@shared/video'
+import { useSurahs, useVerses } from './quran'
+
+/** Props for the preview Player: the same object export builds, with files read over studio://. */
+export function useVideoProps(project: Project, assets: Record<string, Asset>, fps: number): VideoProps {
+  const hasBasmalah = project.segments.some((s) => s.kind === 'basmalah')
+  const shown = hasBasmalah ? [...project.segments, { kind: 'ayah' as const, surah: 1, ayah: 1 }] : project.segments
+  const verses = useVerses(shown, project.script)
+  const surahs = useSurahs()
+  const surah = surahs.find((s) => s.id === project.surah) ?? null
+
+  const bgId = project.background.assetId
+  const ids = [project.sourceAssetId, bgId, ...project.overlays.map((o) => o.assetId)].filter((x): x is string => !!x)
+  const idsKey = ids.join('|')
+  const used = useMemo(() => {
+    const out: Record<string, Asset> = {}
+    for (const id of ids) if (assets[id]) out[id] = assets[id]
+    return out
+    // `idsKey` captures `ids`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idsKey, assets])
+
+  const source = project.sourceAssetId ? assets[project.sourceAssetId] : undefined
+  const lastEnd = project.segments.reduce((m, s) => Math.max(m, s.endMs), 0)
+  const durationMs = Math.max(source?.durationMs ?? lastEnd, 1000)
+  const { width, height } = canvasSize(project.aspect, 1080)
+
+  return useMemo(
+    () => ({
+      project,
+      assets: used,
+      verses,
+      surah,
+      width,
+      height,
+      fps,
+      durationMs,
+      baseUrl: { asset: 'studio://asset/', font: 'studio://fonts/' }
+    }),
+    [project, used, verses, surah, width, height, fps, durationMs]
+  )
+}

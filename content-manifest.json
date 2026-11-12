@@ -1334,30 +1334,12 @@
       "redistribution": "bundled"
     },
     {
-      "path": "assets/fonts/quran/IndoPak.ttf",
-      "sha256": "4c8f002e7538ef6351ac676eb0f2c1708ecd17f6f8a5fc4a19dbc8eaf4dddff5",
-      "kind": "font",
-      "source": "PERLU DIISI: URL resmi QuranWBW (PRD Q8)",
-      "license": "PERLU DIISI",
-      "attribution": "AlQuran IndoPak by QuranWBW",
-      "redistribution": "bundled"
-    },
-    {
       "path": "assets/fonts/quran/LPMQ.ttf",
       "sha256": "f7168fd2faad5954c7247b453c709bfd5480ea630cc0de8728b8a0622e7d8e93",
       "kind": "font",
       "source": "Lajnah Pentashihan Mushaf Al-Qur'an (Kemenag RI)",
       "license": "Izin penggunaan mushaf standar Kemenag RI",
       "attribution": "Font Mushaf Standar Indonesia, Lajnah Pentashihan Mushaf Al-Qur'an",
-      "redistribution": "bundled"
-    },
-    {
-      "path": "assets/fonts/quran/Uthmanic.ttf",
-      "sha256": "83d56cab9933f9e3ac1361ac0e926324a1cc70f37c3bcc5b22f62f270160b4a0",
-      "kind": "font",
-      "source": "PERLU DIISI: URL sumber font me_quran/Uthmanic (PRD Q8)",
-      "license": "PERLU DIISI",
-      "attribution": "Uthmanic Hafs Font",
       "redistribution": "bundled"
     },
     {

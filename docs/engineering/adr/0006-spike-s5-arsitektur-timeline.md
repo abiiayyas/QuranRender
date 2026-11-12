@@ -1,6 +1,6 @@
 # ADR-0006: Spike S5 — Arsitektur Timeline Berperforma Tinggi
 
-- **Status:** Belum dikerjakan (tidak ada keputusan final)
+- **Status:** Digantikan oleh [ADR-0007](0007-pindah-ke-electron.md)
 - **Tanggal koreksi:** 2026-10-23
 - **Terkait:** PRD TML-1..5, §9.1 (S5), `01_TECHNICAL_HANDOFF.md` §3, plan §3.2
 

@@ -1,6 +1,6 @@
 # ADR-0001: Pilihan Stack Teknologi Inti QuranRender
 
-- **Status:** Diterima
+- **Status:** Digantikan oleh [ADR-0007](0007-pindah-ke-electron.md)
 - **Tanggal:** 2026-10-23
 - **Pengambil keputusan:** Tim Pengembang & Pemilik Produk
 - **Terkait:** PRD baseline v1.0 (§10, §14), `docs/engineering/01_TECHNICAL_HANDOFF.md` §3

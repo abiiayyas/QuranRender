@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Memeriksa aksesibilitas dasar JSX di apps/desktop/src/**/*.tsx (nama tombol, label input, alt,
+// Memeriksa aksesibilitas dasar JSX di src/renderer/src/**/*.tsx (nama tombol, label input, alt,
 // peran ARIA, elemen klik non-native). Pengecualian: komentar `// a11y-ignore: alasan` pada baris
 // sebelumnya (atau `{/* a11y-ignore: alasan */}`).
 // Juga memeriksa kontras WCAG token di design/system/tokens.css (terang & gelap).
@@ -10,9 +10,9 @@ import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const ts = createRequire(join(root, "apps/desktop/package.json"))("typescript");
+const ts = createRequire(join(root, "package.json"))("typescript");
 const argIdx = process.argv.indexOf("--src");
-const srcDir = argIdx > 0 ? resolve(process.cwd(), process.argv[argIdx + 1]) : join(root, "apps/desktop/src");
+const srcDir = argIdx > 0 ? resolve(process.cwd(), process.argv[argIdx + 1]) : join(root, "src/renderer/src");
 
 const walk = (dir) =>
   readdirSync(dir).flatMap((name) => {

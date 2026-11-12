@@ -2,7 +2,7 @@
 
 | Item | Nilai |
 |---|---|
-| Status | v1.0, mengacu ke PRD baseline v1.0 (§14 rencana rilis) |
+| Status | **Arsip.** Berlaku untuk stack Tauri + Rust yang dihapus di 0.2.0; lihat `08_MIGRASI_ELECTRON.md` |
 | Cakupan | Urutan kerja, dependensi, gerbang fase, dan definisi selesai dari fase 0 sampai v1.0 |
 | Terkait | [`01_TECHNICAL_HANDOFF.md`](01_TECHNICAL_HANDOFF.md), [`02_DATABASE_SPECIFICATION.md`](02_DATABASE_SPECIFICATION.md), [`03_DATASET_PIPELINE.md`](03_DATASET_PIPELINE.md) |
 

@@ -1,0 +1,170 @@
+import { useState } from 'react'
+import type { Edition } from '@shared/types'
+import { Icon, Sheet } from '../../../components/ui'
+import { errorText } from '../../../lib/format'
+import { confirmDialog, toast } from '../../../store/app'
+import { useProject } from '../../../store/project'
+import { languageName, useEditions } from './editions'
+
+/** Indonesian and English first; the rest by name. */
+const FIRST = ['id', 'en']
+
+export function EditionPicker({ onClose }: { onClose: () => void }) {
+  const list = useEditions((s) => s.list)
+  const error = useEditions((s) => s.error)
+  const installs = useEditions((s) => s.installs)
+  const projectEditions = useProject((s) => s.project?.editions) ?? []
+  const [query, setQuery] = useState('')
+  const [lang, setLang] = useState('')
+
+  const all = list ?? []
+  const languages = [...new Set(all.map((e) => e.language))].sort((a, b) => {
+    const fa = FIRST.indexOf(a)
+    const fb = FIRST.indexOf(b)
+    if (fa >= 0 || fb >= 0) return (fa < 0 ? 99 : fa) - (fb < 0 ? 99 : fb)
+    return languageName(a).localeCompare(languageName(b), 'id')
+  })
+  const q = query.trim().toLocaleLowerCase('id')
+  const shown = all.filter(
+    (e) =>
+      (lang === '' || e.language === lang) &&
+      (q === '' || [e.name, e.author, languageName(e.language)].some((v) => v.toLocaleLowerCase('id').includes(q)))
+  )
+  const groups = languages
+    .map((code) => ({ code, items: shown.filter((e) => e.language === code).sort((a, b) => Number(b.installed) - Number(a.installed)) }))
+    .filter((g) => g.items.length > 0)
+
+  const add = (e: Edition) => {
+    const p = useProject.getState().project
+    if (!p || p.editions.includes(e.id)) return
+    useProject.getState().update({ editions: [...p.editions, e.id] })
+    if (!e.installed) void useEditions.getState().install(e.id)
+  }
+
+  const uninstall = async (e: Edition) => {
+    const ok = await confirmDialog({
+      title: `Hapus ${e.name} dari perangkat?`,
+      body: 'Teks terjemahan ini akan dihapus dari komputer. Terjemahan yang sudah tersimpan di proyek tetap ada, dan edisi ini bisa dipasang lagi kapan saja.',
+      confirmLabel: 'Hapus',
+      danger: true
+    })
+    if (!ok) return
+    try {
+      await window.api.text.remove(e.id)
+      await useEditions.getState().load()
+    } catch (err) {
+      toast('error', errorText(err))
+    }
+  }
+
+  return (
+    <Sheet
+      title="Tambah terjemahan"
+      onClose={onClose}
+      size="md"
+      footer={
+        <button type="button" className="qr-btn qr-btn--primary" onClick={onClose}>
+          Selesai
+        </button>
+      }
+    >
+      <div className="stack">
+        <div className="edition-filter">
+          <span className="qr-field">
+            <Icon name="search" size="sm" />
+            <input
+              type="search"
+              data-autofocus
+              value={query}
+              aria-label="Cari terjemahan"
+              placeholder="Cari nama, penerjemah, atau bahasa"
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </span>
+          <span className="qr-field">
+            <select value={lang} aria-label="Bahasa" onChange={(e) => setLang(e.target.value)}>
+              <option value="">Semua bahasa</option>
+              {languages.map((code) => (
+                <option key={code} value={code}>
+                  {languageName(code)}
+                </option>
+              ))}
+            </select>
+          </span>
+        </div>
+        {error && (
+          <p className="qr-error" role="alert">
+            <Icon name="circle-alert" size="sm" />
+            Katalog Quran.com belum bisa dimuat: {error}
+          </p>
+        )}
+        {list === null && !error ? (
+          <p className="qr-help" role="status">
+            <span className="qr-spin" /> Memuat katalog terjemahan…
+          </p>
+        ) : groups.length === 0 ? (
+          <p className="qr-help">Tidak ada terjemahan yang cocok dengan pencarian ini.</p>
+        ) : (
+          <div className="tx-pick">
+            {groups.map((g) => (
+              <section key={g.code} aria-label={languageName(g.code)}>
+                <h3 className="pn-h">{languageName(g.code)}</h3>
+                <ul className="ed-order">
+                  {g.items.map((e) => {
+                    const inProject = projectEditions.includes(e.id)
+                    const job = installs[e.id]
+                    return (
+                      <li key={e.id} className="ed-row">
+                        <span className="ed-row__name" title={e.name}>
+                          {e.name}
+                          <small>{e.author || 'Quran.com'}</small>
+                        </span>
+                        {e.bundled ? (
+                          <span className="qr-badge qr-badge--plain">Bawaan</span>
+                        ) : e.installed ? (
+                          <span className="qr-badge qr-badge--success">Terpasang</span>
+                        ) : job ? (
+                          <span className="qr-badge qr-badge--accent">Memasang {Math.round(job.progress * 100)}%</span>
+                        ) : null}
+                        <span className="ed-row__actions">
+                          {e.installed && !e.bundled && (
+                            <button
+                              type="button"
+                              className="qr-btn qr-btn--ghost qr-btn--icon qr-btn--sm"
+                              aria-label={`Hapus ${e.name} dari perangkat`}
+                              title="Hapus dari perangkat"
+                              onClick={() => void uninstall(e)}
+                            >
+                              <Icon name="trash-2" size="sm" />
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className="qr-btn qr-btn--secondary qr-btn--sm"
+                            disabled={inProject}
+                            aria-label={inProject ? `${e.name} sudah dipakai` : `Tambahkan ${e.name}`}
+                            onClick={() => add(e)}
+                          >
+                            {inProject ? (
+                              'Dipakai'
+                            ) : (
+                              <>
+                                <Icon name={e.installed ? 'plus' : 'download'} size="sm" />
+                                {e.installed ? 'Tambah' : 'Pasang'}
+                              </>
+                            )}
+                          </button>
+                        </span>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </section>
+            ))}
+          </div>
+        )}
+        <p className="qr-help">Terjemahan selain Kemenag diunduh dari Quran.com sekali, lalu bisa dipakai tanpa internet.</p>
+      </div>
+    </Sheet>
+  )
+}

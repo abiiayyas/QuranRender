@@ -1,127 +1,80 @@
-# Quran Render — Panduan Pengguna (Bahasa Indonesia)
+# Quran Render — Panduan Pengguna
 
-> **Status: pra-alpha.** Panduan ini hanya memuat apa yang benar-benar berfungsi. Fitur yang belum ada
-> ditandai **Belum tersedia**.
+Quran Render mengubah rekaman tilawah menjadi video berteks: ayat Arab, terjemahan, dan sorotan per kata yang sinkron
+dengan suara qari. Panduan untuk menjalankan dari kode sumber ada di [`07_BUILD_DAN_TEST.md`](../engineering/07_BUILD_DAN_TEST.md).
 
 ## 1. Memulai
 
-Panduan build dan test lengkap: [`docs/engineering/07_BUILD_DAN_TEST.md`](../engineering/07_BUILD_DAN_TEST.md).
+Di **Beranda**, pilih surah dan rentang ayat (boleh dikosongkan), nama qari, format video (9:16, 16:9, atau 1:1), dan jenis
+teks Arab, lalu klik **Mulai**. Proyek tersimpan otomatis; semua langkah bisa dibuka kapan saja lewat deretan langkah di atas.
 
-**Dari sumber** (belum ada installer rilis resmi):
+| Teks Arab | Isi |
+|---|---|
+| Kemenag (LPMQ) | Mushaf Standar Indonesia, bawaan aplikasi, dipakai tanpa internet |
+| Uthmani Hafs | Dari Quran.com; font diunduh saat pertama dipakai |
+| QPC Madinah | Tulisan mushaf Madinah per halaman, dari Quran.com; font diunduh saat dipakai |
 
-```bash
-pnpm install
-cargo run -p qr-dataset -- build   # sekali: membangun dataset Al-Qur'an (build/dataset)
-pnpm app                           # menjalankan aplikasi untuk dicoba
-pnpm dmg                           # membuat installer: target/release/bundle/dmg/Quran Render_<versi>_<arsitektur>.dmg
-```
+## 2. Langkah 1: Sumber
 
-Aplikasi membutuhkan `ffmpeg` dan `ffprobe` (macOS: `brew install ffmpeg`) untuk impor dan ekspor video.
-`.dmg` belum ditandatangani dengan sertifikat Apple: di Mac lain, buka pertama kali lewat klik kanan › *Buka*.
-Installer Windows/Linux: **Belum tersedia**.
+Pilih salah satu:
 
-**Membuat proyek.** Seret berkas tilawah dari Finder/File Explorer ke jendela Beranda, atau pilih
-*Buat proyek*. Di lembar *Proyek baru*, berkas bisa diseret ke area lepas atau dipilih lewat
-*Pilih berkas…*; nama proyek diisi otomatis dari nama berkas. Berkas bersifat opsional dan langsung
-diimpor saat Studio terbuka. Proyek disimpan sebagai folder `*.qrproj` di `~/QuranRender/Projects`.
-Nama yang sama tidak menimpa proyek lain (`Nama-2.qrproj`). Berkas `.qrpack` yang diseret ke Beranda
-membuka lembar *Impor paket*.
+- **Berkas:** seret berkas audio atau video ke kotak, atau klik **Pilih berkas**. Video dipakai suaranya, dan gambarnya bisa
+  dijadikan latar di Editor.
+- **Qari:** unduh tilawah surah dari MP3Quran atau Quran.com. Qari berlabel *tersinkron otomatis* membawa waktu ayat, jadi
+  langkah Sinkron bisa dilewati.
+- **YouTube:** tempel alamat video. Pertama kali dipakai, aplikasi mengunduh yt-dlp. Pastikan kamu berhak memakai rekamannya.
 
-**Mengimpor audio.** Di Studio langkah *Sumber*, seret berkas audio dan lepaskan di mana saja di jendela,
-atau klik *Pilih berkas…*. Format: mp3, m4a, aac, wav, flac, ogg, opus, atau video mp4, mov, mkv, webm
-(suaranya yang dipakai). Satu proyek memakai satu audio; berkas baru menggantikan yang lama.
+Di bawah gelombang suara, atur titik mulai dan akhir lalu klik **Potong** untuk membuang bagian yang tidak dipakai.
 
-**Latar (gambar/video).** Di langkah *Sumber*, bagian *Latar (gambar/video)*: seret gambar (png, jpg, jpeg, webp, bmp)
-atau video (mp4, mov, mkv, webm) ke zona latar, atau klik *Pilih latar…*. Video latar dibisukan, dipotong
-memenuhi kanvas, diulang bila lebih pendek dari audio, dan dipotong bila lebih panjang. Geser *Redup latar*
-(bawaan 35%) agar teks tetap terbaca; disarankan minimal 20%. *Ganti* atau ikon hapus mengubah latar. Pelepasan
-otomatis dialihkan: gambar selalu menjadi latar, audio murni menjadi audio, video yang dilepas di zona audio
-dipakai sebagai audio, di tempat lain menjadi latar.
+## 3. Langkah 2: Sinkron
 
-**Rentang ayat.** Surah dipilih dari daftar bernama (mis. "67. Al-Mulk"); *Dari ayat* dan *Sampai ayat* dibatasi
-jumlah ayat surah itu.
+Klik **Mulai sinkron otomatis** untuk mengenali ayat dan waktu tiap kata. Rekaman dikirim ke layanan publik Hugging Face
+Space (*Quranic Universal Aligner*), jadi butuh internet. Pilih model **Base** (lebih cepat) atau **Large** (lebih teliti).
 
-Isian lokasi lain (berkas `.mp4` ekspor, berkas `.qrpack`, folder keluaran batch) punya tombol *Pilih…*
-yang membuka dialog bawaan sistem; path juga tetap bisa ditempel langsung.
+Hasilnya daftar segmen. Segmen yang keyakinannya rendah ditandai; gunakan **Berikutnya yang perlu dicek**. Untuk tiap segmen
+kamu bisa:
 
-## 2. Sinkron (segmen ayat dan waktu)
+- menggeser tepinya di gelombang suara atau mengetik waktunya;
+- membelah di posisi pemutar, menggabung dengan berikutnya, menambah, atau menghapus;
+- mengubah jenis (Ayat, Basmalah, Isti'adzah), surah, ayat, dan rentang kata untuk ayat yang terpotong;
+- mengatur waktu tiap kata, atau **Ratakan waktu kata** bila waktunya belum ada.
 
-- Setiap **segmen** menampilkan satu ayat atau sebagian ayat, dengan waktu mulai dan selesai.
-- Segmen berkeyakinan rendah (< 80%) ditandai *perlu ditinjau*. Tombol **Terima** menandainya sudah ditinjau.
-- Ayat panjang yang tidak muat satu layar (mis. Al-Baqarah 2:282) harus **dibagi per rentang kata**.
-  Pembagian hanya di batas kata; satu kata tidak boleh tampil di dua segmen. Segmen terbagi menampilkan
-  terjemahan ayat utuh berstatus *perlu ditinjau* sampai terjemahannya dipotong (otomatis, dengan AI, atau
-  disunting). Potongan otomatis/AI tetap perlu ditinjau; ekspor memberi peringatan `TRN-REVIEW` (tidak
-  memblokir) untuk segmen yang terjemahan edisi utamanya belum ditinjau.
-- Basmalah pembuka dan isti'adzah dapat menjadi segmen khusus: teks Arab basmalah dari dataset (1:1),
-  isti'adzah dari teks bawaan aplikasi (bukan ayat), tanpa label surah/ayat; terjemahan bawaan tersedia
-  untuk bahasa Indonesia dan Inggris.
-- **Sinkron otomatis (AI):** di langkah Sinkron tekan *Sinkronkan otomatis (AI)*. Ayat dikenali dari audio
-  (rentang ayat tidak perlu diisi) lengkap dengan waktu per kata, basmalah, dan isti'adzah. Memakai layanan
-  publik Hugging Face Space `hetchyy/quranic-universal-aligner` (sama dengan mesin bawaan Quran Caption), jadi
-  **audio diunggah ke layanan itu** dan butuh internet; pemakaian pertama meminta persetujuan Anda. Segmen
-  berkeyakinan rendah atau dengan kata terlewat ditandai *perlu ditinjau*.
-- **Sinkron offline (perkiraan):** deteksi suara lokal + pembagian waktu proporsional, perlu rentang ayat.
-- **Sinkron manual (papan ketik):** mode *Manual* di langkah Sinkron. Putar audio, pilih kata ayat (↑/↓, V =
-  satu ayat), tekan **Enter** di akhir bacaan untuk membuat segmen, **Backspace** menghapus segmen terakhir,
-  **B**/**A** menyisipkan basmalah/isti'adzah, **N**/**M** memindahkan awal/akhir segmen ke posisi
-  putar, **S** menandai jeda. Tepi segmen juga bisa diseret di timeline.
-- **Terjemahan:** pilih edisi di langkah Tampilan; edisi lain dipasang dari Pengaturan › Edisi terjemahan
-  (Quran.com). Pemotongan AI memakai layanan yang kompatibel dengan OpenAI dengan kunci milik Anda
-  (Pengaturan › Layanan AI, disimpan di keychain sistem).
-- **Pemutaran audio di Studio: Belum tersedia.**
+Pintasan: Spasi memutar/menjeda, panah kiri/kanan memilih segmen.
 
-## 3. Gaya dan template
+## 4. Langkah 3: Teks
 
-- 12 template bawaan: `subuh`, `senja`, `hening`, `terang`, `madinah`, `naskh-klasik`, `besar`,
-  `editorial-split`, `kartu-apung`, `siaran-lower-third`, `tadabbur-wbw`, `kajian-side-panel`.
-  Tiap template hanya mendukung rasio tertentu (lihat `docs/design/05_VIDEO_TEMPLATES.md` §8).
-- Teks ayat **selalu** diambil apa adanya dari dataset terverifikasi; aplikasi tidak pernah mengubahnya.
-  Jika tanda tangan atau hash dataset tidak cocok, teks tidak ditampilkan.
-- Teks dijaga di dalam **area aman** platform. Jika ayat tidak muat pada ukuran minimum, ekspor ditolak
-  dengan kode `CNT-5-OVERFLOW` dan Anda diminta membagi segmen.
-- Mengedit properti gaya per elemen dari antarmuka: **Belum tersedia** (template dipilih utuh).
-- Impor/ekspor template `.qrtemplate` tersedia di tingkat pustaka; galeri di antarmuka: **Belum tersedia**.
+Terjemahan Kemenag sudah bawaan. Klik **Tambah terjemahan** untuk memasang edisi lain dari Quran.com; edisi paling atas
+menjadi terjemahan utama di video. **Isi terjemahan** mengisi semua segmen. Untuk ayat yang hanya dibaca sebagian,
+**AI trim ayat terpotong** memotong terjemahan agar sesuai bagian yang dibaca. Ini butuh kunci API di **Pengaturan**
+(layanan apa pun yang kompatibel dengan API OpenAI, termasuk Ollama lokal). Teks Arab tidak pernah diubah oleh AI. Hasil AI
+ditandai; periksa sebelum ekspor, dan ketik langsung di kolom terjemahan untuk memperbaikinya.
 
-## 4. Ekspor
+## 5. Langkah 4: Editor
 
-**Subtitle** (SRT/VTT/ASS): dialog *Ekspor subtitle* di Studio membuat teks dari dataset (ayat dan/atau
-terjemahan). Penyimpanan langsung ke berkas dari dialog: **Belum tersedia** (gunakan tombol salin).
+Pratinjau memakai mesin yang sama dengan ekspor, jadi hasilnya sama dengan videonya.
 
-**Video MP4** lewat baris perintah:
+- **Gaya:** 12 preset, lalu ukuran, warna, sorotan kata, terjemahan, kotak, bingkai, dan keterangan (nama surah, qari, rujukan).
+- **Latar:** warna, gambar, video, atau video sumber; atur gelap dan buramnya.
+- **Overlay:** teks atau gambar (logo, nama channel) dengan posisi dan waktu tampil.
+- **Format:** ganti 9:16, 16:9, 1:1, dan tampilkan garis area aman. Garisnya tidak ikut diekspor.
 
-```bash
-qurender render <folder.qrproj> <keluaran.mp4> [--audio berkas] [--width N] [--max-seconds S] [--threads N] [--overwrite]
-```
+Urungkan dan Ulangi tersedia di atas pratinjau (Cmd+Z, Cmd+Shift+Z).
 
-- Keluaran: H.264 + AAC, warna BT.709. Encoder hardware dipakai bila ada; bila gagal, otomatis libx264.
-- Berkas keluaran yang sudah ada **tidak ditimpa** kecuali `--overwrite`.
-- Audio yang lebih pendek dari video diperpanjang dengan senyap; video tidak terpotong.
-- Ekspor dari antarmuka Studio, ekspor transparan (ProRes/WebM), dan antrean batch di antarmuka:
-  **Belum tersedia**.
+## 6. Ekspor
 
-## 5. Batch dan paket unggah
+Klik **Ekspor**. Pilih 720p, 1080p, atau 4K pada 30 atau 60 fps, berkas tambahan (SRT, VTT, chapter YouTube), dan folder
+keluaran. Sebelum merender, aplikasi memeriksa amanah teks dan kelengkapan: ekspor ditolak bila ada segmen yang waktunya
+tidak valid, rentang kata di luar ayat, atau terjemahan utama yang belum ada. Peringatan (terjemahan perlu dicek,
+keyakinan rendah) tidak menghalangi. Waktu render sekitar 1,5 kali durasi video pada 1080p di satu mesin uji; hasilnya
+bergantung mesinmu.
 
-- Pemecahan proyek per N ayat/durasi/marker dan antrean job yang bertahan setelah aplikasi ditutup
-  (job yang terhenti kembali antre saat dibuka) tersedia sebagai pustaka. Antarmuka batch/antrean:
-  **Belum tersedia**.
-- Arsip `.qrpack` (proyek + aset + sidik jari SHA-256, dapat dibuka di OS lain) tersedia lewat perintah
-  aplikasi; tombol di antarmuka: **Belum tersedia**. Arsip yang rusak atau berbahaya ditolak.
-- Pembuat berkas kredit (`*.credits.txt`) dan teks unggah (`*.upload.txt`) tersedia sebagai pustaka.
-  Panel *Siap unggah*: **Belum tersedia**.
+## 7. Konten dan lisensi
 
-## 6. Konten dan lisensi
+- Teks dan terjemahan Kemenag: Lajnah Pentashihan Mushaf Al-Qur'an, Kementerian Agama RI.
+- Teks Uthmani, QPC, dan terjemahan lain: Quran.com. Font KFGQPC tidak dibundel; diunduh dari CDN Quran.com.
+- Tilawah: MP3Quran dan Quran.com. Periksa hak pakai rekaman sebelum mengunggah.
+- Kode: GPL-3.0. Remotion gratis untuk individu dan organisasi sampai 3 karyawan.
 
-- Teks Al-Qur'an: Kemenag RI (Mushaf Standar Indonesia). Terjemahan bawaan: Kemenag. Edisi terjemahan
-  lain (mis. Saheeh International) diunduh dari Quran.com (api.quran.com) dan disimpan terpisah di
-  `~/QuranRender/content.db`; daftar edisi tetap tampil saat offline setelah pernah diambil. Proyek dapat
-  menampilkan beberapa edisi sekaligus (urutan edisi proyek; yang pertama adalah utama).
-- Pemotongan terjemahan dengan AI memakai layanan OpenAI-compatible milik Anda (pengaturan
-  `ai.endpoint`, bawaan `https://api.openai.com/v1`, dan `ai.model`). Kunci API disimpan di keychain
-  sistem, tidak di berkas pengaturan. Hanya teks Arab dan terjemahan segmen yang dikirim.
-- Konten tidak boleh memuat makhluk bernyawa atau musik; Quran Render tidak menyediakan keduanya.
+## 8. Bantuan
 
-## 7. Bantuan
-
-Laporkan masalah di repositori proyek. Sertakan versi (`qurender --version`), sistem operasi, dan langkah
-yang dilakukan. Jangan melampirkan kunci pribadi.
+Laporkan masalah lewat issue di repositori. Sertakan langkah, pesan galat, dan langkah mana yang bermasalah.

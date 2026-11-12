@@ -6,12 +6,13 @@
 
 web
 
-Aplikasi desktop (macOS, Windows, Linux) dengan UI web di dalam Tauri 2. Kanvas video dirender native
-oleh Rust, bukan oleh DOM. Mobile (Android/iOS) direncanakan di fase 3.
+Aplikasi desktop Electron. Rilis pertama hanya macOS; Windows dan Linux menyusul. Video digambar oleh komposisi
+Remotion yang sama untuk pratinjau dan ekspor.
 
 ## Stack
 
-React + TypeScript (Vite) di dalam Tauri 2, core Rust. Diputuskan di PRD (D5). Detail teknis ada di
+Electron + electron-vite, React 19 + TypeScript, Zustand, SQLite (better-sqlite3), Remotion, FFmpeg. Menggantikan
+Tauri + Rust (PRD D5) sejak 0.2.0; keputusan di `docs/engineering/08_MIGRASI_ELECTRON.md`, detail di
 `docs/engineering/01_TECHNICAL_HANDOFF.md`.
 
 ## Users
@@ -25,7 +26,7 @@ React + TypeScript (Vite) di dalam Tauri 2, core Rust. Diputuskan di PRD (D5). D
 - **Lembaga pendidikan Qur'an:** materi untuk ditonton ulang, terjemahan resmi Kemenag, export
   subtitle.
 
-Pasar awal Indonesia. UI dalam Bahasa Indonesia dan Inggris, siap untuk lokal RTL.
+Pasar awal Indonesia. UI hanya dalam Bahasa Indonesia.
 
 ## Product Purpose
 
@@ -37,8 +38,8 @@ dalam ≤ 10 menit sejak instalasi, tanpa dependensi tambahan.
 
 - Satu mesin render untuk preview dan export: yang terlihat sama dengan yang diekspor, termasuk
   animasi karaoke per kata.
-- AI sinkronisasi berjalan lokal tanpa Python; cloud hanya opsional dan milik pengguna.
-- Produksi massal: satu tilawah panjang menjadi banyak klip dalam satu antrean.
+- Tilawah qari bisa diunduh langsung (MP3Quran, QDC); qari dengan timestamp bawaan langsung tersinkron.
+- Sinkron AI lewat aligner cloud publik, tanpa Python di komputer pengguna; sinkron manual selalu tersedia.
 - Amanah teks ditegakkan sistem: export ditolak bila teks Arab terpotong, dataset tidak terverifikasi,
   glyph hilang, atau terjemahan tanpa atribusi.
 - Gratis dan open source (GPL-3.0).
@@ -49,17 +50,18 @@ dalam ≤ 10 menit sejak instalasi, tanpa dependensi tambahan.
 - Input berupa file audio/video tilawah (studio, masjid, tarawih).
 - Output berupa MP4/MOV/WebM/PNG dan subtitle. Pengguna mengunggah manual ke YouTube, Shorts, Reels,
   dan TikTok memakai paket unggah (judul, deskripsi, atribusi).
-- Alur utama empat langkah: Sumber → Sinkron → Tampilan → Ekspor, dengan studio lengkap untuk pengguna
-  mahir.
+- Alur utama: Beranda → Sumber → Sinkron → Teks → Editor → Ekspor (pola Storyset), semua langkah bisa dibuka
+  kapan saja dan proyek tersimpan otomatis.
 
 ## Capabilities and Constraints
 
 - Sumber kebutuhan: `docs/product/PRD.md` (baseline v1.0, terkunci).
 - **Clean-room:** desain tidak boleh mirip Quran Caption (editor gelap dengan tab terpisah). Kode, aset,
   dan string UI-nya tidak boleh dipakai.
-- **Teks Arab:** dataset Kemenag (Mushaf Standar Indonesia). Ayat dirender dengan font LPMQ, nama surah
-  dengan Amiri. Teks ditampilkan verbatim.
-- Konten video (kanvas preview) dirender oleh renderer Rust. UI web hanya untuk kontrol.
+- **Teks Arab:** dataset Kemenag (Mushaf Standar Indonesia, font LPMQ) bawaan; Uthmani Hafs dan QPC Madinah dari
+  Quran.com. Nama surah dengan Amiri. Teks ditampilkan verbatim.
+- **Fitur setara Quran Caption** dalam batas clean-room: kode, aset, string, dan desain ditulis sendiri.
+- Konten video dirender oleh komposisi Remotion, dipakai bersama oleh pratinjau dan ekspor.
 - Tanpa integrasi publikasi platform dan tanpa code signing OS di rilis 1.
 - Fitur dan peran yang belum diputuskan tercatat di PRD §15.2 (Q5, Q8, Q9).
 

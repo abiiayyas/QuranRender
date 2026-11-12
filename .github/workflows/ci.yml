@@ -10,145 +10,18 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  CARGO_TERM_COLOR: always
-  RUST_BACKTRACE: 1
-
 jobs:
-  quality:
-    name: Code Quality & Unit Tests
-    runs-on: ubuntu-latest
+  check:
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: pnpm
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt, clippy
-
-      - name: Install cargo-deny
-        uses: taiki-e/install-action@cargo-deny
-
-      - name: Rust Cache
-        uses: Swatinem/rust-cache@v2
-
-      - name: Linux system dependencies (WebKitGTK)
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libasound2-dev ffmpeg
-
-      - name: Install pnpm dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Verify bindings.ts clean check (F0-02)
-        run: |
-          cargo test -p quranrender test_export_bindings
-          git diff --exit-code apps/desktop/src/bindings.ts
-
-      - name: Check Rust formatting
-        run: cargo fmt --check
-
-      - name: Run Clippy
-        run: cargo clippy --all-targets -- -D warnings
-
-      - name: Run cargo-deny
-        run: cargo deny check
-
-      - name: Run Rust unit tests (termasuk verifikasi tanda tangan minisign F0-05)
-        run: cargo test --all-targets
-
-      - name: Run linkage check (F0-04)
-        run: ./third_party/ffmpeg/check-linkage.sh target/debug
-
-      - name: Build frontend packages
-        run: pnpm -r build
-
-      - name: Lint kelas & token design system
-        run: pnpm --filter @quranrender/desktop lint:design
-
-      - name: Lint aksesibilitas JSX
-        run: pnpm --filter @quranrender/desktop lint:a11y
-
-      - name: Lint katalog i18n
-        run: pnpm --filter @quranrender/desktop lint:i18n
-
-  build-desktop:
-    name: Build Desktop (${{ matrix.platform.name }})
-    needs: quality
-    runs-on: ${{ matrix.platform.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        platform:
-          - name: macOS Universal
-            os: macos-latest
-            targets: ["x86_64-apple-darwin", "aarch64-apple-darwin"]
-          - name: Windows x64
-            os: windows-latest
-            targets: ["x86_64-pc-windows-msvc"]
-          - name: Linux x64
-            os: ubuntu-22.04
-            targets: ["x86_64-unknown-linux-gnu"]
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ join(matrix.platform.targets, ',') }}
-
-      - name: Rust Cache
-        uses: Swatinem/rust-cache@v2
-
-      - name: Install Linux build dependencies
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libasound2-dev
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build macOS Universal App (.dmg)
-        if: runner.os == 'macOS'
-        run: |
-          pnpm --filter @quranrender/desktop build
-          pnpm tauri build --target universal-apple-darwin
-
-      - name: Build Windows Installer (.exe / .msi)
-        if: runner.os == 'Windows'
-        run: |
-          pnpm --filter @quranrender/desktop build
-          pnpm tauri build
-
-      - name: Build Linux Packages (.deb / .AppImage)
-        if: runner.os == 'Linux'
-        run: |
-          pnpm --filter @quranrender/desktop build
-          pnpm tauri build
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: quranrender-${{ matrix.platform.name }}
-          path: |
-            apps/desktop/src-tauri/target/**/bundle/*
-          if-no-files-found: warn
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run lint:design
+      - run: npm run lint:a11y
+      - run: npm run build

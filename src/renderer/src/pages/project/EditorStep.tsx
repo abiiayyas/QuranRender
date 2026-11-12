@@ -1,0 +1,106 @@
+import { useRef, useState } from 'react'
+import { Player, type PlayerRef } from '@remotion/player'
+import { QuranVideo, SAFE_AREA } from '@video/QuranVideo'
+import { Icon } from '../../components/ui'
+import { useVideoProps } from '../../lib/videoProps'
+import { useProject } from '../../store/project'
+import { BackgroundPanel } from './editor/BackgroundPanel'
+import { EditorTimeline } from './editor/EditorTimeline'
+import { FormatPanel } from './editor/FormatPanel'
+import { OverlayPanel } from './editor/OverlayPanel'
+import { StylePanel } from './editor/StylePanel'
+
+const FPS = 30
+type Tab = 'gaya' | 'latar' | 'overlay' | 'format'
+const TABS: { id: Tab; label: string; icon: string }[] = [
+  { id: 'gaya', label: 'Gaya', icon: 'type' },
+  { id: 'latar', label: 'Latar', icon: 'image' },
+  { id: 'overlay', label: 'Overlay', icon: 'layers' },
+  { id: 'format', label: 'Format', icon: 'frame' }
+]
+
+export function EditorStep() {
+  const project = useProject((s) => s.project!)
+  const assets = useProject((s) => s.assets)
+  const canUndo = useProject((s) => s.canUndo)
+  const canRedo = useProject((s) => s.canRedo)
+  const props = useVideoProps(project, assets, FPS)
+  const playerRef = useRef<PlayerRef | null>(null)
+  const [tab, setTab] = useState<Tab>('gaya')
+  const [overlayId, setOverlayId] = useState<string | null>(null)
+  const [guides, setGuides] = useState(false)
+
+  const source = project.sourceAssetId ? assets[project.sourceAssetId] : undefined
+  const frames = Math.max(1, Math.ceil((props.durationMs * FPS) / 1000))
+  const safe = SAFE_AREA[project.aspect]
+  const ratio = props.width / props.height
+
+  return (
+    <div className="ed-layout">
+      <nav className="ed-rail" aria-label="Alat editor">
+        {TABS.map((t) => (
+          <button key={t.id} type="button" className="ed-rail__btn" aria-pressed={tab === t.id} onClick={() => setTab(t.id)}>
+            <Icon name={t.icon} />
+            <span>{t.label}</span>
+          </button>
+        ))}
+      </nav>
+      <aside className="ed-panel" aria-label="Pengaturan">
+        {tab === 'gaya' && <StylePanel />}
+        {tab === 'latar' && <BackgroundPanel />}
+        {tab === 'overlay' && <OverlayPanel selectedId={overlayId} onSelect={setOverlayId} durationMs={props.durationMs} />}
+        {tab === 'format' && <FormatPanel guides={guides} onGuides={setGuides} />}
+      </aside>
+      <main className="ed-stage" aria-label="Pratinjau">
+        <div className="ed-stage__bar">
+          <button type="button" className="qr-btn qr-btn--ghost qr-btn--sm" disabled={!canUndo} onClick={() => useProject.getState().undo()}>
+            <Icon name="rotate-ccw" size="sm" />
+            Urungkan
+          </button>
+          <button type="button" className="qr-btn qr-btn--ghost qr-btn--sm" disabled={!canRedo} onClick={() => useProject.getState().redo()}>
+            Ulangi
+          </button>
+        </div>
+        <div className="ed-stage__view">
+          <div className="ed-stage__frame" style={{ aspectRatio: `${props.width} / ${props.height}`, '--ratio': ratio } as React.CSSProperties}>
+            <Player
+              ref={playerRef}
+              component={QuranVideo as never}
+              inputProps={props as never}
+              durationInFrames={frames}
+              compositionWidth={props.width}
+              compositionHeight={props.height}
+              fps={FPS}
+              controls
+              clickToPlay
+              acknowledgeRemotionLicense
+              style={{ width: '100%', height: '100%' }}
+            />
+            {guides && (
+              <div
+                className="ed-guide"
+                aria-hidden="true"
+                style={{ top: `${safe.top * 100}%`, bottom: `${safe.bottom * 100}%`, left: `${safe.side * 100}%`, right: `${safe.side * 100}%` }}
+              />
+            )}
+          </div>
+        </div>
+      </main>
+      <section className="ed-timeline" aria-label="Linimasa">
+        <EditorTimeline
+          project={project}
+          source={source}
+          verses={props.verses}
+          durationMs={props.durationMs}
+          fps={FPS}
+          playerRef={playerRef}
+          selectedOverlay={overlayId}
+          onSelectOverlay={(id) => {
+            setOverlayId(id)
+            setTab('overlay')
+          }}
+        />
+      </section>
+    </div>
+  )
+}

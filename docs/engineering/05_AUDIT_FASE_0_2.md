@@ -1,5 +1,7 @@
 # 05 — Audit Fase 0, Spike, Fase 1, Fase 2, dan Desain 05
 
+> **Arsip.** Berlaku untuk stack Tauri + Rust yang dihapus di 0.2.0; lihat `08_MIGRASI_ELECTRON.md`.
+
 | Item | Nilai |
 |---|---|
 | Tanggal | 2026-10-23 |

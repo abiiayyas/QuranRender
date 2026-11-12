@@ -1,16 +1,16 @@
 #!/usr/bin/env node
-// Memeriksa bahwa semua kelas `qr-*` dan `var(--token)` di apps/desktop/src terdefinisi di
-// design/system/{tokens,components}.css atau apps/desktop/src/index.css.
+// Memeriksa bahwa semua kelas `qr-*` dan `var(--token)` di src/renderer/src dan src/remotion terdefinisi di
+// design/system/{tokens,components}.css atau src/renderer/src/styles.css.
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const srcDir = join(root, "apps/desktop/src");
+const srcDir = join(root, "src/renderer/src");
 const definitionFiles = [
   join(root, "design/system/tokens.css"),
   join(root, "design/system/components.css"),
-  join(srcDir, "index.css"),
+  join(srcDir, "styles.css"),
 ];
 
 const walk = (dir) =>

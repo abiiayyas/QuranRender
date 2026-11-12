@@ -1,6 +1,6 @@
 # ADR-0003: Spike S2 — Shaping Teks Arab Dataset Kemenag dengan LPMQ
 
-- **Status:** Diterima (diukur 2026-10-23)
+- **Status:** Digantikan oleh [ADR-0007](0007-pindah-ke-electron.md)
 - **Tanggal koreksi:** 2026-10-23
 - **Terkait:** PRD QRN-1, CNT-5, §9.1 (S2), `03_DATASET_PIPELINE.md` §5.8, plan §3.2
 

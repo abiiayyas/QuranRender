@@ -1,6 +1,6 @@
 # ADR-0005: Spike S4 — Pipeline Ekspor GPU ke Encoder
 
-- **Status:** Belum dikerjakan (tidak ada keputusan final)
+- **Status:** Digantikan oleh [ADR-0007](0007-pindah-ke-electron.md)
 - **Tanggal koreksi:** 2026-10-23
 - **Terkait:** PRD §8.2, EXP-1..8, `01_TECHNICAL_HANDOFF.md` §7.2, §10.1, plan §3.2
 

@@ -1,28 +1,31 @@
 #!/usr/bin/env node
-// Membangkitkan tabel pemetaan kata aligner cloud → kata dataset untuk ayat yang segmentasi katanya berbeda.
+// Membangkitkan tabel pemetaan kata untuk ayat yang segmentasi katanya berbeda dari penomoran kanonik.
 //
-// Aligner cloud (HF Space hetchyy/quranic-universal-aligner) menomori kata menurut Digital Khatt v2
-// (`digital_khatt_v2_script.json`, kunci "s:a:w"; kata terakhir tiap ayat adalah penanda nomor ayat "۝…" dan
-// diabaikan). Dataset QuranRender (Kemenag, `build/dataset/quran.db` tabel `word`) memotong sebagian kecil
-// ayat secara berbeda (mis. "لَّا شِيَةَ" vs "لَّاشِيَةَ", atau tanda waqaf "ەۙ" sebagai kata tersendiri).
+// Penomoran kanonik = kata Quran.com API v4 (`char_type_name === "word"`, penanda ayat diabaikan), sama
+// dengan teks Uthmani/QPC yang dirender dan posisi kata timing QDC. Dua sumber lain memotong berbeda:
+// - Dataset QuranRender (Kemenag, `resources/quran.db` tabel `word`), mis. "لَّا شِيَةَ" vs "لَّاشِيَةَ" atau
+//   tanda waqaf "ەۙ" sebagai kata tersendiri → WORD_MAP.
+// - Aligner cloud (HF Space hetchyy/quranic-universal-aligner) menomori kata menurut Digital Khatt v2
+//   (`digital_khatt_v2_script.json`, kunci "s:a:w"; penanda nomor ayat "۝…" diabaikan), yang memisah
+//   "بَعْدَ مَا" dan "إِلْ يَاسِينَ" di beberapa ayat → ALIGNER_MAP.
 // Untuk ayat yang jumlah katanya sama, pemetaannya 1:1 dan tidak dicatat. Untuk ayat lainnya, skrip ini
 // menjajarkan kedua urutan kata dengan pemrograman dinamis atas kerangka huruf yang dinormalisasi
 // (huruf dasar saja, tanpa alif/hamzah/harakat), lalu mencatat hanya kelompok yang bukan 1:1:
-// (kata_aligner_pertama, jumlah_kata_aligner, kata_dataset_pertama, jumlah_kata_dataset), 1-based.
+// (kata_kanonik_pertama, jumlah_kata_kanonik, kata_sumber_pertama, jumlah_kata_sumber), 1-based.
 // Di luar kelompok, kata berpasangan 1:1 dengan selisih indeks yang terakumulasi.
 //
-// Pemakaian (Node ≥ 22.5, modul bawaan node:sqlite):
+// Pemakaian (Node ≥ 22.5, modul bawaan node:sqlite; perlu internet untuk Quran.com):
 //   curl -L -o /tmp/digital_khatt_v2_script.json \
 //     https://huggingface.co/spaces/hetchyy/quranic-universal-aligner/resolve/main/data/digital_khatt_v2_script.json
-//   node scripts/gen-cloud-aligner-word-map.mjs [/tmp/digital_khatt_v2_script.json] [build/dataset/quran.db]
-// Keluaran: crates/qr-sources/src/cloud_aligner_word_map.rs (jangan disunting manual).
+//   node scripts/gen-cloud-aligner-word-map.mjs [/tmp/digital_khatt_v2_script.json] [resources/quran.db]
+// Keluaran: src/shared/wordMap.ts (jangan disunting manual).
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 
 const dkPath = process.argv[2] ?? "/tmp/digital_khatt_v2_script.json";
-const dbPath = process.argv[3] ?? "build/dataset/quran.db";
-const outPath = "crates/qr-sources/src/cloud_aligner_word_map.rs";
+const dbPath = process.argv[3] ?? "resources/quran.db";
+const outPath = "src/shared/wordMap.ts";
 
 /** Kerangka huruf: huruf dasar Arab, varian disatukan, alif/hamzah/ya-wau kecil dibuang. */
 function skeleton(word) {
@@ -122,6 +125,16 @@ for (const [key, v] of Object.entries(dk)) {
   aligner.get(k)[w - 1] = v.text;
 }
 
+const canonical = new Map();
+for (let s = 1; s <= 114; s++) {
+  const url = `https://api.quran.com/api/v4/verses/by_chapter/${s}?words=true&word_fields=text_uthmani&per_page=300`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Quran.com ${s}: HTTP ${res.status}`);
+  for (const v of (await res.json()).verses) {
+    canonical.set(v.verse_key, v.words.filter((w) => w.char_type_name === "word").map((w) => w.text_uthmani));
+  }
+}
+
 const db = new DatabaseSync(dbPath, { readOnly: true });
 const rows = db
   .prepare(
@@ -134,39 +147,47 @@ for (const r of rows) {
   if (!dataset.has(k)) dataset.set(k, { s: r.s, a: r.n, words: [] });
   dataset.get(k).words.push(r.t);
 }
+if (dataset.size !== 6236) throw new Error(`Dataset memuat ${dataset.size} ayat, harus 6236`);
+if (canonical.size !== 6236) throw new Error(`Quran.com memuat ${canonical.size} ayat, harus 6236`);
 
-const entries = [];
+const wordMap = [];
+const alignerMap = [];
 for (const [k, { s, a, words }] of dataset) {
+  const cWords = canonical.get(k);
+  if (!cWords) throw new Error(`Ayat ${k} tidak ada di Quran.com`);
   const aw = aligner.get(k);
   if (!aw) throw new Error(`Ayat ${k} tidak ada di Digital Khatt`);
   if (!aw[aw.length - 1].startsWith("\u06dd")) throw new Error(`Ayat ${k}: kata terakhir bukan penanda ayat`);
-  const aWords = aw.slice(0, -1);
-  if (aWords.length === words.length) continue;
-  const { groups, worst, total } = alignAyah(aWords, words);
-  if (worst > 3) console.warn(`peringatan ${k}: jarak edit kelompok terburuk ${worst} (total ${total.toFixed(1)})`);
-  entries.push({ s, a, ac: aWords.length, dc: words.length, groups });
+  for (const [out, src] of [[wordMap, words], [alignerMap, aw.slice(0, -1)]]) {
+    if (cWords.length === src.length) continue;
+    const { groups, worst, total } = alignAyah(cWords, src);
+    if (worst > 3) console.warn(`peringatan ${k}: jarak edit kelompok terburuk ${worst} (total ${total.toFixed(1)})`);
+    out.push({ s, a, ac: cWords.length, dc: src.length, groups });
+  }
 }
-if (dataset.size !== 6236) throw new Error(`Dataset memuat ${dataset.size} ayat, harus 6236`);
 
-const lines = [
-  "// @generated oleh scripts/gen-cloud-aligner-word-map.mjs — jangan disunting manual.",
-  "//! Pemetaan kata aligner cloud (Digital Khatt v2, tanpa penanda ayat) → kata dataset, hanya untuk ayat",
-  "//! yang jumlah katanya berbeda. Kelompok: (kata_aligner_pertama, jumlah, kata_dataset_pertama, jumlah),",
-  "//! 1-based; kata di luar kelompok berpasangan 1:1.",
+const table = (name, doc, entries) => [
+  `/** ${doc} Sorted by (surah, ayah). */`,
+  `export const ${name}: readonly WordMapEntry[] = [`,
+  ...entries.map((e) => {
+    const g = e.groups.map((x) => `[${x.a}, ${x.ac}, ${x.d}, ${x.dc}]`).join(", ");
+    return `  [${e.s}, ${e.a}, ${e.ac}, ${e.dc}, [${g}]],`;
+  }),
+  "]",
   "",
-  "/// Kelompok non-1:1: (kata_aligner_pertama, jumlah, kata_dataset_pertama, jumlah).",
-  "pub(crate) type WordGroup = (u16, u8, u16, u8);",
-  "/// (surah, ayat, jumlah_kata_aligner, jumlah_kata_dataset, kelompok non-1:1).",
-  "pub(crate) type WordMapEntry = (u16, u16, u16, u16, &'static [WordGroup]);",
-  "",
-  "/// Terurut menurut (surah, ayat).",
-  "#[rustfmt::skip]",
-  "pub(crate) static WORD_MAP: &[WordMapEntry] = &[",
 ];
-for (const e of entries) {
-  const g = e.groups.map((x) => `(${x.a}, ${x.ac}, ${x.d}, ${x.dc})`).join(", ");
-  lines.push(`    (${e.s}, ${e.a}, ${e.ac}, ${e.dc}, &[${g}]),`);
-}
-lines.push("];", "");
+const lines = [
+  "// @generated by scripts/gen-cloud-aligner-word-map.mjs — do not edit by hand.",
+  "// Canonical word numbering = Quran.com API v4 words (= QPC/Uthmani rendering, QDC timings), ayah-end",
+  "// marker excluded. Only ayahs whose word counts differ are listed; words outside the groups pair 1:1.",
+  "",
+  "/** Non-1:1 group, 1-based: [canonicalFirst, canonicalCount, sourceFirst, sourceCount]. */",
+  "export type WordGroup = readonly [number, number, number, number]",
+  "/** [surah, ayah, canonicalCount, sourceCount, groups]. */",
+  "export type WordMapEntry = readonly [number, number, number, number, readonly WordGroup[]]",
+  "",
+  ...table("WORD_MAP", "Kemenag dataset words (resources/quran.db `word`) → canonical.", wordMap),
+  ...table("ALIGNER_MAP", "Cloud aligner words (Digital Khatt v2) → canonical.", alignerMap),
+];
 writeFileSync(outPath, lines.join("\n"));
-console.log(`${entries.length} ayat berbeda ditulis ke ${outPath}`);
+console.log(`${wordMap.length} ayat dataset dan ${alignerMap.length} ayat aligner berbeda ditulis ke ${outPath}`);

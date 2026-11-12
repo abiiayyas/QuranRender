@@ -1,17 +1,49 @@
 {
   "name": "quranrender",
+  "productName": "Quran Render",
+  "version": "0.2.1",
+  "description": "Ubah rekaman tilawah jadi video berteks: ayat, terjemahan, dan sorotan per kata yang sinkron dengan suara qari.",
+  "main": "./out/main/index.js",
+  "author": "QuranRender contributors",
+  "license": "GPL-3.0-or-later",
   "private": true,
-  "type": "module",
-  "packageManager": "pnpm@11.22.0",
   "scripts": {
-    "app": "pnpm --filter @quranrender/desktop tauri dev",
-    "dmg": "pnpm --filter @quranrender/desktop tauri build --bundles dmg",
-    "dev": "pnpm --filter @quranrender/desktop dev",
-    "build": "pnpm --filter @quranrender/desktop build",
-    "lint": "pnpm -r --if-present lint",
-    "typecheck": "pnpm -r --if-present typecheck"
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "typecheck:node": "tsc --noEmit -p tsconfig.node.json",
+    "typecheck:web": "tsc --noEmit -p tsconfig.web.json",
+    "typecheck": "npm run typecheck:node && npm run typecheck:web",
+    "postinstall": "electron-builder install-app-deps",
+    "prepare:remotion": "node scripts/prepare-remotion.mjs",
+    "dist:mac": "npm run prepare:remotion && npm run build && electron-builder --mac --publish never",
+    "test": "vitest run",
+    "lint:design": "node scripts/check-design-classes.mjs",
+    "lint:a11y": "node scripts/check-a11y.mjs"
+  },
+  "dependencies": {
+    "@remotion/renderer": "4.0.537",
+    "better-sqlite3": "^13.0.3",
+    "ffmpeg-static": "^5.3.0",
+    "ffprobe-static": "^3.1.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2.12.4"
+    "@remotion/bundler": "4.0.537",
+    "@remotion/player": "4.0.537",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^24.9.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@vitejs/plugin-react": "^5.2.0",
+    "electron": "^44.5.1",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^5.0.0",
+    "remotion": "4.0.537",
+    "typescript": "~5.9.3",
+    "vite": "^7.3.6",
+    "vitest": "^3.2.7",
+    "zustand": "^5.0.15"
   }
 }

@@ -1,7 +1,5 @@
-# Dokumentasi Pengguna / User Documentation
+# Dokumentasi Pengguna
 
-- [Bahasa Indonesia](id.md)
-- [English](en.md)
+- [Panduan pengguna (Bahasa Indonesia)](id.md)
 
-Dokumen ini menjelaskan **kondisi nyata** Quran Render saat ini (pra-alpha). Fitur yang belum ada ditandai
-"Belum tersedia". Status lengkap: [`docs/engineering/05_AUDIT_FASE_0_2.md`](../engineering/05_AUDIT_FASE_0_2.md).
+UI hanya berbahasa Indonesia sejak 0.2.0.

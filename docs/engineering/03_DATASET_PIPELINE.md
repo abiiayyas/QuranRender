@@ -7,6 +7,11 @@
 | Alat | Biner `qr-dataset` (crate `crates/qr-dataset`). Logika teks dipakai bersama dengan aplikasi lewat `qr-quran::text`. |
 | Terkait | PRD QRN-1..14, CNT-1..5, §11; [`02_DATABASE_SPECIFICATION.md`](02_DATABASE_SPECIFICATION.md) §3–4 |
 
+
+> **Status 0.2.0:** builder Rust `qr-dataset` dan verifikasi minisign dihapus bersama migrasi ke Electron. Hasil build
+> terakhir di-commit sebagai `resources/quran.db`; dokumen ini tetap menjadi spesifikasi isinya. Adapter Quran.com (§6)
+> kini ada di `src/main/text.ts` dan `src/main/quran.ts`.
+
 ---
 
 ## 1. Tujuan & prinsip
