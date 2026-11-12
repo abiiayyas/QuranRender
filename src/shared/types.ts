@@ -130,6 +130,10 @@ export interface ProjectSummary {
   ayahTo: number | null
   reciter: string
   durationMs: number | null
+  segmentCount: number
+  /** For the card thumbnail. */
+  style: StyleSettings
+  backgroundColor: string
   updatedAt: number
 }
 

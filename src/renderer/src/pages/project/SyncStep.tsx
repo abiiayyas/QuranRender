@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, Fragment } from 'react'
 import { manualSegment, MIN_SEGMENT_MS, needsReview, segmentAt, segmentLabel, segmentWordTexts, setEdge, sortSegments, wordAt, type Edge } from '@shared/segments'
 import type { Asset, Project, Segment } from '@shared/types'
 import { verseKey } from '@shared/video'
@@ -204,13 +204,15 @@ function SyncWorkspace({ project, asset, onNext }: { project: Project; asset: As
               </p>
               {stageWords.length > 0 ? (
                 <p className="sync-ayah" dir="rtl" lang="ar" style={{ fontFamily: arFont }}>
-                  {stageWords.map((w) =>
-                    w.text ? (
-                      <span key={w.idx} className={w.idx === current ? 'is-current' : undefined}>
-                        {w.text}
-                      </span>
-                    ) : null
-                  )}
+                  {stageWords
+                    .filter((w) => w.text)
+                    .map((w, i) => (
+                      <Fragment key={w.idx}>
+                        {/* A real space between spans: without it Arabic letters join across word boundaries. */}
+                        {i > 0 && ' '}
+                        <span className={w.idx === current ? 'is-current' : undefined}>{w.text}</span>
+                      </Fragment>
+                    ))}
                 </p>
               ) : (
                 <p className="muted">Memuat teks ayat…</p>

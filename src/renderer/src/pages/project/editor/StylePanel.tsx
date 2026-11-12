@@ -1,6 +1,6 @@
-import type { CSSProperties } from 'react'
 import { PRESETS, type Preset } from '@shared/presets'
 import { TRANSLATION_FONTS, type StyleSettings } from '@shared/style'
+import { LookThumb } from '../../../components/LookThumb'
 import { Segmented } from '../../../components/ui'
 import { useProject } from '../../../store/project'
 import { ColorRow, Section, SelectRow, setStyle, Slider, SwitchRow } from './controls'
@@ -21,31 +21,6 @@ function applyPreset(p: Preset): void {
   useProject.getState().update({ style: { ...p.style }, background: { ...cur.background, color, dim, blur } })
 }
 
-/** Abstract 1:1 swatch of a preset: bars in its colours, no text. */
-function PresetThumb({ p }: { p: Preset }) {
-  const s = p.style
-  const box = s.boxOpacity > 0
-  return (
-    <span className="preset-thumb" style={{ background: p.background.color } as CSSProperties} aria-hidden="true">
-      {s.frame && <span className="preset-thumb__frame" style={{ borderColor: s.frameColor }} />}
-      <span
-        className={box && s.boxStyle === 'band' ? 'preset-thumb__block is-band' : 'preset-thumb__block'}
-        style={{ background: box ? s.boxColor : undefined, opacity: 1 }}
-        data-pos={s.position}
-      >
-        <span className="preset-thumb__line">
-          <i style={{ background: s.arabicColor, opacity: s.inactiveOpacity }} />
-          <i style={{ background: s.highlight === 'none' ? s.arabicColor : s.highlightColor }} />
-        </span>
-        <span className="preset-thumb__line">
-          <i style={{ background: s.arabicColor, opacity: s.inactiveOpacity }} />
-        </span>
-        {s.showTranslation && <span className="preset-thumb__tr" style={{ background: s.translationColor }} />}
-      </span>
-    </span>
-  )
-}
-
 export function StylePanel() {
   const style = useProject((s) => s.project!.style)
   return (
@@ -61,7 +36,7 @@ export function StylePanel() {
               title={p.description}
               onClick={() => applyPreset(p)}
             >
-              <PresetThumb p={p} />
+              <LookThumb style={p.style} color={p.background.color} />
               <span className="preset-card__name">{p.name}</span>
             </button>
           ))}

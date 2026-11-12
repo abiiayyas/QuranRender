@@ -70,6 +70,9 @@ function summary(p: Project): ProjectSummary {
     ayahTo: p.ayahTo,
     reciter: p.reciter,
     durationMs: src?.durationMs ?? null,
+    segmentCount: p.segments.length,
+    style: p.style,
+    backgroundColor: p.background.color,
     updatedAt: p.updatedAt
   }
 }

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0
+
+- Beranda baru: formulir "Buat video tilawah" yang lebih jelas, kartu "Lanjutkan" untuk proyek terakhir, panduan cara kerja lima langkah,
+  saringan status dengan jumlah, pencarian, dan urutan proyek. Kartu proyek menampilkan miniatur tampilan video (warna dan format)
+  serta kemajuan tahap.
+- Sinkron: kata-kata Arab kini dipisah spasi, sehingga huruf di akhir satu kata tidak lagi tersambung ke kata berikutnya.
+
 ## 0.2.1
 
 - Sinkron: teks Uthmani Hafs kini digambar dengan font KFGQPC, bukan LPMQ, sehingga sukun, tanwin, dan jarak kata benar.
