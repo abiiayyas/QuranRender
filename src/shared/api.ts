@@ -1,9 +1,13 @@
+import type { CliStatus } from './aiTools'
+import type { ImageRequest } from './imagegen'
 import type { PlatformId, PublishFacts, PublishKit } from './publish'
+import type { StockItem, StockPage, StockProvider, StockQuery } from './stock'
 import type {
   Asset,
   Edition,
   ExportOptions,
   Job,
+  AiReady,
   KeyStatus,
   PolicyIssue,
   Project,
@@ -73,11 +77,26 @@ export interface StudioApi {
   settings: {
     get(): Promise<Settings>
     set(patch: Partial<Settings>): Promise<Settings>
+    aiReady(): Promise<AiReady>
     aiKey(): Promise<KeyStatus>
     setAiKey(key: string): Promise<KeyStatus>
     clearAiKey(): Promise<KeyStatus>
-    /** Sends a tiny request with the saved URL, model and key; resolves with a short status text. */
+    /** Sends a tiny request through the chosen provider (API URL, model and key, or the AI CLI); resolves with a short status text. A CLI test can take up to 90 s. */
     testAi(): Promise<string>
+    /** Which known AI CLIs are installed on this computer; asks the login shell again, so it sees a CLI installed a moment ago. */
+    cliStatus(): Promise<CliStatus>
+  }
+  stock: {
+    keys(): Promise<Record<StockProvider, KeyStatus>>
+    setKey(provider: StockProvider, key: string): Promise<KeyStatus>
+    clearKey(provider: StockProvider): Promise<KeyStatus>
+    search(query: StockQuery): Promise<StockPage>
+    /** Saves the picked photo or video into the project's media folder (credit kept in the asset's meta). */
+    download(projectId: string, item: StockItem): Promise<Asset>
+  }
+  ai: {
+    /** Makes a background picture from a theme and/or prompt. Done: the job's message is the new asset's id (it also arrives as an asset event). */
+    generateImage(projectId: string, request: ImageRequest): Promise<Job>
   }
   jobs: {
     cancel(id: string): Promise<void>
@@ -121,7 +140,9 @@ export const CHANNELS: { [G in Group]: (keyof StudioApi[G])[] } = {
   sync: ['align'],
   text: ['editions', 'install', 'remove', 'verses', 'aiTrim'],
   exporter: ['check', 'start', 'defaultFolder', 'pickFolder', 'reveal'],
-  settings: ['get', 'set', 'aiKey', 'setAiKey', 'clearAiKey', 'testAi'],
+  settings: ['get', 'set', 'aiReady', 'aiKey', 'setAiKey', 'clearAiKey', 'testAi', 'cliStatus'],
+  stock: ['keys', 'setKey', 'clearKey', 'search', 'download'],
+  ai: ['generateImage'],
   publish: ['facts', 'frame', 'thumbnail', 'generate', 'saveText'],
   jobs: ['cancel'],
   app: ['openExternal', 'copyText', 'version']

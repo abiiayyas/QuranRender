@@ -4,6 +4,7 @@ import { isPartial } from '@shared/translation'
 import type { Segment } from '@shared/types'
 import { Icon, JobProgress } from '../../components/ui'
 import { errorText } from '../../lib/format'
+import { splitLongSegments, useFitReport } from '../../lib/fit'
 import { useVerses, useSurahs } from '../../lib/quran'
 import { useAudio } from '../../lib/useAudio'
 import { toast, useApp } from '../../store/app'
@@ -31,8 +32,10 @@ export function TextStep({ onNext }: { onNext: () => void }) {
   const surahs = useSurahs()
   const [filling, setFilling] = useState(false)
   const [onlyReview, setOnlyReview] = useState(false)
-  const [noKey, setNoKey] = useState(false)
+  const [noKey, setNoKey] = useState<string | false>(false)
   const [whole, setWhole] = useState<Record<string, string>>({})
+  const [splitting, setSplitting] = useState(false)
+  const fit = useFitReport(project)
 
   const segments = useMemo(() => [...project.segments].sort((a, b) => a.startMs - b.startMs), [project.segments])
   const primary = project.editions[0] ?? null
@@ -112,10 +115,9 @@ export function TextStep({ onNext }: { onNext: () => void }) {
     const ed = p?.editions[0]
     if (!p || !ed) return
     try {
-      const [key, settings] = await Promise.all([window.api.settings.aiKey(), window.api.settings.get()])
-      const local = /^https?:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/i.test(settings.aiBaseUrl)
-      if (!key.configured && !local) {
-        setNoKey(true)
+      const ai = await window.api.settings.aiReady()
+      if (!ai.ready) {
+        setNoKey(ai.hint || 'AI belum siap.')
         return
       }
       setNoKey(false)
@@ -126,6 +128,43 @@ export function TextStep({ onNext }: { onNext: () => void }) {
     }
   }, [])
   const onAi = useCallback((segId: string) => void startAi([segId]), [startAi])
+
+  const tooLong = useMemo(() => segments.filter((x) => fit[x.id]?.overflow), [segments, fit])
+  const needTrim = tooLong.filter((x) => fit[x.id]?.cause === 'translation').length
+
+  /** Cuts the segments that cannot fit one screen at natural pauses, then fills each new part's translation. */
+  const splitLong = useCallback(
+    async (ids?: string[]) => {
+      const p = useProject.getState().project
+      if (!p) return
+      const only = new Set(ids ?? Object.entries(fit).filter(([, f]) => f.overflow).map(([id]) => id))
+      if (only.size === 0) return
+      setSplitting(true)
+      try {
+        const ed = p.editions[0]
+        const texts = ed ? await editionTexts(ed, spansOf(p.segments)).catch(() => ({})) : {}
+        const { segments: next, cuts, trimNeeded } = await splitLongSegments(p, texts, only)
+        if (cuts === 0) {
+          toast(
+            'info',
+            trimNeeded > 0
+              ? `${trimNeeded} segmen terlalu panjang karena terjemahannya belum dipotong sesuai kata yang dibaca. Silakan pakai AI trim, atau ketik potongannya.`
+              : 'Segmen ini tidak bisa dibelah lagi tanpa memotong di tengah kata. Silakan kecilkan ukuran Arab di Editor.'
+          )
+          return
+        }
+        useProject.getState().update({ segments: next })
+        await fillProject(installed)
+        toast('success', `Dibelah menjadi ${cuts} bagian tambahan. Terjemahan tiap bagian dipotong otomatis; gunakan AI trim untuk hasil yang lebih halus.`)
+      } catch (e) {
+        toast('error', errorText(e))
+      } finally {
+        setSplitting(false)
+      }
+    },
+    [fit, installed]
+  )
+  const onSplit = useCallback((segId: string) => void splitLong([segId]), [splitLong])
 
   const { playing, t, playRange, pause } = audio
   // Read through a ref so the callback stays stable and rows do not re-render on every audio frame.
@@ -192,12 +231,37 @@ export function TextStep({ onNext }: { onNext: () => void }) {
           </button>
         </div>
         <JobProgress job={aiJob} label="AI trim ayat terpotong" />
+        {tooLong.length > 0 && (
+          <div className="qr-alert qr-alert--warning tx-alert" role="status">
+            <Icon name="triangle-alert" />
+            <div className="qr-alert__content">
+              <span className="qr-alert__title">{tooLong.length} segmen terlalu panjang untuk satu layar</span>
+              <span className="qr-alert__body">
+                Tulisannya akan mengecil sampai sulit dibaca, atau menutupi nama surah dan qari.
+                {tooLong.length - needTrim > 0 && ' Ayat yang panjang bisa dibelah di jeda yang wajar; terjemahan tiap bagian ikut dipotong.'}
+                {needTrim > 0 && ` ${needTrim} segmen panjang karena terjemahannya belum dipotong sesuai kata yang dibaca: pakai AI trim.`}
+              </span>
+            </div>
+            <span className="qr-alert__actions">
+              <button type="button" className="qr-btn qr-btn--secondary qr-btn--sm" disabled={splitting} onClick={() => void splitLong()}>
+                {splitting ? <span className="qr-spin" /> : <Icon name="scissors" size="sm" />}
+                Belah otomatis
+              </button>
+              {needTrim > 0 && (
+                <button type="button" className="qr-btn qr-btn--secondary qr-btn--sm" disabled={!!aiJob} onClick={() => void startAi()}>
+                  <Icon name="languages" size="sm" />
+                  AI trim
+                </button>
+              )}
+            </span>
+          </div>
+        )}
         {noKey && (
           <div className="qr-alert qr-alert--warning tx-alert" role="alert">
             <Icon name="key-round" />
             <div className="qr-alert__content">
-              <span className="qr-alert__title">Kunci AI belum diatur</span>
-              <span className="qr-alert__body">Silakan tambahkan kunci layanan AI di Pengaturan agar ayat yang terpotong bisa dipotong terjemahannya secara otomatis.</span>
+              <span className="qr-alert__title">AI belum siap</span>
+              <span className="qr-alert__body">{noKey} Silakan atur kunci layanan atau AI CLI di Pengaturan agar ayat yang terpotong bisa dipotong terjemahannya secara otomatis.</span>
             </div>
             <span className="qr-alert__actions">
               <button type="button" className="qr-btn qr-btn--secondary qr-btn--sm" onClick={() => void openSettings()}>
@@ -245,10 +309,13 @@ export function TextStep({ onNext }: { onNext: () => void }) {
                     secondaries={secondaries}
                     playing={playing && t >= seg.startMs && t < seg.endMs}
                     aiBusy={!!aiJob}
+                    tooLong={!!fit[seg.id]?.overflow}
+                    splitBusy={splitting}
                     onPlay={onPlay}
                     onEdit={onEdit}
                     onAccept={onAccept}
                     onAi={onAi}
+                    onSplit={onSplit}
                   />
                 )
               })}

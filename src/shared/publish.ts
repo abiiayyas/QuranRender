@@ -40,6 +40,8 @@ export interface PublishFacts {
   translationName: string | null
   /** Where the recording came from, when the app knows it. */
   audioSource: string | null
+  /** Credit for a stock photo or video used as the background ("Foto oleh Ana di Pexels"); null for AI images and own files. */
+  backgroundCredit?: string | null
 }
 
 /** "Al-Fatihah" becomes "AlFatihah": hashtags cannot hold punctuation or spaces. */
@@ -66,13 +68,24 @@ export function draftFor(platform: PlatformId, f: PublishFacts): PublishDraft {
   const by = f.reciter.trim() ? ` oleh ${f.reciter.trim()}` : ''
   const lines = [`Tilawah ${what}${by}.`]
   if (platform === 'youtube') lines.push('Teks Arab ditampilkan apa adanya, lengkap dengan terjemahan dan sorotan per kata.')
-  const credits = [f.translationName ? `Terjemahan: ${f.translationName}.` : '', f.audioSource ? `Sumber audio: ${f.audioSource}.` : ''].filter(Boolean)
+  const credits = [
+    f.translationName ? `Terjemahan: ${f.translationName}.` : '',
+    f.audioSource ? `Sumber audio: ${f.audioSource}.` : '',
+    f.backgroundCredit?.trim() ? `Latar: ${f.backgroundCredit.trim()}.` : ''
+  ].filter(Boolean)
   const tags = ['#Quran', '#Tilawah', hashtagOf(f.surahName), hashtagOf(f.reciter)].filter(Boolean)
   return {
     title: p.hasTitle ? `${what}${by}`.slice(0, p.titleMax) : '',
     body: [lines.join(' '), credits.join(' ')].filter(Boolean).join('\n\n'),
     hashtags: [...new Set(tags)].join(' ')
   }
+}
+
+/** AI-written bodies are free text; the stock credit must still be in them, so it is appended when the AI left it out. */
+export function withBackgroundCredit(d: PublishDraft, credit: string | null | undefined): PublishDraft {
+  const c = credit?.trim()
+  if (!c || d.body.includes(c)) return d
+  return { ...d, body: [d.body.trim(), `Latar: ${c}.`].filter(Boolean).join('\n\n') }
 }
 
 /** What the user pastes into the platform's description (or caption) box. */

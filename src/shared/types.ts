@@ -1,3 +1,5 @@
+import type { AiProvider, CliImageTool, CliTool, ImageProvider } from './aiTools'
+import type { LoopMode, MotionSpec } from './motion'
 import type { PublishKit } from './publish'
 import type { StyleSettings } from './style'
 import type { ThumbnailSpec } from './thumbnail'
@@ -69,8 +71,11 @@ export interface Segment {
 }
 
 export interface Background {
-  /** source: the source video itself plays behind the text. */
-  kind: 'color' | 'image' | 'video' | 'source'
+  /** source: the source video itself plays behind the text. motion: an animated background drawn by the composition. */
+  kind: 'color' | 'image' | 'video' | 'source' | 'motion'
+  motion?: MotionSpec
+  /** What a video background does once it is shorter than the recitation; absent = 'repeat'. */
+  loop?: LoopMode
   color: string
   assetId: string | null
   /** 0..1 black dimmer over media. */
@@ -81,7 +86,8 @@ export interface Background {
 
 export interface Overlay {
   id: string
-  kind: 'text' | 'image'
+  /** qari: reciter name and surah as an animated lower third; progress: a thin bar over the recitation; cta: a short call to action in `text`. */
+  kind: 'text' | 'image' | 'qari' | 'progress' | 'cta'
   text: string
   assetId: string | null
   /** Center position as a fraction of the canvas (0..1). */
@@ -144,7 +150,7 @@ export interface ProjectSummary {
 }
 
 export type AssetKind = 'audio' | 'video' | 'image'
-export type AssetSource = 'local' | 'mp3quran' | 'qdc' | 'youtube' | 'trim' | 'frame'
+export type AssetSource = 'local' | 'mp3quran' | 'qdc' | 'youtube' | 'trim' | 'frame' | 'stock' | 'ai'
 
 /** Owned by the main process: the renderer never writes asset rows. */
 export interface Asset {
@@ -165,7 +171,7 @@ export interface Asset {
   url: string
 }
 
-export type JobKind = 'download' | 'youtube' | 'trim' | 'align' | 'translate' | 'aitrim' | 'export' | 'ytdlp' | 'thumbnail'
+export type JobKind = 'download' | 'youtube' | 'trim' | 'align' | 'translate' | 'aitrim' | 'export' | 'ytdlp' | 'thumbnail' | 'imagegen'
 export type JobStatus = 'queued' | 'running' | 'done' | 'failed' | 'canceled'
 
 export interface Job {
@@ -200,6 +206,27 @@ export interface Settings {
   aiBaseUrl: string
   aiModel: string
   exportFolder: string
+  /** Text AI: an OpenAI-compatible API (aiBaseUrl/aiModel + key) or an AI CLI installed on this computer. */
+  aiProvider: AiProvider
+  cliTool: CliTool
+  /** Empty = the CLI's own default model. */
+  cliModel: string
+  /** Shell command of cliTool 'custom'; the prompt arrives on stdin, the reply is read from stdout. */
+  cliCommand: string
+  imageProvider: ImageProvider
+  /** Model for the 'openai' image provider (and Pollinations when set); empty = the service's default. */
+  imageModel: string
+  imageCliTool: CliImageTool
+  /** Shell command of imageCliTool 'custom': writes one picture to {output}. */
+  imageCliCommand: string
+}
+
+/** Whether AI features can run: through an API key (or a local endpoint), or through an AI CLI installed on this computer. */
+export interface AiReady {
+  ready: boolean
+  via: 'api' | 'cli' | null
+  /** Indonesian one-liner for what is missing, shown when not ready. */
+  hint: string
 }
 
 export interface KeyStatus {

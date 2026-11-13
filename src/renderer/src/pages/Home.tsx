@@ -52,6 +52,14 @@ const FILTERS: { value: Filter; label: string; match: (s: ProjectStatus) => bool
 ]
 type Sort = 'recent' | 'name'
 
+/** Part of the day in Indonesian, from the local clock. */
+function dayPart(hour: number): string {
+  if (hour >= 4 && hour < 11) return 'pagi'
+  if (hour < 15) return 'siang'
+  if (hour < 18) return 'sore'
+  return 'malam'
+}
+
 export function Brand() {
   return (
     <span className="brand">
@@ -169,6 +177,16 @@ export function Home() {
       </header>
       <main className="step-scroll home-scroll">
         <div className="home-wrap">
+          <div className="home-greet">
+            <p className="home-greet__hi">Assalamu’alaikum, selamat {dayPart(new Date().getHours())}.</p>
+            <p className="home-greet__sub">
+              {recent
+                ? `Silakan lanjutkan “${recent.title}”, atau mulai tilawah yang baru.`
+                : all.length === 0
+                  ? 'Mari buat video tilawah pertamamu. Cukup beberapa langkah dari rekaman sampai video siap unggah.'
+                  : 'Mau membuat video tilawah yang baru hari ini?'}
+            </p>
+          </div>
           <section className="home-hero" aria-labelledby="new-h">
             <div className="qr-panel home-start">
               <div className="home-start__head">

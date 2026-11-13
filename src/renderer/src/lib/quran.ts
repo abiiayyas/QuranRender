@@ -74,3 +74,29 @@ export function useVerses(
   }, [key])
   return verses
 }
+
+/** Non-hook form of `useVerses`: verses for every ayah the segments show (plus 1:1 for a basmalah), same cache. */
+export async function fetchVerses(segments: ReadonlyArray<Pick<Segment, 'kind' | 'surah' | 'ayah'>>, script: ArabicScript): Promise<Record<string, Verse>> {
+  const spans = new Map<number, [number, number]>()
+  const add = (s: number, a: number): void => {
+    const cur = spans.get(s)
+    spans.set(s, cur ? [Math.min(cur[0], a), Math.max(cur[1], a)] : [a, a])
+  }
+  for (const s of segments) {
+    if (s.kind === 'ayah') add(s.surah, s.ayah)
+    else if (s.kind === 'basmalah') add(1, 1)
+  }
+  const lists = await Promise.all(
+    [...spans].map(([s, [f, t]]) => {
+      const k = `${script}|${s}:${f}-${t}`
+      let p = verseCache.get(k)
+      if (!p) {
+        p = window.api.quran.verses(s, f, t, script)
+        p.catch(() => verseCache.delete(k))
+        verseCache.set(k, p)
+      }
+      return p
+    })
+  )
+  return Object.fromEntries(lists.flat().map((v) => [`${v.surah}:${v.ayah}`, v]))
+}

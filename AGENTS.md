@@ -33,10 +33,12 @@ Data uji terpisah dari data asli: `QR_USER_DATA=/tmp/qr-dev npm run dev`.
 | `src/main/sync.ts` | Aligner AI cloud |
 | `src/main/text.ts` | Edisi terjemahan dan AI trim |
 | `src/main/exporter.ts` | Render Remotion + subtitle |
+| `src/main/cli.ts`, `ai.ts` | AI CLI dan `chat()` (API atau CLI), satu pintu untuk AI trim dan Publikasi |
+| `src/main/imagegen.ts`, `stock.ts` | Gambar latar dari AI dan dari Pexels/Unsplash/Pixabay |
 | `src/main/publish.ts` | Thumbnail (JPG dari komposisi `quran-thumbnail`), bingkai video, teks publikasi per platform |
 | `src/renderer/src/store/project.ts` | State proyek, autosave 1,2 dtk, undo/redo |
 | `src/renderer/src/pages/project/` | Stepper dan keempat langkah, dialog ekspor |
-| `src/remotion/` | Komposisi `quran-video` dan `quran-thumbnail` |
+| `src/remotion/` | Komposisi `quran-video` dan `quran-thumbnail`; `fit.ts` menghitung tata letak teks (dipakai komposisi dan peringatan editor), `motion/` latar gerak |
 
 ## Aturan yang tidak boleh dilanggar
 

@@ -16,8 +16,8 @@ dan proyek tersimpan otomatis.
 | Beranda | Pilih surah dan rentang ayat, qari, format (9:16, 16:9, 1:1), dan jenis teks Arab |
 | 1 Sumber | Impor berkas audio/video, unduh tilawah qari (MP3Quran, QDC), atau unduh dari YouTube; potong awal dan akhir |
 | 2 Sinkron | Sinkron AI (Quranic Universal Aligner) atau timestamp bawaan QDC/MP3Quran; periksa dan rapikan segmen |
-| 3 Teks | Pasang terjemahan (Kemenag bawaan, edisi lain dari Quran.com), isi otomatis, AI trim untuk ayat yang terpotong |
-| 4 Editor | Preset gaya, latar, overlay, timeline, pratinjau langsung dengan sorotan per kata |
+| 3 Teks | Pasang terjemahan (Kemenag bawaan, edisi lain dari Quran.com), isi otomatis, AI trim (API atau AI CLI) untuk ayat yang terpotong, peringatan dan belah otomatis untuk teks yang terlalu panjang |
+| 4 Editor | Preset gaya, latar (warna, gambar, video dengan loop, gerak, foto stok, gambar AI), overlay (teks, gambar, nama qari, kemajuan, ajakan), timeline yang bisa dizoom, pratinjau langsung dengan sorotan per kata |
 | Ekspor | MP4 720p/1080p/4K pada 30/60 fps, SRT/VTT, chapter YouTube; diperiksa dulu oleh aturan amanah teks |
 | Thumbnail | Cover JPG di bawah 2 MB dari gambar atau bingkai video proyek, teks digambar aplikasi |
 | Publikasi | Judul, deskripsi, hashtag, dan bab per platform (Shorts, TikTok, Reels, YouTube), draf awal dari data proyek, AI opsional |
@@ -43,6 +43,8 @@ npm run dist:mac     # DMG ke dist/ (arsitektur mesin build)
 | Tampilan | React 19, Zustand, design system CSS di `design/system/` |
 | Data | SQLite (better-sqlite3): `studio.db` milik pengguna, `resources/quran.db` bawaan (read-only) |
 | Video | Remotion (pratinjau dan ekspor memakai komposisi yang sama), FFmpeg (`ffmpeg-static`, `ffprobe-static`) |
+| AI | API kompatibel OpenAI atau AI CLI (Claude Code, Codex, Antigravity, OpenCode) untuk teks; Pollinations, API OpenAI, atau CLI untuk gambar latar |
+| Stok | Pexels, Unsplash, Pixabay (kunci gratis milik pengguna) |
 
 ```
 src/

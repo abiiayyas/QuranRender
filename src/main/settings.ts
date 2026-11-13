@@ -1,6 +1,7 @@
 import { nativeTheme, safeStorage } from 'electron'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
+import { CLI_IMAGE_TOOLS, CLI_TOOLS } from '@shared/aiTools'
 import type { KeyStatus, Settings } from '@shared/types'
 import { getDb } from './db'
 
@@ -9,7 +10,16 @@ const DEFAULTS: Settings = {
   script: 'kemenag',
   aiBaseUrl: 'https://api.openai.com/v1',
   aiModel: 'gpt-4o-mini',
-  exportFolder: join(homedir(), 'Movies', 'Quran Render')
+  exportFolder: join(homedir(), 'Movies', 'Quran Render'),
+  aiProvider: 'api',
+  cliTool: 'claude',
+  cliModel: '',
+  cliCommand: '',
+  // Free and keyless, so a first-time user can make a background without any account.
+  imageProvider: 'pollinations',
+  imageModel: '',
+  imageCliTool: 'agy',
+  imageCliCommand: ''
 }
 
 export function getSettings(): Settings {
@@ -18,7 +28,19 @@ export function getSettings(): Settings {
   return { ...DEFAULTS, ...saved }
 }
 
+/** The renderer is not trusted to send a value the main process has no code for. */
+function checkChoices(patch: Partial<Settings>): void {
+  const bad = (label: string): never => {
+    throw new Error(`Pilihan ${label} tidak dikenal.`)
+  }
+  if (patch.aiProvider !== undefined && !['api', 'cli'].includes(patch.aiProvider)) bad('penyedia AI')
+  if (patch.cliTool !== undefined && !CLI_TOOLS.some((t) => t.id === patch.cliTool)) bad('CLI')
+  if (patch.imageProvider !== undefined && !['pollinations', 'openai', 'cli'].includes(patch.imageProvider)) bad('pembuat gambar')
+  if (patch.imageCliTool !== undefined && !CLI_IMAGE_TOOLS.some((t) => t.id === patch.imageCliTool)) bad('CLI gambar')
+}
+
 export function setSettings(patch: Partial<Settings>): Settings {
+  checkChoices(patch)
   const stmt = getDb().prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value')
   for (const [k, v] of Object.entries(patch)) if (k in DEFAULTS && v !== undefined) stmt.run(k, JSON.stringify(v))
   const s = getSettings()

@@ -45,8 +45,23 @@ Pintasan: Spasi memutar/menjeda, panah kiri/kanan memilih segmen.
 
 Terjemahan Kemenag sudah bawaan. Klik **Tambah terjemahan** untuk memasang edisi lain dari Quran.com; edisi paling atas
 menjadi terjemahan utama di video. **Isi terjemahan** mengisi semua segmen. Untuk ayat yang hanya dibaca sebagian,
-**AI trim ayat terpotong** memotong terjemahan agar sesuai bagian yang dibaca. Ini butuh kunci API di **Pengaturan**
-(layanan apa pun yang kompatibel dengan API OpenAI, termasuk Ollama lokal). Teks Arab tidak pernah diubah oleh AI. Hasil AI
+**AI trim ayat terpotong** memotong terjemahan agar sesuai bagian yang dibaca. Ini butuh AI yang diatur di **Pengaturan**,
+dengan dua pilihan: **API** (layanan apa pun yang kompatibel dengan API OpenAI, termasuk Ollama lokal, dengan kunci milikmu)
+atau **AI CLI di komputer** (Claude Code, Codex CLI, Antigravity, OpenCode, atau perintah sendiri) yang sudah terpasang dan
+login, tanpa kunci API. CLI memulai sendiri tiap kali dipanggil, jadi satu kelompok bisa memakan sekitar satu menit; aplikasi
+mengirim banyak segmen sekaligus agar tidak terlalu lama. Aplikasi tidak pernah meminta izin tambahan dari CLI. Teks Arab
+tidak pernah diubah oleh AI.
+
+**Ayat atau terjemahan yang terlalu panjang.** Video memuat teks Arab, terjemahan, dan rujukan di antara nama surah dan nama qari.
+Bila tidak muat, terjemahan mengecil lebih dulu (sampai 70%), baru Arab ikut mengecil (sampai 50%); ukurannya tidak pernah
+dikecilkan lebih jauh supaya tetap terbaca. Segmen yang masih tidak muat ditandai **Terlalu panjang untuk satu layar** di
+langkah Teks, dan muncul sebagai catatan di dialog Ekspor. Ada dua penyebab dan dua obatnya:
+
+- **Ayatnya panjang:** klik **Belah otomatis**. Ayat dibelah di jeda antarkata (lebih disukai setelah tanda waqaf, dekat
+  bagian tengah) sampai tiap bagian muat, dan terjemahan tiap bagian dipotong otomatis. Hasilnya satu langkah yang bisa
+  diurungkan. Terjemahan yang sudah kamu ketik di segmen itu dihitung ulang.
+- **Terjemahannya yang panjang** (ayat terpotong tetapi terjemahannya masih utuh, berstatus *perlu dicek*): membelah tidak
+  menolong. Pakai **AI trim** atau ketik potongannya sendiri. Hasil AI
 ditandai; periksa sebelum ekspor, dan ketik langsung di kolom terjemahan untuk memperbaikinya.
 
 ## 5. Langkah 4: Editor
@@ -54,11 +69,31 @@ ditandai; periksa sebelum ekspor, dan ketik langsung di kolom terjemahan untuk m
 Pratinjau memakai mesin yang sama dengan ekspor, jadi hasilnya sama dengan videonya.
 
 - **Gaya:** 12 preset, lalu ukuran, warna, sorotan kata, terjemahan, kotak, bingkai, dan keterangan (nama surah, qari, rujukan).
-- **Latar:** warna, gambar, video, atau video sumber; atur gelap dan buramnya.
-- **Overlay:** teks atau gambar (logo, nama channel) dengan posisi dan waktu tampil.
+- **Latar:** warna, gambar, video, video sumber, atau **Gerak** (cahaya lembut, geometri, partikel, berkas sinar, gelombang;
+  atur dua warna dan kecepatannya); atur gelap dan buramnya. Video latar yang lebih pendek dari tilawah diulang: **Ulang**
+  (kembali ke awal), **Bolak-balik** (maju lalu mundur tanpa loncatan), atau **Pudar** (memudar halus di sambungan).
+  Tombol **Cari foto stok atau buat dengan AI** membuka pemilih latar (lihat di bawah).
+- **Overlay:** teks atau gambar (logo, nama channel), **Nama qari** (lower third animasi dengan nama surah), **Kemajuan**
+  (bilah tipis yang terisi selama tilawah), dan **Ajakan** (kalimat pendek seperti "Jangan lupa bagikan dan doakan"), dengan
+  posisi dan waktu tampil. Geser overlay di linimasa untuk memindahkannya, geser tepinya untuk mengubah panjangnya.
+  Linimasa bisa diperbesar (sampai 64×) dan di-scroll untuk rekaman panjang.
 - **Format:** ganti 9:16, 16:9, 1:1, dan tampilkan garis area aman. Garisnya tidak ikut diekspor.
 
 Urungkan dan Ulangi tersedia di atas pratinjau (Cmd+Z, Cmd+Shift+Z).
+
+### Pemilih latar
+
+- **Foto & video stok:** cari di Pexels, Unsplash, atau Pixabay (Pexels dan Pixabay juga punya video). Tiap layanan butuh kunci
+  API gratis; pemilih menunjukkan tautan untuk membuatnya, dan kunci disimpan terenkripsi di komputermu. Kata kunci bahasa
+  Indonesia umum (alam, langit malam, masjid, gurun, laut, hutan, gunung, hujan, senja) diterjemahkan otomatis karena
+  layanan itu mengindeks dalam bahasa Inggris. Pencantuman fotografer ikut tersimpan dan masuk ke teks Publikasi; untuk
+  Unsplash pencantuman itu diwajibkan. Hasil pencarian adalah milik layanan dan bisa memuat orang atau hewan.
+- **Buat dengan AI:** pilih suasana (lofi kamar hujan, lofi atap kota malam, gurun berbintang, siluet masjid senja, hutan
+  pinus berkabut, laut tenang, pola ubin geometris, dan lainnya) dan boleh menambah deskripsi singkat. Gambar selalu dibuat
+  tanpa orang, hewan, tulisan, dan logo (kata makhluk bernyawa di deskripsi ditolak). Penyedia diatur di **Pengaturan >
+  Pembuat gambar**: **Pollinations** (gratis tanpa kunci, satu gambar per 45 detik, ukuran sedang, dan layanan itu membubuhkan
+  logo kecil di pojok kanan bawah), **API kompatibel OpenAI** (memakai alamat dan kunci di atas ditambah nama model gambar),
+  atau **AI CLI**.
 
 ## 6. Ekspor
 

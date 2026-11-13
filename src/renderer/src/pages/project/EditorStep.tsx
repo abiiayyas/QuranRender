@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { Player, type PlayerRef } from '@remotion/player'
-import { QuranVideo, SAFE_AREA } from '@video/QuranVideo'
+import { SAFE_AREA } from '@video/common'
+import { QuranVideo } from '@video/QuranVideo'
 import { Icon } from '../../components/ui'
 import { useVideoProps } from '../../lib/videoProps'
 import { useProject } from '../../store/project'

@@ -63,6 +63,12 @@ export function PublishDialog({ onClose }: { onClose: () => void }) {
   const generate = async (which: PlatformId[]) => {
     setBusy(which.length === 1 ? which[0] : 'all')
     try {
+      const ai = await window.api.settings.aiReady()
+      if (!ai.ready) {
+        toast('error', `${ai.hint || 'AI belum siap.'} Silakan atur di Pengaturan.`)
+        return
+      }
+      if (ai.via === 'cli') toast('info', 'AI CLI sedang menulis; ini bisa memakan waktu sekitar satu menit.')
       await useProject.getState().flush()
       const kit = await window.api.publish.generate(project.id, which)
       useProject.getState().update({ publish: { ...project.publish, ...kit } })

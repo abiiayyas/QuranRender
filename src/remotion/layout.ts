@@ -1,10 +1,16 @@
 /**
  * Text fitting, ported from the old renderer's `fit_text`: lay the words out at the base size, and step the size down
- * until the block fits the height (the last step also tightens the line height). Widths come from canvas measureText,
- * which shapes with the same engine as the DOM, and lines are drawn exactly as broken here so preview and export agree.
+ * until the blocks fit the height. Widths come from canvas measureText, which shapes with the same engine as the DOM,
+ * and lines are drawn exactly as broken here so preview and export agree.
+ *
+ * Blocks shrink in groups: lower `order` first (a long translation gives way before the ayah does), each down to its own
+ * `minScale` so nothing becomes unreadable. When even that does not fit, the result says so (`overflow`) and the caller
+ * warns instead of letting the text silently cover the surah name or the reciter.
  */
 
-const SCALES = [1, 0.93, 0.86, 0.79, 0.72, 0.65, 0.58, 0.5, 0.43, 0.36, 0.3]
+const STEPS = [1, 0.93, 0.86, 0.79, 0.72, 0.65, 0.58, 0.5, 0.43, 0.36, 0.3]
+
+export type Measure = (text: string, font: string) => number
 
 let ctx: CanvasRenderingContext2D | null = null
 const widths = new Map<string, number>()
@@ -66,6 +72,10 @@ export interface Block {
   minLineHeight: number
   /** Padding either side of each run, as a fraction of the font size. */
   pad: number
+  /** Smallest share of `size` this block may shrink to; default 0.3. */
+  minScale?: number
+  /** Blocks shrink in rising `order`; default 0. */
+  order?: number
 }
 
 export interface BlockLayout {
@@ -101,28 +111,47 @@ export function splitWords(text: string, family: string, weight: number, size: n
   return out
 }
 
-function layoutAt(b: Block, scale: number, last: boolean, maxW: number): BlockLayout {
+function layoutAt(b: Block, scale: number, tight: boolean, maxW: number, measureFn: Measure): BlockLayout {
   const size = b.size * scale
-  const lineHeight = last ? Math.min(b.minLineHeight, b.lineHeight) : b.lineHeight
-  const ws = b.runs.map((r) => measure(r.text, `${r.weight ?? 400} ${size}px ${r.family}`))
+  const lineHeight = tight ? Math.min(b.minLineHeight, b.lineHeight) : b.lineHeight
+  const ws = b.runs.map((r) => measureFn(r.text, `${r.weight ?? 400} ${size}px ${r.family}`))
   const pad = b.pad * size
   const { lines, widest } = breakLines(ws, pad, maxW)
   return { size, lineHeight, pad, lines, widest, height: lines.length * size * lineHeight }
 }
 
-/**
- * Fits blocks stacked vertically (with `gaps[i]` px before block i, scaled too) into `maxW` × `maxH`. All blocks
- * shrink together so their proportions stay. Returns the smallest step when nothing fits.
- */
-export function fitBlocks(blocks: Block[], gaps: number[], maxW: number, maxH: number): { layouts: BlockLayout[]; height: number; scale: number } {
-  let result: { layouts: BlockLayout[]; height: number; scale: number } = { layouts: [], height: 0, scale: 1 }
-  for (let i = 0; i < SCALES.length; i++) {
-    const s = SCALES[i]
-    const last = i === SCALES.length - 1
-    const ls = blocks.map((b) => layoutAt(b, s, last, maxW))
-    const height = ls.reduce((h, l, j) => h + l.height + (l.lines.length > 0 && j > 0 ? gaps[j] * s : 0), 0)
-    result = { layouts: ls, height, scale: s }
-    if (height <= maxH && ls.every((l) => l.widest <= maxW + 0.5)) break
+export interface Fit {
+  layouts: BlockLayout[]
+  height: number
+  /** Scale each block ended at. */
+  scales: number[]
+  /** True when the blocks still do not fit at their smallest allowed sizes. */
+  overflow: boolean
+}
+
+/** Fits blocks stacked vertically (with `gaps[i]` px before block i, scaled with block i) into `maxW` x `maxH`. */
+export function fitBlocks(blocks: Block[], gaps: number[], maxW: number, maxH: number, measureFn: Measure = measure): Fit {
+  const scales = blocks.map(() => 1)
+  const tight = blocks.map(() => false)
+  const attempt = (): Fit => {
+    const layouts = blocks.map((b, i) => layoutAt(b, scales[i], tight[i], maxW, measureFn))
+    const height = layouts.reduce((h, l, j) => h + l.height + (l.lines.length > 0 && j > 0 ? gaps[j] * scales[j] : 0), 0)
+    return { layouts, height, scales: [...scales], overflow: !(height <= maxH && layouts.every((l) => l.widest <= maxW + 0.5)) }
+  }
+  let result = attempt()
+  if (!result.overflow) return result
+  const minOf = (i: number): number => blocks[i].minScale ?? 0.3
+  for (const order of [...new Set(blocks.map((b) => b.order ?? 0))].sort((a, b) => a - b)) {
+    const group = blocks.map((_, i) => i).filter((i) => (blocks[i].order ?? 0) === order)
+    for (const step of STEPS.slice(1)) {
+      for (const i of group) {
+        scales[i] = Math.max(step, minOf(i))
+        tight[i] = scales[i] <= minOf(i)
+      }
+      result = attempt()
+      if (!result.overflow) return result
+      if (group.every((i) => scales[i] <= minOf(i))) break
+    }
   }
   return result
 }

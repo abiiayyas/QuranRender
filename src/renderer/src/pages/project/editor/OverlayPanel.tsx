@@ -1,33 +1,69 @@
 import { useId } from 'react'
-import type { Overlay } from '@shared/types'
+import { CTA_DEFAULT_TEXT } from '@shared/overlay'
+import type { Aspect, Overlay } from '@shared/types'
+import { SAFE_AREA } from '@video/common'
 import { Icon } from '../../../components/ui'
 import { errorText } from '../../../lib/format'
 import { toast } from '../../../store/app'
 import { useProject } from '../../../store/project'
-import { ColorRow, Section, setOverlay, Slider, SwitchRow } from './controls'
+import { ColorRow, overlayName, Section, setOverlay, Slider, SwitchRow } from './controls'
 
 const secs = (ms: number): string => (ms / 1000).toFixed(1)
+
+/** Slider range and label for `Overlay.size`, which means something different per kind. */
+const SIZE_CONTROL: Record<Overlay['kind'], { label: string; min: number; max: number; step: number; format?: (v: number) => string }> = {
+  text: { label: 'Ukuran', min: 0.02, max: 0.3, step: 0.005 },
+  image: { label: 'Lebar', min: 0.02, max: 1, step: 0.005 },
+  qari: { label: 'Ukuran', min: 0.02, max: 0.08, step: 0.002 },
+  cta: { label: 'Ukuran', min: 0.015, max: 0.07, step: 0.002 },
+  progress: { label: 'Tebal', min: 0.002, max: 0.02, step: 0.001, format: (v) => `${(v * 100).toFixed(1)}%` }
+}
+
+const COLOR_LABEL: Partial<Record<Overlay['kind'], string>> = { qari: 'Warna aksen', cta: 'Warna latar', text: 'Warna', progress: 'Warna' }
+
+/**
+ * Type size (fraction of canvas width) and distance above the bottom safe edge, per aspect: the same width fraction reads
+ * very differently on a 1920 px wide frame, and a wide frame is short, so its two bottom labels need more room apart.
+ */
+const LABEL_LAYOUT: Record<Aspect, { qari: { size: number; up: number }; cta: { size: number; up: number } }> = {
+  '9:16': { qari: { size: 0.04, up: 0.07 }, cta: { size: 0.036, up: 0.17 } },
+  '1:1': { qari: { size: 0.034, up: 0.08 }, cta: { size: 0.03, up: 0.2 } },
+  '16:9': { qari: { size: 0.02, up: 0.085 }, cta: { size: 0.02, up: 0.2 } }
+}
 
 function OverlayForm({ o, durationMs }: { o: Overlay; durationMs: number }) {
   const startId = useId()
   const endId = useId()
   const textId = useId()
+  const reciter = useProject((s) => s.project!.reciter)
+  const size = SIZE_CONTROL[o.kind]
+  const hasText = o.kind === 'text' || o.kind === 'cta'
   return (
     <>
-      {o.kind === 'text' && (
+      {hasText && (
         <div className="qr-fieldset">
           <label className="qr-label" htmlFor={textId}>
             Teks
           </label>
           <span className="qr-field">
-            <input id={textId} value={o.text} onChange={(e) => setOverlay(o.id, { text: e.target.value }, `ovText${o.id}`)} />
+            <input
+              id={textId}
+              value={o.text}
+              maxLength={o.kind === 'cta' ? 60 : undefined}
+              placeholder={o.kind === 'cta' ? CTA_DEFAULT_TEXT : undefined}
+              onChange={(e) => setOverlay(o.id, { text: e.target.value }, `ovText${o.id}`)}
+            />
           </span>
         </div>
       )}
-      <Slider label={o.kind === 'text' ? 'Ukuran' : 'Lebar'} value={o.size} min={0.02} max={o.kind === 'text' ? 0.3 : 1} step={0.005} onChange={(size) => setOverlay(o.id, { size }, `ovSize${o.id}`)} />
-      {o.kind === 'text' && <ColorRow label="Warna" value={o.color} onChange={(color) => setOverlay(o.id, { color }, `ovColor${o.id}`)} />}
+      {o.kind === 'qari' && (
+        <p className="pn-note">{reciter.trim() ? 'Nama qari dan surah diambil dari proyek ini.' : 'Nama qari belum diisi, jadi overlay ini belum tampil. Silakan isi di langkah 1 Sumber.'}</p>
+      )}
+      {o.kind === 'progress' && <p className="pn-note">Bilah terisi sepanjang masa tayang overlay ini. Atur Mulai dan Selesai untuk menentukannya.</p>}
+      <Slider label={size.label} value={o.size} min={size.min} max={size.max} step={size.step} format={size.format} onChange={(v) => setOverlay(o.id, { size: v }, `ovSize${o.id}`)} />
+      {o.kind !== 'image' && <ColorRow label={COLOR_LABEL[o.kind] ?? 'Warna'} value={o.color} onChange={(color) => setOverlay(o.id, { color }, `ovColor${o.id}`)} />}
       <Slider label="Kejelasan" value={o.opacity} min={0.1} max={1} step={0.01} onChange={(opacity) => setOverlay(o.id, { opacity }, `ovOp${o.id}`)} />
-      <Slider label="Mendatar" value={o.x} min={0} max={1} step={0.005} onChange={(x) => setOverlay(o.id, { x }, `ovX${o.id}`)} />
+      {o.kind !== 'progress' && <Slider label="Mendatar" value={o.x} min={0} max={1} step={0.005} onChange={(x) => setOverlay(o.id, { x }, `ovX${o.id}`)} />}
       <Slider label="Menegak" value={o.y} min={0} max={1} step={0.005} onChange={(y) => setOverlay(o.id, { y }, `ovY${o.id}`)} />
       <div className="ed-row">
         <label className="ed-row__lbl" htmlFor={startId}>
@@ -57,8 +93,10 @@ export function OverlayPanel({ selectedId, onSelect, durationMs }: { selectedId:
   const assets = useProject((s) => s.assets)
   const sel = project.overlays.find((o) => o.id === selectedId) ?? null
 
-  const add = (o: Omit<Overlay, 'id' | 'startMs' | 'endMs'>) => {
-    const full: Overlay = { ...o, id: crypto.randomUUID(), startMs: 0, endMs: null }
+  const safe = SAFE_AREA[project.aspect]
+  const layout = LABEL_LAYOUT[project.aspect]
+  const add = (o: Omit<Overlay, 'id' | 'startMs' | 'endMs'>, window: { startMs: number; endMs: number | null } = { startMs: 0, endMs: null }) => {
+    const full: Overlay = { ...o, id: crypto.randomUUID(), ...window }
     useProject.getState().update({ overlays: [...project.overlays, full] })
     onSelect(full.id)
   }
@@ -70,6 +108,21 @@ export function OverlayPanel({ selectedId, onSelect, durationMs }: { selectedId:
       toast('error', errorText(e))
     }
   }
+  // The placements sit just inside the safe area, so platform buttons do not cover them.
+  const addQari = () => {
+    const startMs = Math.min(500, Math.max(0, durationMs - 1000))
+    const endMs = startMs + 6000
+    add(
+      { kind: 'qari', text: '', assetId: null, x: 0.5, y: 1 - safe.bottom - layout.qari.up, size: layout.qari.size, color: '#D4A017', opacity: 1 },
+      { startMs, endMs: endMs >= durationMs ? null : endMs }
+    )
+  }
+  const addProgress = () => add({ kind: 'progress', text: '', assetId: null, x: 0.5, y: 1 - safe.bottom, size: 0.006, color: '#D4A017', opacity: 0.9 })
+  const addCta = () =>
+    add(
+      { kind: 'cta', text: CTA_DEFAULT_TEXT, assetId: null, x: 0.5, y: 1 - safe.bottom - layout.cta.up, size: layout.cta.size, color: '#D4A017', opacity: 1 },
+      { startMs: Math.max(0, durationMs - 6000), endMs: null }
+    )
   const remove = (id: string) => {
     useProject.getState().update({ overlays: project.overlays.filter((o) => o.id !== id) })
     if (id === selectedId) onSelect(null)
@@ -88,14 +141,28 @@ export function OverlayPanel({ selectedId, onSelect, durationMs }: { selectedId:
             Tambah gambar
           </button>
         </div>
+        <div className="card-actions">
+          <button type="button" className="qr-btn qr-btn--secondary qr-btn--sm" onClick={addQari}>
+            <Icon name="layout-template" size="sm" />
+            Nama qari
+          </button>
+          <button type="button" className="qr-btn qr-btn--secondary qr-btn--sm" onClick={addProgress}>
+            <Icon name="step-forward" size="sm" />
+            Kemajuan
+          </button>
+          <button type="button" className="qr-btn qr-btn--secondary qr-btn--sm" onClick={addCta}>
+            <Icon name="star" size="sm" />
+            Ajakan
+          </button>
+        </div>
         {project.overlays.length === 0 && <p className="pn-note">Belum ada overlay. Gunakan untuk logo, nama channel, atau tulisan singkat.</p>}
         <ul className="ed-order">
           {project.overlays.map((o) => (
             <li key={o.id} className="ed-row">
               <button type="button" className={o.id === selectedId ? 'qr-btn qr-btn--secondary qr-btn--sm ed-row__name' : 'qr-btn qr-btn--ghost qr-btn--sm ed-row__name'} aria-pressed={o.id === selectedId} onClick={() => onSelect(o.id)}>
-                {o.kind === 'text' ? o.text || '(kosong)' : (o.assetId && assets[o.assetId]?.name) || 'Gambar'}
+                {overlayName(o, o.assetId ? assets[o.assetId]?.name : undefined)}
               </button>
-              <button type="button" className="qr-btn qr-btn--ghost qr-btn--icon qr-btn--sm" aria-label={`Hapus overlay ${o.kind === 'text' ? o.text : 'gambar'}`} onClick={() => remove(o.id)}>
+              <button type="button" className="qr-btn qr-btn--ghost qr-btn--icon qr-btn--sm" aria-label={`Hapus overlay ${overlayName(o, o.assetId ? assets[o.assetId]?.name : undefined)}`} onClick={() => remove(o.id)}>
                 <Icon name="trash-2" size="sm" />
               </button>
             </li>

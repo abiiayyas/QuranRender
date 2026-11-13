@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.5.0
+
+- Latar: **Gerak** (cahaya lembut, geometri, partikel, berkas sinar, gelombang), dan video latar yang lebih pendek dari tilawah
+  kini bisa diulang dengan tiga cara: ulang, bolak-balik, atau pudar.
+- Pemilih latar baru: foto dan video stok dari Pexels, Unsplash, dan Pixabay (kunci gratis milik pengguna; kredit fotografer
+  tersimpan dan ikut ke teks Publikasi), serta gambar latar buatan AI dengan 12 suasana (lofi kamar hujan, lofi atap kota
+  malam, dan lainnya). Gambar AI selalu tanpa orang, hewan, dan tulisan. Penyedia: Pollinations (gratis), API kompatibel
+  OpenAI, atau AI CLI.
+- AI CLI (Claude Code, Codex, Antigravity, OpenCode, atau perintah sendiri) bisa menjadi penyedia AI untuk AI trim terjemahan
+  dan teks Publikasi, tanpa kunci API. Pengaturan memuat pemilih penyedia dan deteksi CLI yang terpasang.
+- Overlay baru: nama qari (lower third animasi), bilah kemajuan, dan ajakan. Overlay bisa digeser dan diubah panjangnya di
+  linimasa, dan linimasa bisa dizoom (sampai 64×) dan di-scroll.
+- Teks yang terlalu panjang: terjemahan kini mengecil lebih dulu (batas 70%), baru Arab (batas 50%), tidak lagi sampai 30%.
+  Segmen yang tetap tidak muat ditandai di langkah Teks dan dicatat di dialog Ekspor. **Belah otomatis** membelah ayat panjang
+  di jeda antarkata (lebih disukai setelah tanda waqaf) dan memotong terjemahan tiap bagian; bila penyebabnya terjemahan yang
+  belum dipotong, aplikasi menyarankan AI trim.
+- Beranda: sapaan sesuai waktu. Editor: panel samping tidak lagi meluap.
+
 ## 0.4.0
 
 - Thumbnail: dialog baru dari header proyek untuk membuat cover Shorts, Reels, dan TikTok. Gambar latar dari gambar proyek, bingkai

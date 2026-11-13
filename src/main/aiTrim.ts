@@ -5,9 +5,12 @@ import { chat } from './ai'
 import { startJob } from './jobs'
 import { getVerses } from './quran'
 import { getProject, patchProject } from './repo'
+import { getSettings } from './settings'
 import { editionVerses } from './translations'
 
 const BATCH = 8
+// Every CLI call starts an agent runtime (tens of seconds before the model even answers), so it takes bigger batches.
+const CLI_BATCH = 20
 
 const SYSTEM_PROMPT = `You align Quran translations to partial recitation segments. Each item gives the Arabic words of ONE segment of an ayah, the full Arabic ayah, and the full translation of that ayah. For every item, return the part of its translation that corresponds to the segment's Arabic words. Copy wording verbatim from the given translation (keep its language, spelling and punctuation); do not paraphrase, add commentary, or translate yourself. Prefer cutting at natural phrase boundaries. Never return an empty fragment. Reply with ONLY a JSON object {"fragments": [{"id": "<item id>", "fragment": "..."}]} that covers every item.`
 
@@ -84,10 +87,13 @@ export function startAiTrim(projectId: string, editionId: string, segmentIds?: s
     }
 
     const language = editionLanguage(editionId)
+    const viaCli = getSettings().aiProvider === 'cli'
+    const size = viaCli ? CLI_BATCH : BATCH
     try {
-      for (let i = 0; i < items.length; i += BATCH) {
-        ctx.progress(i / items.length, `Memotong ${i + 1}–${Math.min(i + BATCH, items.length)} dari ${items.length} segmen`)
-        const batch = items.slice(i, i + BATCH)
+      for (let i = 0; i < items.length; i += size) {
+        const range = `${i + 1}–${Math.min(i + size, items.length)} dari ${items.length} segmen`
+        ctx.progress(i / items.length, viaCli ? `Memotong ${range}. AI CLI butuh sekitar satu menit per kelompok.` : `Memotong ${range}`)
+        const batch = items.slice(i, i + size)
         const payload = {
           translation_language: language,
           items: batch.map((it, j) => ({

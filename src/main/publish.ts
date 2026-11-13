@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { existsSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { BrowserWindow, clipboard, dialog } from 'electron'
-import { AUDIO_SOURCE_NAME, draftFor, PLATFORMS, platformOf, sanitizeKit, type PlatformId, type PublishFacts } from '@shared/publish'
+import { AUDIO_SOURCE_NAME, draftFor, PLATFORMS, platformOf, sanitizeKit, withBackgroundCredit, type PlatformId, type PublishFacts, type PublishKit } from '@shared/publish'
 import { defaultThumbnail, thumbnailSize, type ThumbnailProps } from '@shared/thumbnail'
 import type { Project } from '@shared/types'
 import { chat } from './ai'
@@ -31,12 +31,16 @@ export function publishFacts(p: Project): PublishFacts {
   const source = p.sourceAssetId ? getAssetOrNull(p.sourceAssetId) : null
   const label =
     p.ayahFrom && p.ayahTo ? (p.ayahFrom === p.ayahTo ? `${p.ayahFrom}` : `${p.ayahFrom}–${p.ayahTo}`) : p.ayahFrom ? `${p.ayahFrom}` : ''
+  // Only stock pictures carry a credit; AI images and the user's own files get none.
+  const bgAsset = p.background.assetId && (p.background.kind === 'image' || p.background.kind === 'video') ? getAssetOrNull(p.background.assetId) : null
+  const credit = bgAsset?.source === 'stock' ? bgAsset.meta.credit : null
   return {
     surahName: surah?.nameLatin ?? (p.surah ? `Surah ${p.surah}` : 'Al-Qur’an'),
     ayahLabel: surah ? label : '',
     reciter: p.reciter,
     translationName: p.editions[0] ? editionName(p.editions[0]) : null,
-    audioSource: (source && AUDIO_SOURCE_NAME[source.source]) ?? null
+    audioSource: (source && AUDIO_SOURCE_NAME[source.source]) ?? null,
+    backgroundCredit: typeof credit === 'string' && credit.trim() ? credit.trim() : null
   }
 }
 
@@ -90,7 +94,10 @@ async function generate(projectId: string, platforms: PlatformId[]) {
     ],
     { json: true, maxTokens: 1600 }
   )
-  return sanitizeKit(parseJson(reply), platforms, fallback)
+  const kit = sanitizeKit(parseJson(reply), platforms, fallback)
+  const out: PublishKit = {}
+  for (const id of platforms) if (kit[id]) out[id] = withBackgroundCredit(kit[id], facts.backgroundCredit)
+  return out
 }
 
 async function frame(projectId: string, assetId: string, ms: number) {

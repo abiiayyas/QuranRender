@@ -28,10 +28,14 @@ export interface SegmentRowProps {
   secondaries: { id: string; name: string }[]
   playing: boolean
   aiBusy: boolean
+  /** The text cannot fit one screen at readable sizes. */
+  tooLong: boolean
+  splitBusy: boolean
   onPlay(seg: Segment): void
   onEdit(segId: string, text: string): void
   onAccept(segId: string): void
   onAi(segId: string): void
+  onSplit(segId: string): void
 }
 
 export const SegmentRow = memo(function SegmentRow(p: SegmentRowProps) {
@@ -55,6 +59,11 @@ export const SegmentRow = memo(function SegmentRow(p: SegmentRowProps) {
             {formatMs(seg.startMs)} – {formatMs(seg.endMs)}
           </small>
         </span>
+        {p.tooLong && (
+          <span className="qr-badge qr-badge--warning" title="Tulisan akan terlalu kecil atau menutupi bagian lain. Silakan belah segmen ini.">
+            Terlalu panjang untuk satu layar
+          </span>
+        )}
         {p.primary && <StatusBadge status={status} />}
       </div>
       {p.arabic && (
@@ -77,7 +86,7 @@ export const SegmentRow = memo(function SegmentRow(p: SegmentRowProps) {
           onChange={(e) => p.onEdit(seg.id, e.target.value)}
         />
       )}
-      {p.primary && (status === 'review' || p.partial) && (
+      {((p.primary && (status === 'review' || p.partial)) || p.tooLong) && (
         <div className="tr-actions">
           {status === 'review' && entry?.text && (
             <button type="button" className="qr-btn qr-btn--secondary qr-btn--sm" onClick={() => p.onAccept(seg.id)}>
@@ -85,7 +94,13 @@ export const SegmentRow = memo(function SegmentRow(p: SegmentRowProps) {
               Sudah benar
             </button>
           )}
-          {p.partial && (
+          {p.tooLong && seg.kind === 'ayah' && (
+            <button type="button" className="qr-btn qr-btn--secondary qr-btn--sm" disabled={p.splitBusy} onClick={() => p.onSplit(seg.id)}>
+              <Icon name="scissors" size="sm" />
+              Belah otomatis
+            </button>
+          )}
+          {p.primary && p.partial && (
             <button type="button" className="qr-btn qr-btn--ghost qr-btn--sm" disabled={p.aiBusy} onClick={() => p.onAi(seg.id)}>
               <Icon name="scissors" size="sm" />
               Potong dengan AI

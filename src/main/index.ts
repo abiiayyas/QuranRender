@@ -1,5 +1,6 @@
 import { join } from 'node:path'
 import { app, BrowserWindow, nativeTheme, shell } from 'electron'
+import { killRunningClis } from './cli'
 import { closeDb, getDb } from './db'
 import { registerIpc } from './ipc'
 import { handleStudioProtocol, registerSchemes } from './protocol'
@@ -60,5 +61,8 @@ if (!app.requestSingleInstanceLock()) {
     })
   })
   app.on('window-all-closed', () => app.quit())
-  app.on('will-quit', () => closeDb())
+  app.on('will-quit', () => {
+    killRunningClis()
+    closeDb()
+  })
 }

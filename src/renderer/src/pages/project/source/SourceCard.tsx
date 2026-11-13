@@ -13,7 +13,9 @@ export const SOURCE_LABEL: Record<Asset['source'], string> = {
   qdc: 'Quran.com (QDC)',
   youtube: 'YouTube',
   trim: 'Hasil potongan',
-  frame: 'Bingkai video'
+  frame: 'Bingkai video',
+  stock: 'Foto/video stok',
+  ai: 'Dibuat dengan AI'
 }
 
 const PEAKS = 1600

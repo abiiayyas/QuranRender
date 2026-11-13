@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { draftFor, hashtagOf, kitAsText, pastedText, sanitizeKit, type PublishFacts } from './publish'
+import { draftFor, hashtagOf, kitAsText, pastedText, sanitizeKit, withBackgroundCredit, type PublishFacts } from './publish'
 import { defaultThumbnail, gridBands, splitAccent } from './thumbnail'
 
 const facts: PublishFacts = { surahName: 'Al-Fatihah', ayahLabel: '1–7', reciter: 'Mishary Alafasy', translationName: 'Kemenag RI', audioSource: 'Quran.com' }
@@ -18,6 +18,21 @@ describe('publish drafts', () => {
     expect(shorts.body).toContain('Sumber audio: Quran.com.')
     expect(shorts.hashtags).toBe('#Quran #Tilawah #AlFatihah #MisharyAlafasy')
     expect(draftFor('tiktok', facts).title).toBe('')
+  })
+
+  it('appends the stock background credit after the other credits, and nothing without one', () => {
+    const credited = draftFor('shorts', { ...facts, backgroundCredit: 'Foto oleh Ana di Pexels' })
+    expect(credited.body.endsWith('Sumber audio: Quran.com. Latar: Foto oleh Ana di Pexels.')).toBe(true)
+    expect(draftFor('shorts', { ...facts, backgroundCredit: null }).body).not.toContain('Latar')
+    expect(draftFor('shorts', facts).body).not.toContain('Latar')
+  })
+
+  it('adds the credit to an AI-written body once', () => {
+    const d = { title: 't', body: 'Tilawah yang menenangkan.', hashtags: '#Quran' }
+    const once = withBackgroundCredit(d, 'Video oleh Budi di Pixabay')
+    expect(once.body).toBe('Tilawah yang menenangkan.\n\nLatar: Video oleh Budi di Pixabay.')
+    expect(withBackgroundCredit(once, 'Video oleh Budi di Pixabay')).toBe(once)
+    expect(withBackgroundCredit(d, null)).toBe(d)
   })
 
   it('adds #Shorts once and chapters only to YouTube with at least three', () => {

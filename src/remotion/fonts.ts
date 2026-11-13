@@ -114,3 +114,9 @@ export function useFonts(base: string, specs: FontSpec[]): boolean {
   }, [key])
   return readyKey === key || done.has(key)
 }
+
+/** Loads faces without holding up a render (delayRender); for the editor's own measurements outside the composition. */
+export async function ensureFonts(base: string, specs: FontSpec[]): Promise<void> {
+  await Promise.all(specs.map((s) => loadFace(base, s)))
+  resetMeasurements()
+}

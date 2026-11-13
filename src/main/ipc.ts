@@ -2,12 +2,15 @@ import { app, ipcMain, shell } from 'electron'
 import type { StudioApi } from '@shared/api'
 import { registerExportIpc } from './exporter'
 import { cancelJob } from './jobs'
-import { chat } from './ai'
+import { aiReady, testAi } from './ai'
+import { cliStatus } from './cli'
+import { registerImageIpc } from './imagegen'
 import { registerPublishIpc } from './publish'
 import { registerQuranIpc } from './quran'
 import { bundle, createProject, duplicateProject, listProjects, removeProject, saveProject } from './repo'
 import { aiKeyStatus, clearAiKey, getSettings, setAiKey, setSettings } from './settings'
 import { registerSourcesIpc } from './sources'
+import { registerStockIpc } from './stock'
 import { registerSyncIpc } from './sync'
 import { registerTextIpc } from './text'
 
@@ -33,6 +36,7 @@ export function registerIpc(): void {
 
   handle('settings', 'get', () => getSettings())
   handle('settings', 'set', (patch) => setSettings(patch))
+  handle('settings', 'aiReady', () => aiReady())
   handle('settings', 'aiKey', () => aiKeyStatus())
   handle('settings', 'setAiKey', (key) => {
     if (!key.trim()) throw new Error('Kunci AI kosong.')
@@ -43,10 +47,8 @@ export function registerIpc(): void {
     clearAiKey()
     return aiKeyStatus()
   })
-  handle('settings', 'testAi', async () => {
-    const reply = await chat([{ role: 'user', content: 'Reply with the single word: OK' }], { maxTokens: 5 })
-    return `Terhubung. Balasan model: ${reply.trim().slice(0, 40)}`
-  })
+  handle('settings', 'testAi', () => testAi())
+  handle('settings', 'cliStatus', () => cliStatus(true))
 
   handle('jobs', 'cancel', (id) => cancelJob(id))
 
@@ -62,4 +64,6 @@ export function registerIpc(): void {
   registerTextIpc()
   registerExportIpc()
   registerPublishIpc()
+  registerStockIpc()
+  registerImageIpc()
 }
