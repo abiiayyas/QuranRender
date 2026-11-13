@@ -27,6 +27,11 @@ export interface StyleSettings {
   /** Thin double-line frame inset from the canvas edge. */
   frame: boolean
   frameColor: string
+  /** A hairline with a small ornament between the ayah and its translation (only while a translation is shown). */
+  separator: boolean
+  separatorColor: string
+  /** Share of the text width the line spans. */
+  separatorWidth: number
   showTranslation: boolean
   showSurahName: boolean
   showReciter: boolean
@@ -57,6 +62,9 @@ export const DEFAULT_STYLE: StyleSettings = {
   boxStyle: 'card',
   frame: false,
   frameColor: '#E6C687',
+  separator: false,
+  separatorColor: '#E6C687',
+  separatorWidth: 0.6,
   showTranslation: true,
   showSurahName: false,
   showReciter: false,

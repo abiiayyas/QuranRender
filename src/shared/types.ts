@@ -1,5 +1,6 @@
 import type { AiProvider, CliImageTool, CliTool, ImageProvider } from './aiTools'
 import type { Lang } from './i18n'
+import type { Edge } from './placement'
 import type { LoopMode, MotionSpec } from './motion'
 import type { PublishKit } from './publish'
 import type { StyleSettings } from './style'
@@ -95,9 +96,12 @@ export interface Overlay {
   cycle?: { everyMs: number; showMs: number }
   text: string
   assetId: string | null
-  /** Center position as a fraction of the canvas (0..1). */
+  /** The point on the canvas (fractions, 0..1) that the overlay's anchor stands on: its middle unless `anchorX`/`anchorY` say otherwise. */
   x: number
   y: number
+  /** Which part of the overlay stands on x/y: 0 = left/top edge, 0.5 = middle (default), 1 = right/bottom edge. See placement.ts. */
+  anchorX?: Edge
+  anchorY?: Edge
   /** Text: font size; image: width. Fraction of canvas width. */
   size: number
   color: string

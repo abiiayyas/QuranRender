@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import { msg, t } from '../shared/i18n'
+import { anchorOf } from '../shared/placement'
 import { readableOn } from '../shared/overlay'
 import { PROMPT_DEFAULTS, promptPhase } from '../shared/subscribe'
 import type { Overlay } from '../shared/types'
@@ -12,10 +12,11 @@ const DONE_BG = '#2B2F36'
 
 const easeOut = (v: number): number => 1 - (1 - v) ** 3
 
-// Labels before and after the tap. Platform words (Subscribe, Follow) stay as people know them.
+// Always English, whatever language the app or the video's text is in: these are the words of the platforms' own buttons
+// (Subscribe, Follow), which viewers recognize everywhere, and a half-translated button would look wrong.
 const LABEL = {
-  subscribe: { idle: msg('Subscribe'), done: msg('Berlangganan') },
-  follow: { idle: msg('Ikuti'), done: msg('Mengikuti') }
+  subscribe: { idle: 'Subscribe', done: 'Subscribed' },
+  follow: { idle: 'Follow', done: 'Following' }
 } as const
 
 function Glyph({ name, size }: { name: 'bell' | 'plus' | 'check'; size: number }) {
@@ -51,15 +52,17 @@ export function PromptOverlay({ o, t: now, props }: { o: Overlay; t: number; pro
   const bg = done ? DONE_BG : o.color
   // The bell rocks for a moment right after the tap, then settles.
   const ring = variant === 'subscribe' && done ? Math.sin(phase.local / 55) * 16 * Math.max(0, 1 - (phase.tap - 0.5) * 2 - (phase.local - 2200) / 1400) : 0
+  const a = anchorOf(o)
   const style: CSSProperties = {
     position: 'absolute',
     left: o.x * width,
     top: o.y * height,
-    transform: `translate(-50%, calc(-50% + ${(1 - enter) * font * 1.6}px)) scale(${(0.9 + 0.1 * enter) * press})`,
+    transform: `translate(${-a.x * 100}%, calc(${-a.y * 100}% + ${(1 - enter) * font * 1.6}px)) scale(${(0.9 + 0.1 * enter) * press})`,
+    transformOrigin: `${a.x * 100}% ${a.y * 100}%`,
     opacity: o.opacity * enter * (1 - phase.exit),
     display: 'flex',
     flexDirection: 'column',
-    alignItems: 'center',
+    alignItems: a.x === 0 ? 'flex-start' : a.x === 1 ? 'flex-end' : 'center',
     gap: font * 0.45,
     fontFamily: q(FAMILY.inter)
   }
@@ -84,7 +87,7 @@ export function PromptOverlay({ o, t: now, props }: { o: Overlay; t: number; pro
         <span style={{ display: 'inline-flex', transform: `rotate(${ring}deg)`, transformOrigin: '50% 10%' }}>
           <Glyph name={variant === 'follow' ? (done ? 'check' : 'plus') : 'bell'} size={font * 1.1} />
         </span>
-        {t(LABEL[variant][done ? 'done' : 'idle'])}
+        {LABEL[variant][done ? 'done' : 'idle']}
       </div>
       {o.text.trim() && (
         <div dir="auto" style={{ color: '#FFFFFF', fontWeight: 600, fontSize: font * 0.72, textShadow: textShadow(unit) }}>

@@ -9,6 +9,7 @@ import { errorText } from '../../../lib/format'
 import { toast } from '../../../store/app'
 import { useProject } from '../../../store/project'
 import { ColorRow, overlayName, Section, setOverlay, Slider, SwitchRow } from './controls'
+import { PlacementControl } from './PlacementControl'
 
 const secs = (ms: number): string => (ms / 1000).toFixed(1)
 
@@ -122,6 +123,7 @@ function OverlayForm({ o, durationMs }: { o: Overlay; durationMs: number }) {
       <Slider label={t(size.label)} value={o.size} min={size.min} max={size.max} step={size.step} format={size.format} onChange={(v) => setOverlay(o.id, { size: v }, `ovSize${o.id}`)} />
       {o.kind !== 'image' && <ColorRow label={t(COLOR_LABEL[o.kind] ?? 'Warna')} value={o.color} onChange={(color) => setOverlay(o.id, { color }, `ovColor${o.id}`)} />}
       <Slider label={t('Kejelasan')} value={o.opacity} min={0.1} max={1} step={0.01} onChange={(opacity) => setOverlay(o.id, { opacity }, `ovOp${o.id}`)} />
+      {o.kind !== 'progress' && <PlacementControl o={o} />}
       {o.kind !== 'progress' && <Slider label={t('Mendatar')} value={o.x} min={0} max={1} step={0.005} onChange={(x) => setOverlay(o.id, { x }, `ovX${o.id}`)} />}
       <Slider label={t('Menegak')} value={o.y} min={0} max={1} step={0.005} onChange={(y) => setOverlay(o.id, { y }, `ovY${o.id}`)} />
       <div className="ed-row">

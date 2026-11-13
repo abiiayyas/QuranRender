@@ -218,5 +218,21 @@ export const editor: Dict = {
   'Kembali ke awal klip.': 'Goes back to the start of the clip.',
   'Bolak-balik': 'Back and forth',
   'Maju lalu mundur, tanpa loncatan.': 'Plays forward then backward, with no jump.',
-  'Memudar halus di sambungan.': 'Fades smoothly at the seam.'
+  'Memudar halus di sambungan.': 'Fades smoothly at the seam.',
+  // Overlay placement
+  Letak: 'Place',
+  'Kiri atas': 'Top left',
+  'Atas tengah': 'Top center',
+  'Kanan atas': 'Top right',
+  'Kiri tengah': 'Middle left',
+  'Kanan tengah': 'Middle right',
+  'Kiri bawah': 'Bottom left',
+  'Bawah tengah': 'Bottom center',
+  'Kanan bawah': 'Bottom right',
+  'Jarak dari tepi aman': 'Distance from safe edge',
+  // Separator
+  Pemisah: 'Separator',
+  'Garis pemisah': 'Separator line',
+  Panjang: 'Length',
+  'Garis hias di antara ayat dan terjemahan. Ruangnya ikut dihitung dalam tata letak, jadi tidak menimpa teks; ayat yang sudah hampir penuh bisa lebih cepat mengecil atau ditandai terlalu panjang.': 'A decorative line between the verse and its translation. Its space is part of the layout, so it never covers text; a verse that is already nearly full may shrink sooner or be flagged as too long.'
 }

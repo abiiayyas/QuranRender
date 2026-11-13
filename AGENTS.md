@@ -38,6 +38,8 @@ Data uji terpisah dari data asli: `QR_USER_DATA=/tmp/qr-dev npm run dev`.
 | `src/shared/spectrum.ts`, `src/main/spectrum.ts`, `src/remotion/Visualizer.tsx` | Overlay gelombang suara: tabel level 32 pita per 1/30 dtk dihitung sekali dari audio sumber (cache `cache/spectrum-*.bin`), digambar murni terhadap waktu |
 | `src/shared/i18n.ts`, `src/shared/i18n/en/` | `t()`, `msg()`, bahasa aktif; kamus Inggris per area. Bahasa tersimpan di `Settings.language`, diganti lewat `applyLanguage` (renderer) dan `setLang` (main); ganti bahasa me-remount root |
 | `src/shared/support.ts` | Tautan donasi di Pengaturan > Dukungan (PayPal, Saweria); tautan kosong tidak ditampilkan |
+| `src/shared/placement.ts`, `src/renderer/src/pages/project/editor/PlacementControl.tsx` | Letak overlay: `anchorX`/`anchorY` (0, 0,5, 1) menentukan bagian overlay yang berdiri di titik `x`/`y`; bawaan 0,5 supaya overlay lama tidak bergeser |
+| `src/shared/separator.ts`, `src/remotion/Separator.tsx` | Pemisah ayat/terjemahan: geometri murni; tinggi dipesan di `computeSegmentFit` (`gaps[1]`) sehingga tidak bisa menimpa teks |
 | `src/shared/subscribe.ts`, `src/remotion/Prompt.tsx` | Overlay Subscribe/Follow yang muncul berkala: waktunya fungsi murni dari waktu (`promptPhase`) |
 | `src/main/publish.ts` | Thumbnail (JPG dari komposisi `quran-thumbnail`), bingkai video, teks publikasi per platform |
 | `src/renderer/src/store/project.ts` | State proyek, autosave 1,2 dtk, undo/redo |

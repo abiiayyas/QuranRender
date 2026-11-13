@@ -1,11 +1,13 @@
-import { useMemo, type CSSProperties } from 'react'
+import { Fragment, useMemo, type CSSProperties } from 'react'
 import { interpolateColors } from 'remotion'
 import type { Segment } from '../shared/types'
 import type { StyleSettings } from '../shared/style'
 import type { VideoProps } from '../shared/video'
+import { SEPARATOR_DEFAULT_WIDTH } from '../shared/separator'
 import { rgba, textShadow } from './common'
 import { computeSegmentFit } from './fit'
 import type { BlockLayout } from './layout'
+import { Separator } from './Separator'
 import { fadeAt, wordWeights, type DisplayWord } from './timing'
 
 /** Hex `#rrggbb` → relative luminance 0..1, to pick a word-box alpha that keeps the text readable. */
@@ -35,6 +37,8 @@ export function SegmentText({ project, verses, surah, width, height, seg, t, uni
         ? regionBottom - layout.height - (boxed || banded ? boxPad * 2 : 0)
         : (regionTop + regionBottom - layout.height - (boxed || banded ? boxPad * 2 : 0)) / 2
   const widest = Math.max(0, ...layout.layouts.map((l) => l.widest))
+  const sepScale = layout.scales[1] ?? 1
+  const sepWidth = Math.max(0, Math.min(widest, maxW) * Math.min(1, style.separatorWidth ?? SEPARATOR_DEFAULT_WIDTH))
 
   const container: CSSProperties = banded
     ? { position: 'absolute', left: 0, right: 0, top, padding: `${boxPad}px 0`, background: rgba(style.boxColor, style.boxOpacity) }
@@ -55,39 +59,48 @@ export function SegmentText({ project, verses, surah, width, height, seg, t, uni
         const block = layout.blocks[bi]
         const isAr = bi === 0
         const isTr = showTr && bi === 1
+        // With the separator, the gap between ayah and translation is a box that holds it, as tall as the layout reserved.
+        const withSeparator = bi === 1 && showTr && layout.separator !== null && l.lines.length > 0
         return (
-          <div key={bi} style={{ marginTop: bi > 0 && l.lines.length > 0 ? layout.gaps[bi] * layout.scales[bi] : 0 }}>
-            {l.lines.map((line, li) => (
-              <div
-                key={li}
-                dir={isAr ? 'rtl' : 'auto'}
-                lang={isAr ? 'ar' : undefined}
-                style={{
-                  display: 'flex',
-                  justifyContent: 'center',
-                  whiteSpace: 'nowrap',
-                  height: l.size * l.lineHeight,
-                  lineHeight: `${l.size * l.lineHeight}px`,
-                  fontSize: l.size,
-                  fontFamily: block.runs[0]?.family,
-                  fontWeight: block.runs[0]?.weight ?? 400,
-                  color: isAr ? style.arabicColor : style.translationColor,
-                  opacity: !isAr && !isTr ? 0.75 : 1,
-                  textShadow: style.shadow ? textShadow(unit) : undefined
-                }}
-              >
-                {line.map((ri) =>
-                  isAr ? (
-                    <ArabicWord key={ri} word={words[ri]} w={weights ? weights[ri] : null} l={l} style={style} />
-                  ) : (
-                    <span key={ri} style={{ padding: `0 ${l.pad}px` }}>
-                      {block.runs[ri].text}
-                    </span>
-                  )
-                )}
+          <Fragment key={bi}>
+            {withSeparator && layout.separator && (
+              <div style={{ height: layout.gaps[1] * sepScale, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.9 }}>
+                <Separator width={sepWidth} height={layout.separator.height * sepScale} color={style.separatorColor ?? '#E6C687'} />
               </div>
-            ))}
-          </div>
+            )}
+            <div style={{ marginTop: !withSeparator && bi > 0 && l.lines.length > 0 ? layout.gaps[bi] * layout.scales[bi] : 0 }}>
+              {l.lines.map((line, li) => (
+                <div
+                  key={li}
+                  dir={isAr ? 'rtl' : 'auto'}
+                  lang={isAr ? 'ar' : undefined}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    whiteSpace: 'nowrap',
+                    height: l.size * l.lineHeight,
+                    lineHeight: `${l.size * l.lineHeight}px`,
+                    fontSize: l.size,
+                    fontFamily: block.runs[0]?.family,
+                    fontWeight: block.runs[0]?.weight ?? 400,
+                    color: isAr ? style.arabicColor : style.translationColor,
+                    opacity: !isAr && !isTr ? 0.75 : 1,
+                    textShadow: style.shadow ? textShadow(unit) : undefined
+                  }}
+                >
+                  {line.map((ri) =>
+                    isAr ? (
+                      <ArabicWord key={ri} word={words[ri]} w={weights ? weights[ri] : null} l={l} style={style} />
+                    ) : (
+                      <span key={ri} style={{ padding: `0 ${l.pad}px` }}>
+                        {block.runs[ri].text}
+                      </span>
+                    )
+                  )}
+                </div>
+              ))}
+            </div>
+          </Fragment>
         )
       })}
     </div>

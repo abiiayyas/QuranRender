@@ -572,3 +572,18 @@ button.word-chip { font: inherit; }
 .st-support { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
 .st-support__btn .qr-ic:first-child { color: var(--accent); }
 @media (max-width: 900px) { .st-layout { grid-template-columns: minmax(0, 1fr); } .st-nav { position: static; grid-auto-flow: column; overflow-x: auto; } }
+
+/* Overlay placement: nine places in the safe area; the dot shows which part of the frame the overlay is pinned to. */
+.pos-grid { display: grid; grid-template-columns: repeat(3, 36px); gap: 4px; }
+.pos-grid__cell { display: grid; width: 36px; height: 26px; padding: 4px; border: 1px solid var(--border-control); border-radius: var(--r-xs); background: transparent; cursor: pointer; transition: border-color var(--dur-1) var(--ease-out), background var(--dur-1) var(--ease-out); }
+.pos-grid__cell > i { width: 6px; height: 6px; border-radius: 2px; background: var(--text-3); }
+.pos-grid__cell[data-h="0"] > i { justify-self: start; }
+.pos-grid__cell[data-h="0.5"] > i { justify-self: center; }
+.pos-grid__cell[data-h="1"] > i { justify-self: end; }
+.pos-grid__cell[data-v="0"] > i { align-self: start; }
+.pos-grid__cell[data-v="0.5"] > i { align-self: center; }
+.pos-grid__cell[data-v="1"] > i { align-self: end; }
+.pos-grid__cell:hover { background: var(--bg-hover); }
+.pos-grid__cell.is-selected { border-color: var(--accent); background: var(--accent-subtle); }
+.pos-grid__cell.is-selected > i { background: var(--accent); }
+.pos-grid__cell:focus-visible { outline: var(--focus-ring-w) solid var(--focus); outline-offset: var(--focus-ring-offset); }

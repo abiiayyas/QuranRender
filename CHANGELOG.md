@@ -1,7 +1,14 @@
 # Changelog
 
-## Belum dirilis
+## 0.8.0
 
+- **Pemisah ayat dan terjemahan:** garis hias dengan ornamen kecil (dua daun runcing dan tiga belah ketupat) digambar dengan SVG, jadi tajam di semua
+  resolusi. Diaktifkan di panel Gaya > Pemisah (warna dan panjang bisa diatur). Tingginya dipesan di tata letak teks, sama seperti jarak antarblok, jadi
+  tidak menimpa ayat maupun terjemahan: bila ruang kurang, terjemahan lalu ayat mengecil lebih dulu. Proyek lama tidak berubah (bawaannya mati).
+- **Letak overlay:** grid 3×3 di panel Overlay menempelkan overlay ke salah satu dari sembilan tempat di area aman, dengan penggeser **jarak dari tepi
+  aman**. Tempat yang dipilih menentukan tepi mana yang menempel (kiri, tengah, atau kanan; atas, tengah, atau bawah), jadi overlay selebar apa pun tidak
+  keluar dari bingkai. Teks rata kanan di tepi kanan dan rata kiri di tepi kiri. Overlay lama tetap di tempatnya (jangkarnya di tengah).
+- Tombol **Subscribe** dan **Follow** di video kini selalu berbahasa Inggris (Subscribe → Subscribed, Follow → Following), apa pun bahasa aplikasinya.
 - Dokumentasi: `docs/product/ROADMAP.md` mencatat rencana distribusi (halaman unduh, CI rilis, tanda tangan, analitik opt-in, pembaruan), keputusan yang
   menunggu pemilik produk, hal yang belum diuji, dan utang dokumentasi. Tanpa perubahan pada aplikasi.
 

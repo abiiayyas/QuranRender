@@ -76,7 +76,7 @@ step and appears as a note in the Export dialog. There are two causes and two cu
 
 The preview uses the same engine as the export, so it matches the video.
 
-- **Style:** 12 presets, then size, color, word highlight, translation, box, frame and captions (surah name, reciter, reference).
+- **Style:** 12 presets, then size, color, word highlight, translation, **separator** (a decorative line with a small ornament between the verse and its translation; its space is part of the layout, so it never covers text), box, frame and captions (surah name, reciter, reference).
 - **Background:** a color, image, video, the source video, or **Motion** (soft light, geometry, particles, rays, waves; set two
   colors and the speed); set the dimming and blur. A background video shorter than the recitation loops: **Repeat** (back to the
   start), **Ping-pong** (forward then backward with no jump), or **Fade** (a soft cross-fade at the seam). **Find a stock photo or
@@ -85,7 +85,7 @@ The preview uses the same engine as the export, so it matches the video.
   **Progress** (a thin bar that fills during the recitation), **Call to action** (a short sentence such as "Don't forget to share and pray"),
   **Sound wave** (bars or a wave that move with the recitation; needs the source recording), and **Subscribe** and **Follow**
   (a button that appears at the overlay's Start time, gets tapped, then disappears and comes back at an interval, for example every
-  60 seconds for 6 seconds; an account name can be added), each with a position and display time. Drag an overlay on the
+  60 seconds for 6 seconds; an account name can be added), each with a display time and a **place**: pick one of nine spots in the safe area (a 3×3 grid), set the **distance from the safe edge**, then fine-tune with the Horizontal and Vertical sliders. Text pinned to the right edge is right-aligned, to the left edge left-aligned. The Subscribe and Follow buttons in the video are always in English. Drag an overlay on the
   timeline to move it and drag its edges to resize it. The timeline zooms (up to 64×) and scrolls for long recordings.
 - **Format:** switch between 9:16, 16:9 and 1:1 and show the safe-area guide. The guide is not exported.
 

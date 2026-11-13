@@ -72,7 +72,7 @@ ditandai; periksa sebelum ekspor, dan ketik langsung di kolom terjemahan untuk m
 
 Pratinjau memakai mesin yang sama dengan ekspor, jadi hasilnya sama dengan videonya.
 
-- **Gaya:** 12 preset, lalu ukuran, warna, sorotan kata, terjemahan, kotak, bingkai, dan keterangan (nama surah, qari, rujukan).
+- **Gaya:** 12 preset, lalu ukuran, warna, sorotan kata, terjemahan, **pemisah** (garis hias dengan ornamen kecil di antara ayat dan terjemahan; ruangnya ikut dihitung, jadi tidak menimpa teks), kotak, bingkai, dan keterangan (nama surah, qari, rujukan).
 - **Latar:** warna, gambar, video, video sumber, atau **Gerak** (cahaya lembut, geometri, partikel, berkas sinar, gelombang;
   atur dua warna dan kecepatannya); atur gelap dan buramnya. Video latar yang lebih pendek dari tilawah diulang: **Ulang**
   (kembali ke awal), **Bolak-balik** (maju lalu mundur tanpa loncatan), atau **Pudar** (memudar halus di sambungan).
@@ -81,7 +81,7 @@ Pratinjau memakai mesin yang sama dengan ekspor, jadi hasilnya sama dengan video
   (bilah tipis yang terisi selama tilawah), **Ajakan** (kalimat pendek seperti "Jangan lupa bagikan dan doakan"), **Gelombang suara** (batang atau gelombang yang
   bergerak mengikuti suara tilawah; perlu rekaman sumber), serta **Subscribe** dan **Follow** (tombol yang muncul di waktu Mulai, ditekan,
   lalu hilang dan muncul lagi sesuai jeda, misalnya tiap 60 detik selama 6 detik; nama akun boleh dicantumkan), dengan
-  posisi dan waktu tampil. Geser overlay di linimasa untuk memindahkannya, geser tepinya untuk mengubah panjangnya.
+  waktu tampil dan **letak**: pilih salah satu dari sembilan tempat di area aman (grid 3×3), atur **jarak dari tepi aman**, lalu geser halus dengan penggeser Mendatar dan Menegak. Teks di tepi kanan rata kanan, di tepi kiri rata kiri. Tombol Subscribe dan Follow di video selalu berbahasa Inggris. Geser overlay di linimasa untuk memindahkannya, geser tepinya untuk mengubah panjangnya.
   Linimasa bisa diperbesar (sampai 64×) dan di-scroll untuk rekaman panjang.
 - **Format:** ganti 9:16, 16:9, 1:1, dan tampilkan garis area aman. Garisnya tidak ikut diekspor.
 

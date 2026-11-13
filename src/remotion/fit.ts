@@ -3,6 +3,7 @@ import type { VideoProps } from '../shared/video'
 import { AR_LINE, AR_LINE_MIN, SAFE_AREA, TR_LINE, q } from './common'
 import { FAMILY, qpcFamily } from './fonts'
 import { fitBlocks, splitWords, type Block, type Fit, type Run } from './layout'
+import { separatorMetrics } from '../shared/separator'
 import { segmentWords, type DisplayWord } from './timing'
 
 /** Smallest shares the blocks may shrink to: below these the text stops being comfortable to read on a phone. */
@@ -26,6 +27,8 @@ export interface SegmentFit extends Fit {
   boxPad: number
   boxed: boolean
   banded: boolean
+  /** Set when the separator is drawn: its ornament height and the room it takes between ayah and translation, at scale 1. */
+  separator: { height: number; gap: number } | null
 }
 
 /**
@@ -57,15 +60,18 @@ export function computeSegmentFit(p: Pick<VideoProps, 'project' | 'verses' | 'su
   ]
   const gaps = [0]
   const trSize = style.translationSize * unit
+  // Projects saved before the separator existed lack the field: off for them, so their videos do not change.
+  const separator = showTr && (style.separator ?? false) ? separatorMetrics(unit, trSize) : null
   if (showTr) {
     const runs: Run[] = splitWords(translation, trFamily, 400, trSize, maxW).map((text) => ({ text, family: trFamily }))
     blocks.push({ runs, size: trSize, lineHeight: TR_LINE, minLineHeight: TR_LINE, pad: 0.13, minScale: TRANSLATION_MIN_SCALE, order: 0 })
-    gaps.push(trSize * 0.6)
+    // The separator's room replaces the plain gap, so the fit counts it and shrinks the text before anything can overlap.
+    gaps.push(separator ? separator.gap : trSize * 0.6)
   }
   if (reference) {
     const refSize = unit * 0.026
     blocks.push({ runs: [{ text: reference, family: q(FAMILY.inter), weight: 500 }], size: refSize, lineHeight: 1.4, minLineHeight: 1.4, pad: 0, minScale: 1, order: 0 })
     gaps.push(refSize * 0.9)
   }
-  return { ...fitBlocks(blocks, gaps, maxW, maxH), blocks, gaps, words, showTr, maxW, regionTop, regionBottom, boxPad, boxed, banded }
+  return { ...fitBlocks(blocks, gaps, maxW, maxH), blocks, gaps, words, showTr, maxW, regionTop, regionBottom, boxPad, boxed, banded, separator }
 }

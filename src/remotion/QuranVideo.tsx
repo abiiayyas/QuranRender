@@ -4,6 +4,7 @@ import { setLang, t } from '../shared/i18n'
 import { bounceLeg, fadeFrames, fadeLayers } from '../shared/loop'
 import { DEFAULT_MOTION, type LoopMode } from '../shared/motion'
 import { ctaDefaultText, overlayPhase, readableOn } from '../shared/overlay'
+import { anchorOf, anchorTranslate, roomFor } from '../shared/placement'
 import type { Asset, Overlay } from '../shared/types'
 import type { VideoProps } from '../shared/video'
 import { SAFE_AREA, assetSrc, q, rgba, textShadow } from './common'
@@ -190,7 +191,9 @@ function OverlayItem({ o, t, props }: { o: Overlay; t: number; props: VideoProps
   const end = o.endMs ?? props.durationMs
   if (t < o.startMs || t >= end) return null
   const { width, height, project, assets, baseUrl } = props
-  const pos: CSSProperties = { position: 'absolute', left: o.x * width, top: o.y * height, transform: 'translate(-50%, -50%)', opacity: o.opacity }
+  const a = anchorOf(o)
+  // The transform origin sits on the anchor, so a pop or pulse grows away from the pinned edge instead of off the canvas.
+  const pos: CSSProperties = { position: 'absolute', left: o.x * width, top: o.y * height, transform: `translate(${anchorTranslate(o)})`, transformOrigin: `${a.x * 100}% ${a.y * 100}%`, opacity: o.opacity }
   if (o.kind === 'image') {
     const a = o.assetId ? assets[o.assetId] : undefined
     if (!a) return null
@@ -207,9 +210,9 @@ function OverlayItem({ o, t, props }: { o: Overlay; t: number; props: VideoProps
       dir="auto"
       style={{
         ...pos,
-        maxWidth: width * 0.9,
+        maxWidth: roomFor(o, width, SAFE_AREA[project.aspect].side),
         width: 'max-content',
-        textAlign: 'center',
+        textAlign: a.x === 0 ? 'left' : a.x === 1 ? 'right' : 'center',
         whiteSpace: 'pre-wrap',
         fontFamily: q(FAMILY.inter),
         fontWeight: 600,
@@ -245,11 +248,11 @@ function QariOverlay({ o, t: now, end, pos, props }: TimedOverlay & { pos: CSSPr
       style={{
         ...pos,
         opacity: o.opacity * e * (1 - exit),
-        transform: `translate(calc(-50% + ${(1 - e) * -0.06 * width}px), -50%)`,
+        transform: `translate(calc(${-anchorOf(o).x * 100}% + ${(1 - e) * -0.06 * width}px), ${-anchorOf(o).y * 100}%)`,
         display: 'flex',
         alignItems: 'stretch',
         gap: font * 0.55,
-        maxWidth: width * 0.84,
+        maxWidth: Math.min(width * 0.84, roomFor(o, width, SAFE_AREA[project.aspect].side)),
         width: 'max-content',
         padding: `${font * 0.5}px ${font * 0.85}px ${font * 0.5}px ${font * 0.6}px`,
         borderRadius: font * 0.5,
@@ -298,7 +301,7 @@ function ProgressOverlay({ o, t, end, props }: Omit<TimedOverlay, 'pos'>) {
 
 /** A short call to action in a pill: pops in, pulses gently, fades before the end. */
 function CtaOverlay({ o, t, end, pos, props }: TimedOverlay & { pos: CSSProperties }) {
-  const { width, height, fps } = props
+  const { width, height, fps, project } = props
   const { exit } = overlayPhase(t, o.startMs, end)
   const sec = (t - o.startMs) / 1000
   const pop = spring({ frame: sec * fps, fps, config: { damping: 14, stiffness: 140, mass: 0.8 } })
@@ -311,8 +314,8 @@ function CtaOverlay({ o, t, end, pos, props }: TimedOverlay & { pos: CSSProperti
       style={{
         ...pos,
         opacity: o.opacity * Math.min(1, pop * 1.6) * (1 - exit),
-        transform: `translate(-50%, -50%) scale(${(0.8 + 0.2 * pop) * pulse})`,
-        maxWidth: width * 0.84,
+        transform: `translate(${anchorTranslate(o)}) scale(${(0.8 + 0.2 * pop) * pulse})`,
+        maxWidth: Math.min(width * 0.84, roomFor(o, width, SAFE_AREA[project.aspect].side)),
         width: 'max-content',
         textAlign: 'center',
         padding: `${font * 0.5}px ${font * 1.1}px`,

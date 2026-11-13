@@ -1,6 +1,7 @@
 import { msg, t } from '@shared/i18n'
 import { PRESETS, type Preset } from '@shared/presets'
-import { TRANSLATION_FONTS, type StyleSettings } from '@shared/style'
+import { SEPARATOR_MIN_WIDTH } from '@shared/separator'
+import { DEFAULT_STYLE, TRANSLATION_FONTS, type StyleSettings } from '@shared/style'
 import { LookThumb } from '../../../components/LookThumb'
 import { Segmented } from '../../../components/ui'
 import { useProject } from '../../../store/project'
@@ -17,9 +18,15 @@ const HIGHLIGHTS: { value: StyleSettings['highlight']; label: string }[] = [
 function applyPreset(p: Preset): void {
   const cur = useProject.getState().project
   if (!cur) return
-  // The user's chosen image/video stays; only the look comes from the preset.
+  // The user's chosen image/video stays; only the look comes from the preset. So does the separator: no preset sets it, and
+  // switching the look should not undo a choice made for the divider (older projects lack the fields, hence the defaults).
   const { color, dim, blur } = p.background
-  useProject.getState().update({ style: { ...p.style }, background: { ...cur.background, color, dim, blur } })
+  const keep = {
+    separator: cur.style.separator ?? DEFAULT_STYLE.separator,
+    separatorColor: cur.style.separatorColor ?? DEFAULT_STYLE.separatorColor,
+    separatorWidth: cur.style.separatorWidth ?? DEFAULT_STYLE.separatorWidth
+  }
+  useProject.getState().update({ style: { ...p.style, ...keep }, background: { ...cur.background, color, dim, blur } })
 }
 
 export function StylePanel() {
@@ -83,6 +90,24 @@ export function StylePanel() {
         />
         <Slider label={t('Ukuran')} value={style.translationSize} min={0.015} max={0.07} step={0.001} format={(v) => (v * 1000).toFixed(0)} onChange={(v) => setStyle({ translationSize: v }, 'translationSize')} />
         <ColorRow label={t('Warna')} value={style.translationColor} onChange={(v) => setStyle({ translationColor: v }, 'translationColor')} />
+      </Section>
+
+      <Section title={t('Pemisah')}>
+        <SwitchRow label={t('Garis pemisah')} checked={style.separator ?? DEFAULT_STYLE.separator} onChange={(v) => setStyle({ separator: v })} />
+        {(style.separator ?? DEFAULT_STYLE.separator) && (
+          <>
+            <ColorRow label={t('Warna')} value={style.separatorColor ?? DEFAULT_STYLE.separatorColor} onChange={(v) => setStyle({ separatorColor: v }, 'separatorColor')} />
+            <Slider
+              label={t('Panjang')}
+              value={style.separatorWidth ?? DEFAULT_STYLE.separatorWidth}
+              min={SEPARATOR_MIN_WIDTH}
+              max={1}
+              step={0.01}
+              onChange={(v) => setStyle({ separatorWidth: v }, 'separatorWidth')}
+            />
+          </>
+        )}
+        <p className="pn-note">{t('Garis hias di antara ayat dan terjemahan. Ruangnya ikut dihitung dalam tata letak, jadi tidak menimpa teks; ayat yang sudah hampir penuh bisa lebih cepat mengecil atau ditandai terlalu panjang.')}</p>
       </Section>
 
       <Section title={t('Kotak dan bingkai')}>

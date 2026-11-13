@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { cancelRender, continueRender, delayRender, getRemotionEnvironment } from 'remotion'
+import { anchorOf } from '../shared/placement'
 import { bandsAt, SPECTRUM_BANDS } from '../shared/spectrum'
 import type { Overlay } from '../shared/types'
 import type { VideoProps } from '../shared/video'
@@ -53,7 +54,8 @@ export function VisualizerOverlay({ o, t, props }: { o: Overlay; t: number; prop
   const h = Math.max(4, o.size * height)
   const step = w / SPECTRUM_BANDS
   const level = (i: number): number => bands[i] / 255
-  const style = { position: 'absolute' as const, left: o.x * width - w / 2, top: o.y * height - h / 2, opacity: o.opacity }
+  const a = anchorOf(o)
+  const style = { position: 'absolute' as const, left: o.x * width - a.x * w, top: o.y * height - a.y * h, opacity: o.opacity }
 
   if (o.variant === 'wave') {
     const pts = Array.from({ length: SPECTRUM_BANDS }, (_, i) => [step * (i + 0.5), Math.max(0.02, level(i)) * (h / 2)] as const)
