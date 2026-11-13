@@ -10,6 +10,7 @@ import { applyLanguage } from '../lib/language'
 import { applyTheme } from '../lib/theme'
 import { toast, useApp } from '../store/app'
 import { SCRIPTS } from './Home'
+import { StorageSection } from './StorageSection'
 
 /** OpenAI-compatible endpoints the user is likely to have a key for. */
 const AI_PRESETS = [
@@ -21,12 +22,13 @@ const AI_PRESETS = [
   { label: msg('Ollama (lokal)'), url: 'http://localhost:11434/v1', model: 'qwen2.5:7b' }
 ]
 
-type SectionId = 'general' | 'ai' | 'image' | 'support' | 'about'
+type SectionId = 'general' | 'ai' | 'image' | 'storage' | 'support' | 'about'
 
 const SECTIONS: { id: SectionId; label: string; icon: string }[] = [
   { id: 'general', label: msg('Umum'), icon: 'settings-2' },
   { id: 'ai', label: msg('Layanan AI'), icon: 'languages' },
   { id: 'image', label: msg('Pembuat gambar'), icon: 'image' },
+  { id: 'storage', label: msg('Penyimpanan'), icon: 'hard-drive' },
   { id: 'support', label: msg('Dukungan'), icon: 'heart' },
   { id: 'about', label: msg('Tentang'), icon: 'info' }
 ]
@@ -428,6 +430,10 @@ export function Settings() {
                   )}
                 </>
               )}
+            </Section>
+
+            <Section id="storage" title={t('Penyimpanan')} lead={t('Bersihkan data yang bisa dibuat ulang dan hapus berkas proyek yang tidak terpakai.')}>
+              <StorageSection />
             </Section>
 
             <Section id="support" title={t('Dukungan')} lead={t('Quran Render gratis dan terbuka. Kalau aplikasi ini membantumu, donasi membantu menjaga dan mengembangkannya.')}>

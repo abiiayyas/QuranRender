@@ -13,6 +13,7 @@ import { aiKeyStatus, clearAiKey, getSettings, setAiKey, setSettings } from './s
 import { registerSourcesIpc } from './sources'
 import { registerSpectrumIpc } from './spectrum'
 import { registerStockIpc } from './stock'
+import { registerStorageIpc } from './storage'
 import { registerSyncIpc } from './sync'
 import { registerTextIpc } from './text'
 
@@ -69,4 +70,5 @@ export function registerIpc(): void {
   registerStockIpc()
   registerImageIpc()
   registerSpectrumIpc()
+  registerStorageIpc()
 }

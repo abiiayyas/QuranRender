@@ -75,6 +75,11 @@ export function startJob(projectId: string | null, kind: JobKind, queue: QueueNa
   return job
 }
 
+/** Jobs running or waiting for a slot. Cleaning the cache or deleting assets waits for zero. */
+export function activeJobs(): number {
+  return controllers.size
+}
+
 export function cancelJob(id: string): void {
   controllers.get(id)?.abort()
 }

@@ -1,15 +1,18 @@
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { basename, join } from 'node:path'
-import { BrowserWindow, dialog, shell } from 'electron'
+import { BrowserWindow, dialog, powerSaveBlocker, shell } from 'electron'
 import { getLang, t } from '@shared/i18n'
 import { checkExport } from '@shared/policy'
+import { blendSpeed, measuredMsPerMpFrame, useChunks } from '@shared/renderPlan'
 import { toSrt, toVtt, youtubeChapters, type SubtitleMode } from '@shared/subtitles'
 import { advanceStatus, type ArabicScript, type Asset, type ExportOptions, type Job, type PolicyIssue, type Project, type Verse } from '@shared/types'
 import { canvasSize, verseKey, type VideoProps } from '@shared/video'
+import { runAfterExport } from './afterExport'
 import { handle } from './ipc'
-import { startJob } from './jobs'
+import { activeJobs, startJob } from './jobs'
 import { assetAbsPath } from './paths'
 import { getVerses, surahList } from './quran'
+import { partialOf, renderChunked } from './renderChunks'
 import { renderVideo } from './render'
 import { ensureSpectrum } from './spectrum'
 import { startFileServer } from './renderServer'
@@ -100,17 +103,29 @@ async function start(o: ExportOptions): Promise<Job> {
 
   return startJob(project.id, 'export', 'cpu', async (ctx) => {
     ctx.progress(0.01, t('Menyiapkan mesin render…'))
+    // A long render must not be cut off by the Mac falling asleep; released however the job ends.
+    const blocker = powerSaveBlocker.start('prevent-app-suspension')
     // Read again: the user may have edited between the click and the queue slot.
     const p = getProject(project.id)
     const server = await startFileServer()
     try {
       const props = await buildVideoProps(p, o.height, o.fps, { asset: `${server.origin}asset/`, font: `${server.origin}fonts/` })
-      await renderVideo({
-        props,
-        outPath,
-        signal: ctx.signal,
-        onProgress: (progress, frames, total) => ctx.progress(0.02 + progress * 0.96, t('Merender bingkai {frames} dari {total}', { frames, total }))
-      })
+      const started = Date.now()
+      let frames = Math.max(1, Math.ceil((props.durationMs / 1000) * props.fps))
+      if (useChunks(o.mode, props.durationMs)) {
+        const r = await renderChunked({ props, outPath, signal: ctx.signal, fresh: !!o.fresh, onProgress: (progress, message) => ctx.progress(0.02 + progress * 0.96, message) })
+        frames = r.framesRendered
+      } else {
+        await renderVideo({
+          props,
+          outPath,
+          signal: ctx.signal,
+          onProgress: (progress, rendered, total) => ctx.progress(0.02 + progress * 0.96, t('Merender bingkai {frames} dari {total}', { frames: rendered, total }))
+        })
+      }
+      // What this computer can do feeds the time estimate in the Export dialog.
+      const speed = measuredMsPerMpFrame({ elapsedMs: Date.now() - started, frames, width: props.width, height: props.height, motion: p.background.kind === 'motion' })
+      if (speed !== null) setSettings({ renderMsPerMpFrame: blendSpeed(getSettings().renderMsPerMpFrame, speed) })
 
       if (o.srt || o.vtt || o.chapters) {
         ctx.progress(0.99, t('Menulis subtitle…'))
@@ -128,9 +143,13 @@ async function start(o: ExportOptions): Promise<Job> {
       rmSync(outPath, { force: true })
       throw e
     } finally {
+      powerSaveBlocker.stop(blocker)
       await server.close()
     }
     patchProject(p.id, { status: advanceStatus(getProject(p.id).status, 'exported') })
+    // Only when nothing else is running or queued: putting the Mac to sleep must not cut off another job. This job is
+    // still counted until it returns, hence 1. Delayed so the finished state reaches the window first.
+    if (o.after !== 'none' && activeJobs() <= 1) setTimeout(() => void runAfterExport(o.after), 1500)
     return outPath
   })
 }
@@ -138,6 +157,13 @@ async function start(o: ExportOptions): Promise<Job> {
 export function registerExportIpc(): void {
   handle('exporter', 'check', (projectId) => check(getProject(projectId)))
   handle('exporter', 'start', (options) => start(options))
+  handle('exporter', 'partial', async (options) => {
+    const project = getProject(options.projectId)
+    const source = project.sourceAssetId ? getAssetOrNull(project.sourceAssetId) : null
+    if (!source || !useChunks(options.mode, source.durationMs ?? 0)) return null
+    // Only the fingerprint is needed, so the file server's address does not matter.
+    return partialOf(await buildVideoProps(project, options.height, options.fps, { asset: 'asset/', font: 'fonts/' }))
+  })
   handle('exporter', 'defaultFolder', () => ensureFolder(getSettings().exportFolder))
   handle('exporter', 'pickFolder', async () => {
     const win = BrowserWindow.getFocusedWindow()

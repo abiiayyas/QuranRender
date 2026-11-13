@@ -48,7 +48,6 @@ export const dialogs: Dict = {
   'Video sudah selesai diekspor.': 'The video has finished exporting.',
   'Ekspor gagal': 'Export failed',
   'Ekspor dibatalkan. Silakan mulai lagi bila sudah siap.': 'Export canceled. Start again when you are ready.',
-  'Lama render kira-kira 1–3 kali durasi video.': 'Rendering takes roughly 1–3 times the video length.',
 
   // PublishDialog
   '{what} disalin.': '{what} copied.',
@@ -125,5 +124,27 @@ export const dialogs: Dict = {
   'Video sumber': 'Source video',
   'Video latar': 'Background video',
   'Posisi bingkai': 'Frame position',
-  'Jadikan latar thumbnail': 'Use as thumbnail background'
+  'Jadikan latar thumbnail': 'Use as thumbnail background',
+  // Export: speed, render mode, after-action, estimate
+  'Lebih sedikit bingkai membuat render lebih cepat; sorotan kata jadi kurang halus. 24 fps umum untuk video tilawah.': 'Fewer frames render faster; the word highlight looks less smooth. 24 fps is common for recitation videos.',
+  'Cara render': 'Render method',
+  Otomatis: 'Automatic',
+  Langsung: 'Direct',
+  'Per potongan': 'In pieces',
+  'Dirender per potongan sekitar 10 menit, lalu digabung. Kalau terputus, render bisa dilanjutkan dari potongan yang sudah jadi. Butuh ruang disk sementara kira-kira seukuran videonya.': 'Rendered in pieces of about 10 minutes, then joined. If it is interrupted, the render can continue from the finished pieces. Needs temporary disk space about the size of the video.',
+  'Dirender sekali jalan. Video yang lebih dari 15 menit otomatis dirender per potongan.': 'Rendered in one go. Videos longer than 15 minutes are rendered in pieces automatically.',
+  'Mulai dari awal; potongan sebelumnya dibuang': 'Start over; the earlier pieces are discarded',
+  'Melanjutkan: {done} dari {total} potongan sudah jadi. Centang untuk mulai dari awal.': 'Continuing: {done} of {total} pieces are already done. Tick to start over.',
+  'Setelah selesai': 'When finished',
+  'Tidak ada': 'None',
+  Tidur: 'Sleep',
+  'Tutup aplikasi': 'Quit the app',
+  'Mac tidak tidur selama ekspor berjalan.': 'Your Mac stays awake while the export runs.',
+  'Dijalankan hanya bila ekspor berhasil, setelah hitung mundur 1 menit yang bisa dibatalkan.': 'Only done if the export succeeds, after a 1-minute countdown you can cancel.',
+  'Perkiraan lama render: {time}.': 'Estimated render time: {time}.',
+  'Ini perkiraan kasar; setelah ekspor pertama, angkanya menyesuaikan dengan komputermu.': 'This is a rough guess; after your first export it adjusts to your computer.',
+  'Disesuaikan dengan kecepatan ekspor sebelumnya di komputer ini.': 'Adjusted to the speed of earlier exports on this computer.',
+  'sekitar {n} menit': 'about {n} min',
+  'sekitar {h} jam': 'about {h} h',
+  'sekitar {h} jam {m} menit': 'about {h} h {m} min',
 }

@@ -3,6 +3,7 @@ import type { Lang } from './i18n'
 import type { Edge } from './placement'
 import type { LoopMode, MotionSpec } from './motion'
 import type { PublishKit } from './publish'
+import type { AfterExport, RenderMode } from './renderPlan'
 import type { StyleSettings } from './style'
 import type { ThumbnailSpec } from './thumbnail'
 
@@ -235,6 +236,8 @@ export interface Settings {
   imageCliTool: CliImageTool
   /** Shell command of imageCliTool 'custom': writes one picture to {output}. */
   imageCliCommand: string
+  /** Measured render speed of this computer (ms per megapixel of one frame, still background); null until the first export. Feeds the time estimate. */
+  renderMsPerMpFrame: number | null
 }
 
 /** Whether AI features can run: through an API key (or a local endpoint), or through an AI CLI installed on this computer. */
@@ -275,7 +278,13 @@ export interface Edition {
 export interface ExportOptions {
   projectId: string
   height: 720 | 1080 | 2160
-  fps: 30 | 60
+  fps: 15 | 24 | 30 | 60
+  /** How the video is drawn: see renderPlan.ts. */
+  mode: RenderMode
+  /** Done only when the export succeeds. */
+  after: AfterExport
+  /** Chunked renders reuse pieces left by an earlier, interrupted run of the same project; true discards them first. */
+  fresh?: boolean
   folder: string
   srt: boolean
   vtt: boolean

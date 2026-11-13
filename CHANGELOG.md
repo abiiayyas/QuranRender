@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.9.0
+
+- **Render per potongan:** video panjang (lebih dari 15 menit, atau dipaksa lewat Cara render) dirender dalam potongan sekitar 10 menit tanpa suara, suaranya
+  dirender sekali, lalu digabung dengan ffmpeg tanpa encode ulang. Ekspor yang terputus bisa **dilanjutkan** dari potongan yang sudah jadi (dikenali lewat
+  sidik jari proyek dan pengaturan); hasil gabungan diperiksa panjangnya. Diuji pada video 40 detik dalam 5 potongan: 962 bingkai sama dengan render
+  langsung (PSNR minimum 48 dB, sambungan tidak lebih buruk), suara tanpa lubang dan tanpa klik.
+- **Pilihan fps 15, 24, 30, 60** dan **perkiraan lama render** di dialog Ekspor, dari pengukuran nyata (sekitar 5 detik biaya tetap, 16 ms per megapiksel per
+  bingkai, latar Gerak 1,7×) yang menyesuaikan dengan kecepatan komputermu setelah tiap ekspor.
+- **Mac tidak tidur selama ekspor.** Pilihan **Setelah selesai**: tidak ada, tidur, atau tutup aplikasi; hanya bila ekspor berhasil dan tidak ada proses lain,
+  dengan hitung mundur 1 menit yang bisa dibatalkan.
+- **Penyimpanan** di Pengaturan: bersihkan berkas sementara, potongan render, data visualizer, dan font Quran dengan ukuran masing-masing; sisa render
+  lama dibersihkan otomatis saat aplikasi dibuka. **Berkas proyek yang tidak terpakai** bisa dihapus per proyek; berkas yang masih dipakai hanya dengan
+  peringatan satu per satu, dan rujukannya dibersihkan agar proyek tidak rusak.
+
 ## 0.8.0
 
 - **Pemisah ayat dan terjemahan:** garis hias dengan ornamen kecil (dua daun runcing dan tiga belah ketupat) digambar dengan SVG, jadi tajam di semua

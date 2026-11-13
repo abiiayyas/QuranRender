@@ -251,3 +251,11 @@ export function failInterruptedJobs(): void {
 export function bundle(id: string): ProjectBundle {
   return { project: getProject(id), assets: assetsOf(id), jobs: jobsOf(id) }
 }
+
+/**
+ * Removes one asset row. Only Settings > Storage does this, after clearing every reference in the project; the caller
+ * deletes the file. Undo history may still name the id, which then resolves to a missing asset.
+ */
+export function deleteAsset(id: string): void {
+  getDb().prepare('DELETE FROM assets WHERE id = ?').run(id)
+}

@@ -79,6 +79,10 @@ Usulan, dengan alasan:
 - Basmalah yang terlalu panjang belum bisa dibelah (batas yang diketahui).
 - **Terjemahan kedua di video** sengaja tidak dibuat: hanya terjemahan paling atas yang tampil (keputusan pemilik produk).
 
+### 5.1 Sudah dikerjakan di 0.9.0
+Render per potongan yang bisa dilanjutkan, pilihan fps, perkiraan waktu, tahan tidur, aksi setelah selesai, dan bagian Penyimpanan (lihat
+`CHANGELOG.md`). Belum diukur: render nyata pada rekaman 118 menit, jadi perkiraan untuk video sangat panjang masih ekstrapolasi dari klip 40 detik.
+
 ## 6. Yang belum pernah diuji
 
 - Foto dan video stok dengan kunci nyata (Pexels, Unsplash, Pixabay).

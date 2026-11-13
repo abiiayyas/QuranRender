@@ -19,6 +19,8 @@ export const projectDir = (projectId: string): string => ensure(join(projectsRoo
 export const toolsDir = (): string => ensure(join(dataDir(), 'tools'))
 export const cacheDir = (): string => ensure(join(dataDir(), 'cache'))
 export const tmpDir = (): string => ensure(join(dataDir(), 'tmp'))
+/** Finished pieces of chunked exports, one folder per project and render fingerprint. */
+export const renderPartsDir = (): string => ensure(join(dataDir(), 'render'))
 
 export const assetAbsPath = (projectId: string, path: string): string => join(projectsRoot(), projectId, path)
 

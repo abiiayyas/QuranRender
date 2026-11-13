@@ -106,10 +106,23 @@ Undo and Redo sit above the preview (Cmd+Z, Cmd+Shift+Z).
 
 ## 6. Export
 
-Click **Export**. Choose 720p, 1080p or 4K at 30 or 60 fps, the extra files (SRT, VTT, YouTube chapters) and the output folder.
+Click **Export**. Choose 720p, 1080p or 4K at 15, 24, 30 or 60 fps (fewer frames render faster, with a less smooth word highlight), the extra files (SRT, VTT, YouTube chapters) and the output folder.
 Before rendering, the app checks the text and completeness: export is refused when a segment has invalid timing, a word range
 outside its verse, or no main translation. Warnings (translation to check, low confidence) do not block. Rendering takes about 1.5
 times the video's duration at 1080p on one test machine; yours may differ.
+
+**Render method.** *Automatic* renders in one go for short videos and **in pieces** (about 10 minutes each) for videos longer than 15 minutes; *Direct* and
+*In pieces* force one or the other. The pieces are rendered one after another without sound, the sound is rendered once, and everything is joined without
+re-encoding, so there is no quality loss and no click at the joins. The total time is about the same as a direct render. The gain: if an export is
+interrupted (the app is closed, it fails, it is canceled), the finished pieces are kept and the Export dialog offers to continue from there; tick
+*start over* to discard them. Pieces are reused only when the project and settings are exactly the same. It needs temporary disk space about the size of the
+video until the join is done.
+
+**Estimated time** is shown in the dialog. At first it is a rough figure from measurements on one test computer; after every export it adjusts to your
+computer's speed. A **Motion** background takes about 1.7 times as long to render as a plain one.
+
+**When finished:** *Nothing*, *Sleep* (the Mac sleeps) or *Quit the app*. Only done when the export succeeds and nothing else is still running, after a
+1-minute countdown you can cancel. While an export runs, the Mac does not fall asleep on its own.
 
 ## 7. Thumbnail and Publish
 
@@ -134,6 +147,11 @@ use the recording before uploading.
   app's messages and the text drawn into videos (for example the Subscribe button and the Publish drafts); verse translations are
   chosen separately in the Text step.
 - **AI service** and **Image generator:** see the Text step and the Editor.
+- **Storage:** sizes and a **Clear** button for *temporary files* (leftovers of renders and downloads), unfinished *render pieces*, *visualizer data* (rebuilt
+  automatically) and *Uthmani/QPC fonts* (need internet to download again). Render leftovers older than a day and pieces older than a week are cleared
+  automatically when the app opens. Below, **unused project files** (for example a recording from before it was trimmed) can be deleted per project; files
+  still in use (audio source, background, overlays, thumbnail) can only be deleted one by one after a warning, and their references in the project are
+  cleared. Deleted files cannot be restored, not even with Undo. Your recordings and exports are never deleted unless you choose them.
 - **Support:** donation links (PayPal and Saweria). Donations are voluntary and unlock nothing.
 
 ## 9. Content and licenses

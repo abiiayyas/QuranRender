@@ -1,14 +1,18 @@
 import { useEffect, useId, useState } from 'react'
 import { t } from '@shared/i18n'
+import { estimateRenderMs, useChunks, type AfterExport, type RenderMode } from '@shared/renderPlan'
 import type { ExportOptions, PolicyIssue } from '@shared/types'
+import { canvasSize } from '@shared/video'
 import { ErrorAlert, Icon, JobProgress, Segmented, Sheet } from '../../components/ui'
 import { computeFitReport } from '../../lib/fit'
-import { errorText } from '../../lib/format'
+import { errorText, formatDuration } from '../../lib/format'
 import { toast } from '../../store/app'
 import { useProject } from '../../store/project'
 
 type Height = ExportOptions['height']
 type Fps = ExportOptions['fps']
+
+const FPS: Fps[] = [15, 24, 30, 60]
 
 const HEIGHTS: { value: `${Height}`; label: string }[] = [
   { value: '720', label: '720p' },
@@ -20,6 +24,13 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
   const projectId = useProject((s) => s.project!.id)
   const [height, setHeight] = useState<Height>(1080)
   const [fps, setFps] = useState<Fps>(30)
+  const [mode, setMode] = useState<RenderMode>('auto')
+  const [after, setAfter] = useState<AfterExport>('none')
+  const [fresh, setFresh] = useState(false)
+  const [partial, setPartial] = useState<{ done: number; total: number } | null>(null)
+  const [speed, setSpeed] = useState<number | null>(null)
+  const project = useProject((s) => s.project!)
+  const source = useProject((s) => (s.project!.sourceAssetId ? s.assets[s.project!.sourceAssetId] : undefined))
   const [srt, setSrt] = useState(false)
   const [vtt, setVtt] = useState(false)
   const [chapters, setChapters] = useState(false)
@@ -31,7 +42,11 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
   const [jobId, setJobId] = useState<string | null>(null)
   const [starting, setStarting] = useState(false)
   const job = useProject((s) => (jobId ? (s.jobs[jobId] ?? null) : null))
-  const ids = { res: useId(), fps: useId(), folder: useId(), issues: useId() }
+  const ids = { res: useId(), fps: useId(), mode: useId(), after: useId(), folder: useId(), issues: useId() }
+  const durationMs = source?.durationMs ?? 0
+  const size = canvasSize(project.aspect, height)
+  const chunked = useChunks(mode, durationMs)
+  const estimateMs = durationMs > 0 ? estimateRenderMs({ durationMs, fps, width: size.width, height: size.height, motion: project.background.kind === 'motion', msPerMpFrame: speed }) : null
 
   const runCheck = async (): Promise<void> => {
     setCheckError(null)
@@ -62,8 +77,27 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     void runCheck()
     window.api.exporter.defaultFolder().then(setFolder, (e) => toast('error', errorText(e)))
+    window.api.settings.get().then((st) => setSpeed(st.renderMsPerMpFrame), () => undefined)
     // Checked once on open; "Periksa ulang" repeats it.
   }, [projectId])
+
+  // Pieces from an interrupted run of these same settings: offered for resuming instead of starting over.
+  useEffect(() => {
+    setFresh(false)
+    if (!chunked) {
+      setPartial(null)
+      return
+    }
+    let live = true
+    window.api.exporter.partial({ projectId, height, fps, mode, after, fresh: false, folder, srt, vtt, chapters }).then(
+      (r) => live && setPartial(r),
+      () => live && setPartial(null)
+    )
+    return () => {
+      live = false
+    }
+    // The pieces depend on the video's settings only, not on the files chosen to go with it.
+  }, [projectId, height, fps, mode, chunked])
 
   const pickFolder = async (): Promise<void> => {
     try {
@@ -78,7 +112,7 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
     setStarting(true)
     try {
       await useProject.getState().flush()
-      const j = await window.api.exporter.start({ projectId, height, fps, folder, srt, vtt, chapters })
+      const j = await window.api.exporter.start({ projectId, height, fps, mode, after, fresh, folder, srt, vtt, chapters })
       useProject.getState().upsertJob(j)
       setJobId(j.id)
     } catch (e) {
@@ -146,11 +180,53 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
             labelledBy={ids.fps}
             value={`${fps}`}
             onChange={(v) => setFps(Number(v) as Fps)}
+            options={FPS.map((f) => ({ value: `${f}` as `${Fps}`, label: `${f} fps`, disabled: busy }))}
+          />
+          <span className="qr-help">{t('Lebih sedikit bingkai membuat render lebih cepat; sorotan kata jadi kurang halus. 24 fps umum untuk video tilawah.')}</span>
+        </div>
+        <div className="qr-fieldset">
+          <span className="qr-label" id={ids.mode}>
+            {t('Cara render')}
+          </span>
+          <Segmented<RenderMode>
+            labelledBy={ids.mode}
+            value={mode}
+            onChange={setMode}
             options={[
-              { value: '30', label: '30 fps', disabled: busy },
-              { value: '60', label: '60 fps', disabled: busy }
+              { value: 'auto', label: t('Otomatis'), disabled: busy },
+              { value: 'direct', label: t('Langsung'), disabled: busy },
+              { value: 'chunked', label: t('Per potongan'), disabled: busy }
             ]}
           />
+          <span className="qr-help">
+            {chunked
+              ? t('Dirender per potongan sekitar 10 menit, lalu digabung. Kalau terputus, render bisa dilanjutkan dari potongan yang sudah jadi. Butuh ruang disk sementara kira-kira seukuran videonya.')
+              : t('Dirender sekali jalan. Video yang lebih dari 15 menit otomatis dirender per potongan.')}
+          </span>
+          {partial && !busy && (
+            <label className="qr-choice">
+              <input type="checkbox" className="qr-check" checked={fresh} onChange={(e) => setFresh(e.target.checked)} />
+              {fresh
+                ? t('Mulai dari awal; potongan sebelumnya dibuang')
+                : t('Melanjutkan: {done} dari {total} potongan sudah jadi. Centang untuk mulai dari awal.', { done: partial.done, total: partial.total })}
+            </label>
+          )}
+        </div>
+        <div className="qr-fieldset">
+          <span className="qr-label" id={ids.after}>
+            {t('Setelah selesai')}
+          </span>
+          <Segmented<AfterExport>
+            labelledBy={ids.after}
+            value={after}
+            onChange={setAfter}
+            options={[
+              { value: 'none', label: t('Tidak ada'), disabled: busy },
+              { value: 'sleep', label: t('Tidur'), disabled: busy },
+              { value: 'quit', label: t('Tutup aplikasi'), disabled: busy }
+            ]}
+          />
+          <span className="qr-help">{after === 'none' ? t('Mac tidak tidur selama ekspor berjalan.') : t('Dijalankan hanya bila ekspor berhasil, setelah hitung mundur 1 menit yang bisa dibatalkan.')}</span>
         </div>
         <fieldset className="qr-fieldset exp-extras">
           <legend className="qr-label">{t('Berkas tambahan')}</legend>
@@ -232,7 +308,12 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
         )}
         {job?.status === 'failed' && <ErrorAlert title={t('Ekspor gagal')} message={errorText(job.error ?? '')} />}
         {job?.status === 'canceled' && <p className="qr-help">{t('Ekspor dibatalkan. Silakan mulai lagi bila sudah siap.')}</p>}
-        {!done && <p className="qr-help">{t('Lama render kira-kira 1–3 kali durasi video.')}</p>}
+        {!done && estimateMs !== null && (
+          <p className="qr-help">
+            {t('Perkiraan lama render: {time}.', { time: formatDuration(estimateMs) })}{' '}
+            {speed === null ? t('Ini perkiraan kasar; setelah ekspor pertama, angkanya menyesuaikan dengan komputermu.') : t('Disesuaikan dengan kecepatan ekspor sebelumnya di komputer ini.')}
+          </p>
+        )}
       </div>
     </Sheet>
   )

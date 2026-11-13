@@ -116,44 +116,74 @@ async function freePort(): Promise<number> {
   throw new Error(t('Tidak ada port kosong untuk mesin render.'))
 }
 
-export async function renderVideo(o: {
-  props: VideoProps
-  outPath: string
-  signal: AbortSignal
-  onProgress: (p: number, renderedFrames: number, totalFrames: number) => void
-}): Promise<void> {
-  const { serveUrl, browserExecutable, binariesDirectory } = await renderAssets()
-  const { makeCancelSignal, renderMedia, selectComposition } = await loadRenderer()
+/** A composition opened once (Chrome started, props applied) and then drawn from in one or many pieces. */
+export interface VideoRender {
+  assets: RenderAssets
+  inputProps: Record<string, unknown>
+  composition: Awaited<ReturnType<Awaited<ReturnType<typeof loadRenderer>>['selectComposition']>>
+  totalFrames: number
+}
+
+export async function prepareVideo(props: VideoProps): Promise<VideoRender> {
+  const assets = await renderAssets()
+  const { selectComposition } = await loadRenderer()
   // Remotion's own input-props type is a plain record.
-  const inputProps = o.props as unknown as Record<string, unknown>
+  const inputProps = props as unknown as Record<string, unknown>
+  const { serveUrl, browserExecutable, binariesDirectory } = assets
   const selected = await selectComposition({ serveUrl, id: COMPOSITION_ID, inputProps, port: await freePort(), browserExecutable, binariesDirectory, logLevel: 'error' })
-  const { width, height, fps, durationMs } = o.props
+  const { width, height, fps, durationMs } = props
   // The props decide the canvas and length, whatever defaults the composition registers.
-  const composition = { ...selected, width, height, fps, durationInFrames: Math.max(1, Math.ceil((durationMs / 1000) * fps)) }
+  const totalFrames = Math.max(1, Math.ceil((durationMs / 1000) * fps))
+  return { assets, inputProps, composition: { ...selected, width, height, fps, durationInFrames: totalFrames }, totalFrames }
+}
+
+/**
+ * Draws part of a prepared video. `video` frames without sound (a piece of a long export), `audio` only the sound track
+ * of the whole composition as AAC (rendered once, so pieces never meet at an audio seam), or `full` both in one file.
+ * `frameRange` is inclusive, as in Remotion.
+ */
+export async function renderPiece(
+  prep: VideoRender,
+  o: { kind: 'full' | 'video' | 'audio'; outPath: string; frameRange?: [number, number]; signal: AbortSignal; onFrames?: (renderedFrames: number, progress: number) => void }
+): Promise<void> {
+  const { renderMedia, makeCancelSignal } = await loadRenderer()
+  const { serveUrl, browserExecutable, binariesDirectory } = prep.assets
   const { cancel, cancelSignal } = makeCancelSignal()
   if (o.signal.aborted) throw new Error('canceled')
   o.signal.addEventListener('abort', cancel, { once: true })
   try {
     await renderMedia({
       port: await freePort(),
-      composition,
+      composition: prep.composition,
       serveUrl,
-      codec: 'h264',
-      crf: 18,
-      audioCodec: 'aac',
+      codec: o.kind === 'audio' ? 'aac' : 'h264',
+      // Remotion refuses video options (crf) for an audio-only codec.
+      ...(o.kind === 'audio' ? {} : { crf: 18, audioCodec: 'aac' as const }),
+      muted: o.kind === 'video',
+      frameRange: o.frameRange ?? null,
       // Thin Arabic strokes and harakat show JPEG artifacts at the default quality.
       jpegQuality: 95,
       outputLocation: o.outPath,
-      inputProps,
+      inputProps: prep.inputProps,
       browserExecutable,
       binariesDirectory,
       cancelSignal,
       logLevel: 'error',
-      onProgress: ({ progress, renderedFrames }) => o.onProgress(progress, renderedFrames, composition.durationInFrames)
+      onProgress: ({ progress, renderedFrames }) => o.onFrames?.(renderedFrames, progress)
     })
   } finally {
     o.signal.removeEventListener('abort', cancel)
   }
+}
+
+export async function renderVideo(o: {
+  props: VideoProps
+  outPath: string
+  signal: AbortSignal
+  onProgress: (p: number, renderedFrames: number, totalFrames: number) => void
+}): Promise<void> {
+  const prep = await prepareVideo(o.props)
+  await renderPiece(prep, { kind: 'full', outPath: o.outPath, signal: o.signal, onFrames: (frames, progress) => o.onProgress(progress, frames, prep.totalFrames) })
 }
 
 /** One JPG of the thumbnail composition. Quality steps down until the file fits what Shorts, Reels and TikTok accept. */

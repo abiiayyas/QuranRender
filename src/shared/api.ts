@@ -1,6 +1,7 @@
 import type { CliStatus } from './aiTools'
 import type { ImageRequest } from './imagegen'
 import type { PlatformId, PublishFacts, PublishKit } from './publish'
+import type { CacheId, StorageProject, StorageUsage } from './storage'
 import type { StockItem, StockPage, StockProvider, StockQuery } from './stock'
 import type {
   Asset,
@@ -72,6 +73,8 @@ export interface StudioApi {
   exporter: {
     check(projectId: string): Promise<PolicyIssue[]>
     start(options: ExportOptions): Promise<Job>
+    /** Pieces an interrupted chunked render of the same project and settings left on disk (null when none or when this export would not be chunked). */
+    partial(options: ExportOptions): Promise<{ done: number; total: number } | null>
     defaultFolder(): Promise<string>
     pickFolder(): Promise<string | null>
     reveal(path: string): Promise<void>
@@ -102,6 +105,16 @@ export interface StudioApi {
   }
   jobs: {
     cancel(id: string): Promise<void>
+  }
+  storage: {
+    /** Sizes of what can be cleared, plus the projects and export folders for information. */
+    usage(): Promise<StorageUsage>
+    /** Clears the chosen kinds and returns the bytes freed. Refuses while any job runs. */
+    clear(ids: CacheId[]): Promise<number>
+    /** Every project's assets with what each is used for. */
+    assets(): Promise<StorageProject[]>
+    /** Deletes the files and rows, clears references to them in their projects, and returns the bytes freed. Refuses while any job runs. */
+    deleteAssets(items: { projectId: string; assetId: string }[]): Promise<number>
   }
   publish: {
     /** The facts upload copy is written from (surah, reciter, translation and audio credits). */
@@ -141,11 +154,12 @@ export const CHANNELS: { [G in Group]: (keyof StudioApi[G])[] } = {
   sources: ['importFile', 'reciters', 'download', 'youtube', 'trim', 'waveform', 'spectrum', 'importMedia'],
   sync: ['align'],
   text: ['editions', 'install', 'remove', 'verses', 'aiTrim'],
-  exporter: ['check', 'start', 'defaultFolder', 'pickFolder', 'reveal'],
+  exporter: ['check', 'start', 'partial', 'defaultFolder', 'pickFolder', 'reveal'],
   settings: ['get', 'set', 'aiReady', 'aiKey', 'setAiKey', 'clearAiKey', 'testAi', 'cliStatus'],
   stock: ['keys', 'setKey', 'clearKey', 'search', 'download'],
   ai: ['generateImage'],
   publish: ['facts', 'frame', 'thumbnail', 'generate', 'saveText'],
   jobs: ['cancel'],
+  storage: ['usage', 'clear', 'assets', 'deleteAssets'],
   app: ['openExternal', 'copyText', 'version']
 }

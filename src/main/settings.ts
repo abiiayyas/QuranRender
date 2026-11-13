@@ -21,7 +21,8 @@ const DEFAULTS: Settings = {
   imageProvider: 'pollinations',
   imageModel: '',
   imageCliTool: 'agy',
-  imageCliCommand: ''
+  imageCliCommand: '',
+  renderMsPerMpFrame: null
 }
 
 export function getSettings(): Settings {

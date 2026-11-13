@@ -103,11 +103,24 @@ Urungkan dan Ulangi tersedia di atas pratinjau (Cmd+Z, Cmd+Shift+Z).
 
 ## 6. Ekspor
 
-Klik **Ekspor**. Pilih 720p, 1080p, atau 4K pada 30 atau 60 fps, berkas tambahan (SRT, VTT, chapter YouTube), dan folder
-keluaran. Sebelum merender, aplikasi memeriksa amanah teks dan kelengkapan: ekspor ditolak bila ada segmen yang waktunya
+Klik **Ekspor**. Pilih 720p, 1080p, atau 4K pada 15, 24, 30, atau 60 fps, berkas tambahan (SRT, VTT, chapter YouTube), dan folder
+keluaran. Bingkai yang lebih sedikit membuat render lebih cepat, dengan sorotan kata yang kurang halus. Sebelum merender, aplikasi memeriksa amanah teks dan kelengkapan: ekspor ditolak bila ada segmen yang waktunya
 tidak valid, rentang kata di luar ayat, atau terjemahan utama yang belum ada. Peringatan (terjemahan perlu dicek,
 keyakinan rendah) tidak menghalangi. Waktu render sekitar 1,5 kali durasi video pada 1080p di satu mesin uji; hasilnya
 bergantung mesinmu.
+
+**Cara render.** *Otomatis* merender sekali jalan untuk video pendek dan **per potongan** (sekitar 10 menit) untuk video lebih dari 15 menit; *Langsung* dan
+*Per potongan* memaksa salah satunya. Potongan dirender berurutan tanpa suara, suaranya dirender sekali, lalu semuanya digabung tanpa encode ulang,
+jadi tidak ada penurunan mutu atau klik di sambungan. Total waktu hampir sama dengan render langsung. Keuntungannya: kalau ekspor terputus
+(aplikasi ditutup, gagal, dibatalkan), potongan yang sudah jadi disimpan dan dialog Ekspor menawarkan melanjutkan dari sana; centang
+*mulai dari awal* untuk membuangnya. Potongan hanya dipakai lagi bila proyek dan pengaturannya sama persis. Butuh ruang disk sementara kira-kira
+seukuran videonya sampai penggabungan selesai.
+
+**Perkiraan waktu** ditampilkan di dialog. Awalnya perkiraan kasar dari pengukuran di satu komputer uji; setelah tiap ekspor, angkanya menyesuaikan
+dengan kecepatan komputermu. Latar **Gerak** kira-kira 1,7 kali lebih lama dirender daripada latar polos.
+
+**Setelah selesai:** *Tidak ada*, *Tidur* (Mac tidur), atau *Tutup aplikasi*. Dijalankan hanya bila ekspor berhasil dan tidak ada proses lain yang masih
+berjalan, setelah hitung mundur 1 menit yang bisa dibatalkan. Selama ekspor berjalan, Mac tidak tidur sendiri.
 
 ## 7. Thumbnail dan Publikasi
 
@@ -132,6 +145,12 @@ pakai rekaman sebelum mengunggah.
 - **Umum:** bahasa aplikasi (Bahasa Indonesia atau English), tema, dan jenis teks Arab bawaan. Bahasa juga menentukan pesan dari aplikasi dan
   teks yang digambar ke dalam video (misalnya tombol Subscribe dan draf Publikasi); terjemahan ayat dipilih terpisah di langkah Teks.
 - **Layanan AI** dan **Pembuat gambar:** lihat langkah Teks dan Editor.
+- **Penyimpanan:** ukuran dan tombol **Bersihkan** untuk *berkas sementara* (sisa render dan unduhan), *potongan render* yang belum selesai,
+  *data visualizer* (dibuat ulang otomatis), dan *font Uthmani/QPC* (perlu internet untuk mengunduh lagi). Sisa render yang lebih dari sehari dan
+  potongan yang lebih dari seminggu dibersihkan otomatis saat aplikasi dibuka. Di bawahnya, **berkas proyek yang tidak terpakai** (misalnya rekaman
+  sebelum dipotong) bisa dihapus per proyek; berkas yang masih dipakai (sumber audio, latar, overlay, thumbnail) hanya bisa dihapus satu per satu setelah
+  peringatan, dan rujukannya di proyek dibersihkan. Berkas yang dihapus tidak bisa dikembalikan, termasuk lewat Urungkan. Rekaman dan hasil ekspormu
+  tidak pernah dihapus tanpa kamu memilihnya.
 - **Dukungan:** tautan donasi (PayPal dan Saweria). Donasi sukarela dan tidak membuka fitur apa pun.
 
 ## 9. Konten dan lisensi

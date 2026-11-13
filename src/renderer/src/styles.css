@@ -587,3 +587,17 @@ button.word-chip { font: inherit; }
 .pos-grid__cell.is-selected { border-color: var(--accent); background: var(--accent-subtle); }
 .pos-grid__cell.is-selected > i { background: var(--accent); }
 .pos-grid__cell:focus-visible { outline: var(--focus-ring-w) solid var(--focus); outline-offset: var(--focus-ring-offset); }
+
+/* Settings > Storage */
+.st-rows { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-2); }
+.st-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: var(--sp-3); padding: var(--sp-2) var(--sp-3); border: 1px solid var(--border); border-radius: var(--r-ctl); background: var(--bg-sunken); }
+.st-row__text { display: grid; gap: 2px; min-width: 0; }
+.st-row__title { font-size: var(--fs-13); font-weight: 600; color: var(--text); overflow-wrap: anywhere; }
+.st-row__size { font-size: var(--fs-13); color: var(--text-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.st-path { overflow-wrap: anywhere; }
+.st-meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
+.st-sub { display: grid; gap: 2px; margin-top: var(--sp-2); }
+.st-sub__title { margin: 0; font-size: var(--fs-13); font-weight: 600; color: var(--text); }
+.st-proj { display: grid; gap: var(--sp-2); }
+.st-proj__head { display: flex; justify-content: space-between; gap: var(--sp-3); align-items: baseline; }
+.st-note { padding: var(--sp-2) var(--sp-3); border: 1px solid var(--border); border-radius: var(--r-ctl); background: var(--bg-sunken); }

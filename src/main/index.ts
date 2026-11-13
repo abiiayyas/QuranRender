@@ -5,6 +5,7 @@ import { closeDb, getDb } from './db'
 import { registerIpc } from './ipc'
 import { handleStudioProtocol, registerSchemes } from './protocol'
 import { failInterruptedJobs } from './repo'
+import { autoClean } from './storage'
 import { applyLanguage, getSettings } from './settings'
 
 if (!app.isPackaged && process.env.QR_USER_DATA) app.setPath('userData', process.env.QR_USER_DATA)
@@ -52,6 +53,8 @@ if (!app.requestSingleInstanceLock()) {
   void app.whenReady().then(() => {
     getDb()
     failInterruptedJobs()
+    // Leftovers need no attention; never let cleaning get in the way of starting.
+    void autoClean().catch((e) => console.warn('Storage auto-clean failed:', e))
     nativeTheme.themeSource = getSettings().theme
     applyLanguage()
     handleStudioProtocol()

@@ -83,5 +83,16 @@ export const main: Dict = {
   'Video YouTube tidak bisa diunduh.': 'Could not download the YouTube video.',
   'Mengunduh audio dari YouTube…': 'Downloading audio from YouTube…',
   'Audio YouTube sudah masuk ke proyek.': 'YouTube audio added to the project.',
-  'tidak terbaca': 'unreadable'
+  'tidak terbaca': 'unreadable',
+  // Chunked render and after-export
+  'Potongan {i} dari {n}, bingkai {frames} dari {total}': 'Piece {i} of {n}, frame {frames} of {total}',
+  'Menyiapkan suara…': 'Preparing the sound…',
+  'Menggabungkan potongan…': 'Joining the pieces…',
+  'Video hasil gabungan tidak sepanjang yang seharusnya. Silakan ulangi ekspor.': 'The joined video is not as long as it should be. Please export again.',
+  'Ekspor selesai': 'Export finished',
+  'Video sudah selesai. Mac akan tidur dalam 1 menit.': 'The video is done. Your Mac will sleep in 1 minute.',
+  'Video sudah selesai. Aplikasi akan ditutup dalam 1 menit.': 'The video is done. The app will close in 1 minute.',
+  'Klik Batalkan bila kamu masih ingin memakainya.': 'Click Cancel if you still want to use it.',
+  Batalkan: 'Cancel',
+  'Lakukan sekarang': 'Do it now',
 }
