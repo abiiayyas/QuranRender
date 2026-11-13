@@ -1,9 +1,10 @@
 import { spawn } from 'node:child_process'
-import { existsSync, readdirSync, statSync } from 'node:fs'
+import { existsSync, readdirSync, rmSync, statSync } from 'node:fs'
 import { createServer, type AddressInfo } from 'node:net'
 import { join } from 'node:path'
 import type * as Renderer from '@remotion/renderer'
 import { app } from 'electron'
+import { THUMBNAIL_COMPOSITION_ID, THUMBNAIL_MAX_BYTES, type ThumbnailProps } from '@shared/thumbnail'
 import { COMPOSITION_ID, type VideoProps } from '@shared/video'
 
 /**
@@ -149,6 +150,28 @@ export async function renderVideo(o: {
       logLevel: 'error',
       onProgress: ({ progress, renderedFrames }) => o.onProgress(progress, renderedFrames, composition.durationInFrames)
     })
+  } finally {
+    o.signal.removeEventListener('abort', cancel)
+  }
+}
+
+/** One JPG of the thumbnail composition. Quality steps down until the file fits what Shorts, Reels and TikTok accept. */
+export async function renderThumbnail(o: { props: ThumbnailProps; outPath: string; signal: AbortSignal }): Promise<void> {
+  const { serveUrl, browserExecutable, binariesDirectory } = await renderAssets()
+  const { makeCancelSignal, renderStill, selectComposition } = await loadRenderer()
+  const inputProps = o.props as unknown as Record<string, unknown>
+  const selected = await selectComposition({ serveUrl, id: THUMBNAIL_COMPOSITION_ID, inputProps, port: await freePort(), browserExecutable, binariesDirectory, logLevel: 'error' })
+  const composition = { ...selected, width: o.props.width, height: o.props.height, durationInFrames: 1 }
+  const { cancel, cancelSignal } = makeCancelSignal()
+  o.signal.addEventListener('abort', cancel, { once: true })
+  try {
+    for (const jpegQuality of [92, 82, 72, 60]) {
+      if (o.signal.aborted) throw new Error('canceled')
+      await renderStill({ port: await freePort(), composition, serveUrl, output: o.outPath, inputProps, imageFormat: 'jpeg', jpegQuality, browserExecutable, binariesDirectory, cancelSignal, logLevel: 'error' })
+      if (statSync(o.outPath).size <= THUMBNAIL_MAX_BYTES) return
+    }
+    rmSync(o.outPath, { force: true })
+    throw new Error('Thumbnail masih lebih dari 2 MB pada mutu terendah. Pakai gambar latar yang lebih sederhana.')
   } finally {
     o.signal.removeEventListener('abort', cancel)
   }

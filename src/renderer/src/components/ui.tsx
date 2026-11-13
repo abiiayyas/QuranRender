@@ -148,7 +148,7 @@ export function Sheet({
   onClose: () => void;
   children: React.ReactNode;
   footer: React.ReactNode;
-  size?: "sm" | "md";
+  size?: "sm" | "md" | "lg";
 }): React.ReactElement {
   const titleId = useId();
   const ref = useRef<HTMLDivElement>(null);

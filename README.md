@@ -19,6 +19,8 @@ dan proyek tersimpan otomatis.
 | 3 Teks | Pasang terjemahan (Kemenag bawaan, edisi lain dari Quran.com), isi otomatis, AI trim untuk ayat yang terpotong |
 | 4 Editor | Preset gaya, latar, overlay, timeline, pratinjau langsung dengan sorotan per kata |
 | Ekspor | MP4 720p/1080p/4K pada 30/60 fps, SRT/VTT, chapter YouTube; diperiksa dulu oleh aturan amanah teks |
+| Thumbnail | Cover JPG di bawah 2 MB dari gambar atau bingkai video proyek, teks digambar aplikasi |
+| Publikasi | Judul, deskripsi, hashtag, dan bab per platform (Shorts, TikTok, Reels, YouTube), draf awal dari data proyek, AI opsional |
 
 ## Menjalankan dari kode sumber
 

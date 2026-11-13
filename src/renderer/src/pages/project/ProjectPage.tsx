@@ -6,9 +6,11 @@ import { toast, useApp } from '../../store/app'
 import { useProject } from '../../store/project'
 import { EditorStep } from './EditorStep'
 import { ExportDialog } from './ExportDialog'
+import { PublishDialog } from './PublishDialog'
 import { SourceStep } from './SourceStep'
 import { SyncStep } from './SyncStep'
 import { TextStep } from './TextStep'
+import { ThumbnailDialog } from './ThumbnailDialog'
 
 const STEPS: { n: Step; label: string; status: Project['status'] }[] = [
   { n: 1, label: 'Sumber', status: 'draft' },
@@ -32,6 +34,7 @@ export function ProjectPage({ id }: { id: string }) {
   const saveState = useProject((s) => s.saveState)
   const saveError = useProject((s) => s.saveError)
   const [exportOpen, setExportOpen] = useState(false)
+  const [dialog, setDialog] = useState<'thumbnail' | 'publish' | null>(null)
 
   useEffect(() => {
     void window.api.projects.get(id).then(
@@ -122,6 +125,14 @@ export function ProjectPage({ id }: { id: string }) {
           })}
         </ol>
         <div className="r">
+          <button type="button" className="qr-btn qr-btn--ghost" onClick={() => setDialog('thumbnail')}>
+            <Icon name="image" />
+            Thumbnail
+          </button>
+          <button type="button" className="qr-btn qr-btn--ghost" onClick={() => setDialog('publish')}>
+            <Icon name="clipboard-check" />
+            Publikasi
+          </button>
           <button
             type="button"
             className="qr-btn qr-btn--ghost qr-btn--icon"
@@ -143,6 +154,8 @@ export function ProjectPage({ id }: { id: string }) {
         {project.step === 4 && <EditorStep />}
       </div>
       {exportOpen && <ExportDialog onClose={() => setExportOpen(false)} />}
+      {dialog === 'thumbnail' && <ThumbnailDialog onClose={() => setDialog(null)} />}
+      {dialog === 'publish' && <PublishDialog onClose={() => setDialog(null)} />}
     </div>
   )
 }

@@ -68,13 +68,31 @@ tidak valid, rentang kata di luar ayat, atau terjemahan utama yang belum ada. Pe
 keyakinan rendah) tidak menghalangi. Waktu render sekitar 1,5 kali durasi video pada 1080p di satu mesin uji; hasilnya
 bergantung mesinmu.
 
-## 7. Konten dan lisensi
+## 7. Thumbnail dan Publikasi
+
+Keduanya dibuka dari tombol di header proyek.
+
+**Thumbnail** membuat cover JPG (di bawah 2 MB) untuk Shorts, Reels, dan TikTok. Gambar latarnya diambil dari proyekmu: gambar
+yang sudah diimpor, **bingkai dari video** (video latar atau video sumber, pilih posisinya dengan penggeser), atau warna polos.
+Tulisan digambar oleh aplikasi, jadi hurufnya selalu benar. Atur teks utama (kata terakhir diberi warna), teks kecil, posisi,
+warna aksen, dan seberapa gelap lapisan di belakang teks. Pada format 9:16, garis putus-putus menandai bagian yang tampil di
+grid profil Instagram; garis itu tidak ikut tersimpan. **Simpan thumbnail** menyimpan ke folder ekspor, **Simpan salinan…**
+ke lokasi pilihanmu.
+
+**Publikasi** menyiapkan teks unggahan untuk YouTube Shorts, TikTok, Reels, dan YouTube: judul, isi deskripsi, hashtag, dan
+(YouTube) bab dari segmenmu. Draf awal ditulis dari data proyek (surah, ayat, qari, nama terjemahan, sumber audio), jadi
+atribusi selalu ada dan tidak butuh internet. Hitungan karakter mengikuti batas tiap platform. **Tulis dengan AI** merapikan
+kalimatnya (butuh kunci API di Pengaturan); AI tidak menulis atau mengutip teks Arab, dan balasan yang berisi huruf Arab
+ditolak. Setiap kolom punya tombol Salin, dan **Simpan semua (.txt)** menulis semua platform dalam satu berkas. Periksa hak
+pakai rekaman sebelum mengunggah.
+
+## 8. Konten dan lisensi
 
 - Teks dan terjemahan Kemenag: Lajnah Pentashihan Mushaf Al-Qur'an, Kementerian Agama RI.
 - Teks Uthmani, QPC, dan terjemahan lain: Quran.com. Font KFGQPC tidak dibundel; diunduh dari CDN Quran.com.
 - Tilawah: MP3Quran dan Quran.com. Periksa hak pakai rekaman sebelum mengunggah.
 - Kode: GPL-3.0. Remotion gratis untuk individu dan organisasi sampai 3 karyawan.
 
-## 8. Bantuan
+## 9. Bantuan
 
 Laporkan masalah lewat issue di repositori. Sertakan langkah, pesan galat, dan langkah mana yang bermasalah.

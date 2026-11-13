@@ -1,3 +1,4 @@
+import type { PlatformId, PublishFacts, PublishKit } from './publish'
 import type {
   Asset,
   Edition,
@@ -81,8 +82,21 @@ export interface StudioApi {
   jobs: {
     cancel(id: string): Promise<void>
   }
+  publish: {
+    /** The facts upload copy is written from (surah, reciter, translation and audio credits). */
+    facts(projectId: string): Promise<PublishFacts>
+    /** Cuts one frame of a video asset of the project (background or source) into a new image asset. */
+    frame(projectId: string, assetId: string, ms: number): Promise<Asset>
+    /** Draws the project's thumbnail to a JPG under 2 MB. `saveAs` opens a save dialog first (null when canceled); otherwise it goes to the export folder. The path is the finished job's message. */
+    thumbnail(projectId: string, saveAs: boolean): Promise<Job | null>
+    /** AI-written drafts for the platforms, from the project's facts only; platforms the AI gets wrong keep the plain draft. */
+    generate(projectId: string, platforms: PlatformId[]): Promise<PublishKit>
+    /** Save dialog, then writes `text`; null when canceled. */
+    saveText(defaultName: string, text: string): Promise<string | null>
+  }
   app: {
     openExternal(url: string): Promise<void>
+    copyText(text: string): Promise<void>
     version(): Promise<string>
   }
   files: {
@@ -108,6 +122,7 @@ export const CHANNELS: { [G in Group]: (keyof StudioApi[G])[] } = {
   text: ['editions', 'install', 'remove', 'verses', 'aiTrim'],
   exporter: ['check', 'start', 'defaultFolder', 'pickFolder', 'reveal'],
   settings: ['get', 'set', 'aiKey', 'setAiKey', 'clearAiKey', 'testAi'],
+  publish: ['facts', 'frame', 'thumbnail', 'generate', 'saveText'],
   jobs: ['cancel'],
-  app: ['openExternal', 'version']
+  app: ['openExternal', 'copyText', 'version']
 }

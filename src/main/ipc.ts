@@ -3,6 +3,7 @@ import type { StudioApi } from '@shared/api'
 import { registerExportIpc } from './exporter'
 import { cancelJob } from './jobs'
 import { chat } from './ai'
+import { registerPublishIpc } from './publish'
 import { registerQuranIpc } from './quran'
 import { bundle, createProject, duplicateProject, listProjects, removeProject, saveProject } from './repo'
 import { aiKeyStatus, clearAiKey, getSettings, setAiKey, setSettings } from './settings'
@@ -60,4 +61,5 @@ export function registerIpc(): void {
   registerSyncIpc()
   registerTextIpc()
   registerExportIpc()
+  registerPublishIpc()
 }

@@ -1,4 +1,6 @@
+import type { PublishKit } from './publish'
 import type { StyleSettings } from './style'
+import type { ThumbnailSpec } from './thumbnail'
 
 export type Aspect = '16:9' | '9:16' | '1:1'
 export type Step = 1 | 2 | 3 | 4
@@ -113,6 +115,10 @@ export interface Project {
   style: StyleSettings
   background: Background
   overlays: Overlay[]
+  /** Cover image for Shorts, Reels and TikTok; absent until the Thumbnail dialog is first edited. */
+  thumbnail?: ThumbnailSpec
+  /** Upload copy the user edited, per platform; platforms without an entry show a fresh draft. */
+  publish?: PublishKit
   createdAt: number
   updatedAt: number
 }
@@ -138,7 +144,7 @@ export interface ProjectSummary {
 }
 
 export type AssetKind = 'audio' | 'video' | 'image'
-export type AssetSource = 'local' | 'mp3quran' | 'qdc' | 'youtube' | 'trim'
+export type AssetSource = 'local' | 'mp3quran' | 'qdc' | 'youtube' | 'trim' | 'frame'
 
 /** Owned by the main process: the renderer never writes asset rows. */
 export interface Asset {
@@ -159,7 +165,7 @@ export interface Asset {
   url: string
 }
 
-export type JobKind = 'download' | 'youtube' | 'trim' | 'align' | 'translate' | 'aitrim' | 'export' | 'ytdlp'
+export type JobKind = 'download' | 'youtube' | 'trim' | 'align' | 'translate' | 'aitrim' | 'export' | 'ytdlp' | 'thumbnail'
 export type JobStatus = 'queued' | 'running' | 'done' | 'failed' | 'canceled'
 
 export interface Job {

@@ -66,14 +66,14 @@ async function check(project: Project): Promise<PolicyIssue[]> {
 }
 
 /** File-name-safe title (macOS and the exFAT drives videos often go to). */
-const safeName = (title: string): string => title.replace(/[\\/:*?"<>|\u0000-\u001f]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80) || 'Video Quran'
+export const safeName = (title: string): string => title.replace(/[\\/:*?"<>|\u0000-\u001f]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80) || 'Video Quran'
 
 function stamp(d = new Date()): string {
   const p = (n: number): string => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}.${p(d.getMinutes())}.${p(d.getSeconds())}`
 }
 
-function ensureFolder(folder: string): string {
+export function ensureFolder(folder: string): string {
   try {
     mkdirSync(folder, { recursive: true })
   } catch {

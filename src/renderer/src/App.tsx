@@ -15,7 +15,8 @@ const KIND_LABEL: Record<string, string> = {
   translate: 'Pasang terjemahan',
   aitrim: 'AI trim',
   export: 'Ekspor',
-  ytdlp: 'Unduh yt-dlp'
+  ytdlp: 'Unduh yt-dlp',
+  thumbnail: 'Thumbnail'
 }
 
 export function App() {
@@ -28,9 +29,9 @@ export function App() {
         p().upsertJob(job)
         const { toast } = useApp.getState()
         if (job.status === 'failed' && job.error) toast('error', `${KIND_LABEL[job.kind] ?? 'Proses'} gagal: ${errorText(job.error)}`)
-        if (job.status === 'done' && job.kind === 'export' && job.message) {
+        if (job.status === 'done' && (job.kind === 'export' || job.kind === 'thumbnail') && job.message) {
           const path = job.message
-          toast('success', 'Video selesai diekspor.', { label: 'Buka folder', run: () => void window.api.exporter.reveal(path) })
+          toast('success', job.kind === 'export' ? 'Video selesai diekspor.' : 'Thumbnail tersimpan.', { label: 'Buka folder', run: () => void window.api.exporter.reveal(path) })
         }
       }),
       window.api.on.project((e) => {

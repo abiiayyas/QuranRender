@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.0
+
+- Thumbnail: dialog baru dari header proyek untuk membuat cover Shorts, Reels, dan TikTok. Gambar latar dari gambar proyek, bingkai
+  video (video latar atau sumber), atau warna polos; teks utama dengan kata terakhir berwarna, teks kecil, posisi, warna aksen,
+  dan lapisan gelap. Disimpan sebagai JPG di bawah 2 MB, digambar oleh komposisi Remotion yang sama dengan pratinjau. Garis
+  bantu grid profil Instagram pada format 9:16.
+- Publikasi: dialog baru untuk judul, deskripsi, hashtag, dan bab YouTube per platform (Shorts, TikTok, Reels, YouTube), dengan
+  hitungan karakter, tombol salin, dan simpan semua ke .txt. Draf awal ditulis dari data proyek (tanpa AI); AI opsional merapikan
+  kalimat dan tidak pernah menulis teks Arab (balasan berisi Arab ditolak).
+- Beranda: kartu "Lanjutkan" tidak lagi tertutup miniatur yang melebar.
+
 ## 0.3.0
 
 - Beranda baru: formulir "Buat video tilawah" yang lebih jelas, kartu "Lanjutkan" untuk proyek terakhir, panduan cara kerja lima langkah,
