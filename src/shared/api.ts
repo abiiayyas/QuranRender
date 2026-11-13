@@ -51,6 +51,8 @@ export interface StudioApi {
     trim(projectId: string, inMs: number, outMs: number): Promise<Job>
     /** Peaks 0..1 for drawing, `count` buckets over the whole asset. */
     waveform(projectId: string, assetId: string, count: number): Promise<number[]>
+    /** Makes (once) the loudness-per-frame table of the source for the visualizer overlay; returns its path inside the project folder. */
+    spectrum(projectId: string, assetId: string): Promise<string>
     /** Image or video for the background/overlay. No path: dialog. */
     importMedia(projectId: string, kind: 'image' | 'video' | 'any', path?: string): Promise<Asset | null>
   }
@@ -136,7 +138,7 @@ type Group = Exclude<keyof StudioApi, 'files' | 'on'>
 export const CHANNELS: { [G in Group]: (keyof StudioApi[G])[] } = {
   projects: ['list', 'create', 'get', 'save', 'remove', 'duplicate'],
   quran: ['surahs', 'verses'],
-  sources: ['importFile', 'reciters', 'download', 'youtube', 'trim', 'waveform', 'importMedia'],
+  sources: ['importFile', 'reciters', 'download', 'youtube', 'trim', 'waveform', 'spectrum', 'importMedia'],
   sync: ['align'],
   text: ['editions', 'install', 'remove', 'verses', 'aiTrim'],
   exporter: ['check', 'start', 'defaultFolder', 'pickFolder', 'reveal'],

@@ -44,6 +44,8 @@ export function overlayLabel(o: Pick<Overlay, 'kind' | 'text'>): string {
       return 'Kemajuan'
     case 'cta':
       return o.text.trim() || CTA_DEFAULT_TEXT
+    case 'visualizer':
+      return 'Gelombang suara'
     case 'image':
       return 'Gambar'
     default:

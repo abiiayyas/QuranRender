@@ -328,7 +328,7 @@ export function Settings() {
               {s.imageProvider === 'pollinations' && (
                 <span className="qr-help">
                   Pollinations adalah layanan publik gratis tanpa akun, dengan syarat penggunaan sendiri (pollinations.ai/terms). Deskripsi gambar dikirim ke layanan itu. Mutu dan ketersediaannya bisa
-                  berubah: satu gambar per 45 detik, ukuran paling besar sekitar 768 piksel, dan layanan ini membubuhkan logo kecil di pojok kanan bawah gambar (tidak dihapus oleh aplikasi). Untuk gambar yang lebih tajam dan tanpa logo, pilih penyedia lain.
+                  berubah: satu gambar per 45 detik, ukuran paling besar sekitar 768 piksel, dan layanan ini membubuhkan logo kecil di pojok kanan bawah gambar; aplikasi memangkas tepi gambar (sekitar 7%) untuk membuangnya. Untuk gambar yang lebih tajam dan tanpa logo, pilih penyedia lain.
                 </span>
               )}
 

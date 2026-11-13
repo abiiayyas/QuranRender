@@ -77,6 +77,6 @@ Beranda → 1 Sumber → 2 Sinkron → 3 Teks → 4 Editor → Ekspor. `Project.
 | HF Space `hetchyy-quranic-universal-aligner` | Sinkron AI: deteksi ayat, waktu per kata, basmalah, isti'adzah |
 | API kompatibel OpenAI (pilihan pengguna) | AI trim terjemahan, teks Publikasi (`/chat/completions`); gambar latar AI (`/images/generations`) |
 | AI CLI di komputer (`claude`, `codex`, `agy`, `opencode`, atau perintah sendiri) | Alternatif tanpa kunci untuk AI trim dan teks Publikasi (`src/main/cli.ts`: prompt lewat stdin, tanpa bendera `--dangerously-*`, PATH dari login shell); Antigravity dan Codex juga membuat gambar latar |
-| Pollinations (`image.pollinations.ai`) | Gambar latar AI gratis tanpa akun (bawaan): satu gambar per 45 detik per IP, maksimum 768 x 768; layanan membubuhkan logo kecil di pojok kanan bawah dan aplikasi tidak menghapusnya |
+| Pollinations (`image.pollinations.ai`) | Gambar latar AI gratis tanpa akun (bawaan): satu gambar per 45 detik per IP, maksimum 768 x 768; layanan membubuhkan logo kecil di pojok kanan bawah; atas persetujuan pemilik produk aplikasi memangkas 7% tepi kanan dan bawah (`src/main/imagegen.ts`) |
 | Pexels, Unsplash, Pixabay | Foto dan video latar stok (kunci gratis milik pengguna, `safeStorage`; unduhan hanya dari host penyedia; kredit tersimpan di `meta.credit` aset dan masuk teks Publikasi) |
 | GitHub release yt-dlp | Mengunduh yt-dlp saat fitur YouTube dipakai |

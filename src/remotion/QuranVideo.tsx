@@ -9,6 +9,7 @@ import { SAFE_AREA, assetSrc, q, rgba, textShadow } from './common'
 import { FAMILY, fontSpecs, useFonts } from './fonts'
 import { MotionBackground } from './motion'
 import { SegmentText } from './SegmentText'
+import { VisualizerOverlay } from './Visualizer'
 import { activeSegment } from './timing'
 
 export function QuranVideo(props: VideoProps) {
@@ -194,6 +195,7 @@ function OverlayItem({ o, t, props }: { o: Overlay; t: number; props: VideoProps
   if (o.kind === 'qari') return <QariOverlay o={o} t={t} end={end} pos={pos} props={props} />
   if (o.kind === 'progress') return <ProgressOverlay o={o} t={t} end={end} props={props} />
   if (o.kind === 'cta') return <CtaOverlay o={o} t={t} end={end} pos={pos} props={props} />
+  if (o.kind === 'visualizer') return <VisualizerOverlay o={o} t={t} props={props} />
   if (!o.text.trim()) return null
   return (
     <div

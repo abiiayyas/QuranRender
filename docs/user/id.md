@@ -6,7 +6,10 @@ dengan suara qari. Panduan untuk menjalankan dari kode sumber ada di [`07_BUILD_
 ## 1. Memulai
 
 Di **Beranda**, pilih surah dan rentang ayat (boleh dikosongkan), nama qari, format video (9:16, 16:9, atau 1:1), dan jenis
-teks Arab, lalu klik **Mulai**. Proyek tersimpan otomatis; semua langkah bisa dibuka kapan saja lewat deretan langkah di atas.
+teks Arab, lalu klik **Mulai**. Nama proyek boleh diisi, atau dikosongkan untuk memakai nama surah. Proyek tersimpan otomatis; semua langkah bisa dibuka kapan saja lewat deretan langkah di atas.
+
+Ingin memulai paling cepat? Klik kartu **Proyek kosong** di daftar proyek: cukup isi nama dan surah, lalu rekaman, terjemahan, dan
+tampilan disiapkan di langkah-langkah berikutnya.
 
 | Teks Arab | Isi |
 |---|---|
@@ -74,7 +77,8 @@ Pratinjau memakai mesin yang sama dengan ekspor, jadi hasilnya sama dengan video
   (kembali ke awal), **Bolak-balik** (maju lalu mundur tanpa loncatan), atau **Pudar** (memudar halus di sambungan).
   Tombol **Cari foto stok atau buat dengan AI** membuka pemilih latar (lihat di bawah).
 - **Overlay:** teks atau gambar (logo, nama channel), **Nama qari** (lower third animasi dengan nama surah), **Kemajuan**
-  (bilah tipis yang terisi selama tilawah), dan **Ajakan** (kalimat pendek seperti "Jangan lupa bagikan dan doakan"), dengan
+  (bilah tipis yang terisi selama tilawah), **Ajakan** (kalimat pendek seperti "Jangan lupa bagikan dan doakan"), dan **Gelombang suara** (batang atau gelombang yang
+  bergerak mengikuti suara tilawah; perlu rekaman sumber), dengan
   posisi dan waktu tampil. Geser overlay di linimasa untuk memindahkannya, geser tepinya untuk mengubah panjangnya.
   Linimasa bisa diperbesar (sampai 64×) dan di-scroll untuk rekaman panjang.
 - **Format:** ganti 9:16, 16:9, 1:1, dan tampilkan garis area aman. Garisnya tidak ikut diekspor.
@@ -92,7 +96,7 @@ Urungkan dan Ulangi tersedia di atas pratinjau (Cmd+Z, Cmd+Shift+Z).
   pinus berkabut, laut tenang, pola ubin geometris, dan lainnya) dan boleh menambah deskripsi singkat. Gambar selalu dibuat
   tanpa orang, hewan, tulisan, dan logo (kata makhluk bernyawa di deskripsi ditolak). Penyedia diatur di **Pengaturan >
   Pembuat gambar**: **Pollinations** (gratis tanpa kunci, satu gambar per 45 detik, ukuran sedang, dan layanan itu membubuhkan
-  logo kecil di pojok kanan bawah), **API kompatibel OpenAI** (memakai alamat dan kunci di atas ditambah nama model gambar),
+  logo kecil di pojok kanan bawah yang dibuang aplikasi dengan memangkas sekitar 7% tepi gambar), **API kompatibel OpenAI** (memakai alamat dan kunci di atas ditambah nama model gambar),
   atau **AI CLI**.
 
 ## 6. Ekspor

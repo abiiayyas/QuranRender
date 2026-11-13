@@ -79,7 +79,8 @@ dalam ≤ 10 menit sejak instalasi, tanpa dependensi tambahan.
 - **Kepekaan konten (mengikat):**
   - Tanpa gambar makhluk bernyawa di ilustrasi, ikon, dan template bawaan: hanya geometri, alam, dan
     arsitektur.
-  - Tanpa ikonografi musik. Waveform tetap boleh sebagai alat edit.
+  - Tanpa ikonografi musik. Waveform boleh sebagai alat edit, dan sebagai overlay visualizer di video atas persetujuan pemilik
+    produk (0.6.0); ia hanya menggambar batang atau gelombang abstrak, bukan ikon.
   - Teks Arab, termasuk ayat, tidak pernah dipakai sebagai ornamen, tekstur, pola, atau hiasan logo.
 
 ## Evidence on Hand

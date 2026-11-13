@@ -86,8 +86,10 @@ export interface Background {
 
 export interface Overlay {
   id: string
-  /** qari: reciter name and surah as an animated lower third; progress: a thin bar over the recitation; cta: a short call to action in `text`. */
-  kind: 'text' | 'image' | 'qari' | 'progress' | 'cta'
+  /** qari: reciter name and surah as an animated lower third; progress: a thin bar over the recitation; cta: a short call to action in `text`; visualizer: audio-reactive bars or wave drawn from the source audio (`variant`). */
+  kind: 'text' | 'image' | 'qari' | 'progress' | 'cta' | 'visualizer'
+  /** visualizer only: 'bars' (default) or 'wave'. */
+  variant?: 'bars' | 'wave'
   text: string
   assetId: string | null
   /** Center position as a fraction of the canvas (0..1). */

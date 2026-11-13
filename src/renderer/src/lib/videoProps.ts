@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { Asset, Project } from '@shared/types'
 import { canvasSize, type VideoProps } from '@shared/video'
 import { useSurahs, useVerses } from './quran'
@@ -27,6 +27,26 @@ export function useVideoProps(project: Project, assets: Record<string, Asset>, f
   const durationMs = Math.max(source?.durationMs ?? lastEnd, 1000)
   const { width, height } = canvasSize(project.aspect, 1080)
 
+  // The visualizer draws from a loudness table main makes once per source; fetched only when an overlay needs it.
+  const wantsSpectrum = project.overlays.some((o) => o.kind === 'visualizer') && !!project.sourceAssetId
+  const [spectrumPath, setSpectrumPath] = useState<{ source: string; path: string } | null>(null)
+  useEffect(() => {
+    const sourceId = project.sourceAssetId
+    if (!wantsSpectrum || !sourceId) return
+    let live = true
+    void window.api.sources.spectrum(project.id, sourceId).then(
+      (path) => live && setSpectrumPath({ source: sourceId, path }),
+      () => undefined
+    )
+    return () => {
+      live = false
+    }
+  }, [wantsSpectrum, project.id, project.sourceAssetId])
+  const spectrumUrl =
+    wantsSpectrum && spectrumPath?.source === project.sourceAssetId
+      ? `studio://asset/${encodeURIComponent(project.id)}/${spectrumPath.path.split('/').map(encodeURIComponent).join('/')}`
+      : null
+
   return useMemo(
     () => ({
       project,
@@ -37,8 +57,9 @@ export function useVideoProps(project: Project, assets: Record<string, Asset>, f
       height,
       fps,
       durationMs,
+      spectrumUrl,
       baseUrl: { asset: 'studio://asset/', font: 'studio://fonts/' }
     }),
-    [project, used, verses, surah, width, height, fps, durationMs]
+    [project, used, verses, surah, width, height, fps, durationMs, spectrumUrl]
   )
 }

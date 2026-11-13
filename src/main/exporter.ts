@@ -10,6 +10,7 @@ import { startJob } from './jobs'
 import { assetAbsPath } from './paths'
 import { getVerses, surahList } from './quran'
 import { renderVideo } from './render'
+import { ensureSpectrum } from './spectrum'
 import { startFileServer } from './renderServer'
 import { getAssetOrNull, getProject, patchProject } from './repo'
 import { getSettings, setSettings } from './settings'
@@ -45,6 +46,9 @@ export async function buildVideoProps(project: Project, height: number, fps: num
   const source = project.sourceAssetId ? assets[project.sourceAssetId] : undefined
   if (!source) throw new Error('Proyek belum memiliki sumber audio.')
   const lastEnd = Math.max(0, ...project.segments.map((s) => s.endMs))
+  const spectrumUrl = project.overlays.some((o) => o.kind === 'visualizer')
+    ? `${baseUrl.asset}${encodeURIComponent(project.id)}/${(await ensureSpectrum(project.id, source.id)).split('/').map(encodeURIComponent).join('/')}`
+    : null
   return {
     project,
     assets,
@@ -53,6 +57,7 @@ export async function buildVideoProps(project: Project, height: number, fps: num
     ...canvasSize(project.aspect, height),
     fps,
     durationMs: source.durationMs ?? lastEnd,
+    spectrumUrl,
     baseUrl
   }
 }

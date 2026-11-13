@@ -18,6 +18,8 @@ export interface VideoProps {
   height: number
   fps: number
   durationMs: number
+  /** Full URL of the source's loudness table (see src/shared/spectrum.ts); set only when the project has a visualizer overlay. */
+  spectrumUrl?: string | null
   baseUrl: {
     /** Prefix for `${projectId}/${asset.path}`. */
     asset: string

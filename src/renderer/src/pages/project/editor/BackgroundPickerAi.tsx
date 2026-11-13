@@ -40,7 +40,7 @@ export function AiTab({ onUse }: { onUse: (asset: Asset) => void }) {
   return (
     <div className="bp-pane">
       <p className="qr-help">
-        Gambar dibuat sesuai ukuran proyek ({project.aspect}). Penyedia gratis bawaan (Pollinations) tidak memerlukan kunci, tetapi dibatasi satu gambar per 45 detik, berukuran sedang, dan membubuhkan logo kecil di pojok kanan bawah. Untuk gambar tanpa logo, ganti penyedia di Pengaturan &gt; Pembuat gambar (API kompatibel OpenAI atau AI CLI).
+        Gambar dibuat sesuai ukuran proyek ({project.aspect}). Penyedia gratis bawaan (Pollinations) tidak memerlukan kunci, tetapi dibatasi satu gambar per 45 detik, berukuran sedang, dan membubuhkan logo kecil di pojok kanan bawah (dipangkas otomatis, sekitar 7% tepi gambar). Untuk gambar yang lebih tajam, ganti penyedia di Pengaturan &gt; Pembuat gambar (API kompatibel OpenAI atau AI CLI).
       </p>
 
       <div className="qr-fieldset">

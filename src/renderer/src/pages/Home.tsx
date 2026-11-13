@@ -3,7 +3,7 @@ import { STATUS_ORDER, type Aspect, type ArabicScript, type ProjectStatus, type 
 import logoDark from '../../../../design/brand/logo/playhead-lockup-dark.svg'
 import logoLight from '../../../../design/brand/logo/playhead-lockup-light.svg'
 import { LookThumb } from '../components/LookThumb'
-import { Icon, RangePicker, Segmented } from '../components/ui'
+import { Icon, RangePicker, Segmented, Sheet } from '../components/ui'
 import { errorText, formatDate, formatMs } from '../lib/format'
 import { rangeLabel, useSurahs } from '../lib/quran'
 import { confirmDialog, toast, useApp } from '../store/app'
@@ -114,6 +114,88 @@ function ProjectCard({ p, onOpen, onDuplicate, onRemove }: { p: ProjectSummary; 
   )
 }
 
+/** The quickest start: a name and a surah. Audio, translation and the rest come in the steps that follow. */
+function BlankProjectSheet({ aspect, script, onClose }: { aspect: Aspect; script: ArabicScript; onClose: () => void }) {
+  const go = useApp((s) => s.go)
+  const surahs = useSurahs()
+  const [name, setName] = useState('')
+  const [surah, setSurah] = useState<number | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  const create = async () => {
+    setBusy(true)
+    try {
+      const info = surahs.find((x) => x.id === surah)
+      const p = await window.api.projects.create({
+        title: name.trim() || info?.nameLatin || 'Proyek tanpa judul',
+        aspect,
+        script,
+        reciter: '',
+        surah,
+        ayahFrom: info ? 1 : null,
+        ayahTo: info?.ayahCount ?? null
+      })
+      go({ name: 'project', id: p.id })
+    } catch (e) {
+      toast('error', errorText(e))
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Sheet
+      title="Proyek kosong"
+      size="sm"
+      onClose={onClose}
+      footer={
+        <>
+          <button type="button" className="qr-btn qr-btn--secondary" onClick={onClose}>
+            Batal
+          </button>
+          <button type="button" className="qr-btn qr-btn--primary" disabled={busy} onClick={() => void create()}>
+            <Icon name="plus" />
+            Buat proyek
+          </button>
+        </>
+      }
+    >
+      <p className="qr-help">Cukup nama dan surah. Rekaman, terjemahan, dan tampilan bisa disiapkan setelahnya, langkah demi langkah.</p>
+      <div className="qr-fieldset">
+        <label className="qr-label" htmlFor="blank-name">
+          Nama proyek
+        </label>
+        <span className="qr-field">
+          <input
+            id="blank-name"
+            data-autofocus
+            value={name}
+            placeholder="Contoh: Tilawah Subuh Jumat"
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !busy) void create()
+            }}
+          />
+        </span>
+      </div>
+      <div className="qr-fieldset">
+        <label className="qr-label" htmlFor="blank-surah">
+          Surah
+        </label>
+        <span className="qr-field">
+          <select id="blank-surah" value={surah ?? ''} onChange={(e) => setSurah(e.target.value ? Number(e.target.value) : null)}>
+            <option value="">Belum dipilih</option>
+            {surahs.map((x) => (
+              <option key={x.id} value={x.id}>
+                {`${x.id}. ${x.nameLatin} (${x.nameArabic})`}
+              </option>
+            ))}
+          </select>
+        </span>
+      </div>
+    </Sheet>
+  )
+}
+
 export function Home() {
   const go = useApp((s) => s.go)
   const surahs = useSurahs()
@@ -122,6 +204,8 @@ export function Home() {
   const [reciter, setReciter] = useState('')
   const [aspect, setAspect] = useState<Aspect>('9:16')
   const [script, setScript] = useState<ArabicScript>('kemenag')
+  const [name, setName] = useState('')
+  const [blankOpen, setBlankOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [filter, setFilter] = useState<Filter>('all')
   const [sort, setSort] = useState<Sort>('recent')
@@ -136,7 +220,7 @@ export function Home() {
   const start = async () => {
     setBusy(true)
     try {
-      const title = range.surah ? rangeLabel(surahs, range.surah, range.from, range.to) : 'Proyek tanpa judul'
+      const title = name.trim() || (range.surah ? rangeLabel(surahs, range.surah, range.from, range.to) : 'Proyek tanpa judul')
       const p = await window.api.projects.create({ title, aspect, script, reciter: reciter.trim(), surah: range.surah, ayahFrom: range.from, ayahTo: range.to })
       go({ name: 'project', id: p.id })
     } catch (e) {
@@ -194,6 +278,14 @@ export function Home() {
                 <p>Pilih surah dan format, lalu tambahkan rekaman di langkah berikutnya.</p>
               </div>
               <div className="home-start__form">
+                <div className="qr-fieldset">
+                  <label className="qr-label" htmlFor="proj-name">
+                    Nama proyek (opsional)
+                  </label>
+                  <span className="qr-field">
+                    <input id="proj-name" value={name} placeholder="Kosongkan untuk memakai nama surah" onChange={(e) => setName(e.target.value)} />
+                  </span>
+                </div>
                 <RangePicker surahs={surahs} surah={range.surah} from={range.from} to={range.to} onChange={(v) => setRange(v)} />
                 <span className="qr-help">Rentang ayat boleh dikosongkan: sinkron AI bisa mengenali ayatnya dari audio.</span>
                 <div className="qr-fieldset">
@@ -288,7 +380,7 @@ export function Home() {
               <div className="qr-empty home-empty">
                 <Icon name="layout-grid" size="lg" />
                 <span className="qr-empty__title">Belum ada proyek</span>
-                <span>Pilih surah di atas lalu klik Buat proyek. Proyek tersimpan otomatis di komputermu.</span>
+                <span>Pilih surah di atas lalu klik Buat proyek, atau mulai dari Proyek kosong. Proyek tersimpan otomatis di komputermu.</span>
               </div>
             )}
             {all.length > 0 && shown.length === 0 && (
@@ -309,6 +401,13 @@ export function Home() {
               </div>
             )}
             <div className="grid">
+              {!query.trim() && filter === 'all' && (
+                <button type="button" className="pc-blank" onClick={() => setBlankOpen(true)}>
+                  <Icon name="plus" size="lg" />
+                  <b>Proyek kosong</b>
+                  <small>Hanya nama dan surah. Bahan lainnya menyusul.</small>
+                </button>
+              )}
               {shown.map((p) => (
                 <ProjectCard key={p.id} p={p} onOpen={() => go({ name: 'project', id: p.id })} onDuplicate={() => void duplicate(p)} onRemove={() => void remove(p)} />
               ))}
@@ -316,6 +415,7 @@ export function Home() {
           </section>
         </div>
       </main>
+      {blankOpen && <BlankProjectSheet aspect={aspect} script={script} onClose={() => setBlankOpen(false)} />}
     </div>
   )
 }

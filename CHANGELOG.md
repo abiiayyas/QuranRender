@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.6.0
+
+- **Gelombang suara (visualizer):** overlay baru yang bergerak mengikuti suara tilawah, bergaya Batang atau Gelombang. Tinggi,
+  warna, kejelasan, posisi, dan waktu tampil bisa diatur seperti overlay lain. Spektrum 32 pita dihitung sekali dari audio
+  sumber (sekitar 3 detik untuk 33 menit), disimpan di folder proyek, dan dipakai sama oleh pratinjau dan ekspor. Tiap pita
+  diskalakan pada rentangnya sendiri, jadi bar di sisi nada tinggi ikut bergerak. Ini mengubah catatan produk lama yang
+  membatasi waveform sebagai alat edit; ikon musik tetap tidak dipakai.
+- **Proyek kosong:** kartu baru di Beranda untuk memulai hanya dengan nama proyek dan surah; rekaman, terjemahan, dan tampilan
+  menyusul di langkah berikutnya. Formulir utama Beranda kini punya kolom **Nama proyek** (opsional).
+- Gambar AI dari Pollinations kembali dipangkas untuk membuang logo di sudut kanan bawah (dengan izin pemilik produk).
+
 ## 0.5.0
 
 - Latar: **Gerak** (cahaya lembut, geometri, partikel, berkas sinar, gelombang), dan video latar yang lebih pendek dari tilawah

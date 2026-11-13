@@ -9,8 +9,8 @@ import { cliImage, missingBin } from './cli'
 import { handle } from './ipc'
 import { startJob } from './jobs'
 import type { TaskCtx } from './jobs'
-import { probe } from './media'
-import { projectDir } from './paths'
+import { ffmpeg, probe } from './media'
+import { projectDir, tmpDir } from './paths'
 import { getProject, insertAsset } from './repo'
 import { getAiKey, getSettings, isLocalEndpoint } from './settings'
 
@@ -21,6 +21,13 @@ const RETRY_DELAY_MS = 5000
 /** Pollinations' free tier allows one image per 45 seconds per IP address. */
 const POLLINATIONS_GAP_MS = 46_000
 const POLLINATIONS_MAX_WAIT_MS = 2 * 60 * 1000
+/**
+ * The free tier stamps a small logo in the bottom-right corner (the `nologo` flag only works with a key). With the owner's
+ * go-ahead the app keeps the top-left 93% of the picture, which drops it on every aspect ratio; the picture is a background
+ * that gets cover-fitted anyway.
+ */
+const POLLINATIONS_KEEP = 0.93
+
 const ASPECTS: Aspect[] = ['9:16', '16:9', '1:1']
 
 interface Made {
@@ -183,6 +190,18 @@ async function cliMade(prompt: string, aspect: Aspect, ctx: TaskCtx): Promise<Ma
 
 // ---------- saving ----------
 
+/** Cuts the free tier's logo off (see POLLINATIONS_KEEP). */
+async function cropLogo(bytes: Uint8Array, out: string, signal: AbortSignal): Promise<void> {
+  const raw = join(tmpDir(), `${randomUUID()}.jpg`)
+  await writeFile(raw, bytes)
+  try {
+    const k = POLLINATIONS_KEEP
+    await ffmpeg(['-i', raw, '-vf', `crop=trunc(iw*${k}/2)*2:trunc(ih*${k}/2)*2:0:0`, '-frames:v', '1', '-q:v', '2', out], { signal })
+  } finally {
+    await rm(raw, { force: true })
+  }
+}
+
 function label(request: ImageRequest): string {
   const theme = IMAGE_THEMES.find((t) => t.id === request.themeId)
   const text = request.prompt.replace(/\s+/g, ' ').trim()
@@ -233,11 +252,13 @@ async function startImageJob(projectId: string, raw: ImageRequest): Promise<Job>
     ctx.progress(0.9, 'Menyimpan gambar…')
     const kind = sniffImage(made.bytes)
     if (!kind) throw new Error('Balasan bukan gambar.')
-    const rel = `media/${randomUUID()}.${kind.ext}`
+    const crop = made.provider === 'pollinations'
+    const rel = `media/${randomUUID()}.${crop ? 'jpg' : kind.ext}`
     const out = join(projectDir(projectId), rel)
     await mkdir(join(projectDir(projectId), 'media'), { recursive: true })
     try {
-      await writeFile(out, made.bytes)
+      if (crop) await cropLogo(made.bytes, out, ctx.signal)
+      else await writeFile(out, made.bytes)
       const { width, height } = await probe(out)
       const asset = insertAsset({
         projectId,

@@ -2,7 +2,7 @@ import { useId } from 'react'
 import { CTA_DEFAULT_TEXT } from '@shared/overlay'
 import type { Aspect, Overlay } from '@shared/types'
 import { SAFE_AREA } from '@video/common'
-import { Icon } from '../../../components/ui'
+import { Icon, Segmented } from '../../../components/ui'
 import { errorText } from '../../../lib/format'
 import { toast } from '../../../store/app'
 import { useProject } from '../../../store/project'
@@ -16,10 +16,11 @@ const SIZE_CONTROL: Record<Overlay['kind'], { label: string; min: number; max: n
   image: { label: 'Lebar', min: 0.02, max: 1, step: 0.005 },
   qari: { label: 'Ukuran', min: 0.02, max: 0.08, step: 0.002 },
   cta: { label: 'Ukuran', min: 0.015, max: 0.07, step: 0.002 },
-  progress: { label: 'Tebal', min: 0.002, max: 0.02, step: 0.001, format: (v) => `${(v * 100).toFixed(1)}%` }
+  progress: { label: 'Tebal', min: 0.002, max: 0.02, step: 0.001, format: (v) => `${(v * 100).toFixed(1)}%` },
+  visualizer: { label: 'Tinggi', min: 0.02, max: 0.25, step: 0.005 }
 }
 
-const COLOR_LABEL: Partial<Record<Overlay['kind'], string>> = { qari: 'Warna aksen', cta: 'Warna latar', text: 'Warna', progress: 'Warna' }
+const COLOR_LABEL: Partial<Record<Overlay['kind'], string>> = { qari: 'Warna aksen', cta: 'Warna latar', text: 'Warna', progress: 'Warna', visualizer: 'Warna' }
 
 /**
  * Type size (fraction of canvas width) and distance above the bottom safe edge, per aspect: the same width fraction reads
@@ -58,6 +59,25 @@ function OverlayForm({ o, durationMs }: { o: Overlay; durationMs: number }) {
       )}
       {o.kind === 'qari' && (
         <p className="pn-note">{reciter.trim() ? 'Nama qari dan surah diambil dari proyek ini.' : 'Nama qari belum diisi, jadi overlay ini belum tampil. Silakan isi di langkah 1 Sumber.'}</p>
+      )}
+      {o.kind === 'visualizer' && (
+        <>
+          <div className="qr-fieldset">
+            <span className="qr-label" id={`${startId}-var`}>
+              Gaya
+            </span>
+            <Segmented
+              labelledBy={`${startId}-var`}
+              value={o.variant ?? 'bars'}
+              onChange={(variant) => setOverlay(o.id, { variant })}
+              options={[
+                { value: 'bars', label: 'Batang' },
+                { value: 'wave', label: 'Gelombang' }
+              ]}
+            />
+          </div>
+          <p className="pn-note">Bergerak mengikuti suara tilawah. Dihitung sekali dari audio sumber, jadi pratinjau dan ekspor sama.</p>
+        </>
       )}
       {o.kind === 'progress' && <p className="pn-note">Bilah terisi sepanjang masa tayang overlay ini. Atur Mulai dan Selesai untuk menentukannya.</p>}
       <Slider label={size.label} value={o.size} min={size.min} max={size.max} step={size.step} format={size.format} onChange={(v) => setOverlay(o.id, { size: v }, `ovSize${o.id}`)} />
@@ -123,6 +143,9 @@ export function OverlayPanel({ selectedId, onSelect, durationMs }: { selectedId:
       { kind: 'cta', text: CTA_DEFAULT_TEXT, assetId: null, x: 0.5, y: 1 - safe.bottom - layout.cta.up, size: layout.cta.size, color: '#D4A017', opacity: 1 },
       { startMs: Math.max(0, durationMs - 6000), endMs: null }
     )
+  // Low in the frame, clear of the text block, inside the safe area.
+  const addVisualizer = () =>
+    add({ kind: 'visualizer', variant: 'bars', text: '', assetId: null, x: 0.5, y: 1 - safe.bottom - (project.aspect === '16:9' ? 0.12 : 0.1), size: 0.08, color: '#FFFFFF', opacity: 0.9 })
   const remove = (id: string) => {
     useProject.getState().update({ overlays: project.overlays.filter((o) => o.id !== id) })
     if (id === selectedId) onSelect(null)
@@ -153,6 +176,10 @@ export function OverlayPanel({ selectedId, onSelect, durationMs }: { selectedId:
           <button type="button" className="qr-btn qr-btn--secondary qr-btn--sm" onClick={addCta}>
             <Icon name="star" size="sm" />
             Ajakan
+          </button>
+          <button type="button" className="qr-btn qr-btn--secondary qr-btn--sm" onClick={addVisualizer}>
+            <Icon name="audio-waveform" size="sm" />
+            Gelombang suara
           </button>
         </div>
         {project.overlays.length === 0 && <p className="pn-note">Belum ada overlay. Gunakan untuk logo, nama channel, atau tulisan singkat.</p>}
