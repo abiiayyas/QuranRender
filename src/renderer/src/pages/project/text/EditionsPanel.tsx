@@ -1,4 +1,5 @@
 import { useState, type CSSProperties } from 'react'
+import { t } from '@shared/i18n'
 import { Icon } from '../../../components/ui'
 import { useProject } from '../../../store/project'
 import { EditionPicker } from './EditionPicker'
@@ -21,11 +22,11 @@ export function EditionsPanel() {
   }
 
   return (
-    <aside className="st-left" aria-label="Terjemahan proyek">
+    <aside className="st-left" aria-label={t('Terjemahan proyek')}>
       <div className="st-left__body">
-        <h2 className="pn-h">Terjemahan proyek</h2>
+        <h2 className="pn-h">{t('Terjemahan proyek')}</h2>
         {editions.length === 0 ? (
-          <p className="pn-note">Belum ada terjemahan. Video hanya akan menampilkan teks Arab.</p>
+          <p className="pn-note">{t('Belum ada terjemahan. Video hanya akan menampilkan teks Arab.')}</p>
         ) : (
           <ol className="ed-order">
             {editions.map((id, i) => {
@@ -38,14 +39,14 @@ export function EditionsPanel() {
                     {name}
                     <small>
                       {e ? languageName(e.language) : id}
-                      {i === 0 ? ' · Utama' : ''}
+                      {i === 0 ? ` · ${t('Utama')}` : ''}
                     </small>
                   </span>
                   <span className="ed-row__actions">
                     <button
                       type="button"
                       className="qr-btn qr-btn--ghost qr-btn--icon qr-btn--sm"
-                      aria-label={`Naikkan ${name}`}
+                      aria-label={t('Naikkan {name}', { name })}
                       disabled={i === 0}
                       onClick={() => move(i, i - 1)}
                     >
@@ -54,7 +55,7 @@ export function EditionsPanel() {
                     <button
                       type="button"
                       className="qr-btn qr-btn--ghost qr-btn--icon qr-btn--sm"
-                      aria-label={`Turunkan ${name}`}
+                      aria-label={t('Turunkan {name}', { name })}
                       disabled={i === editions.length - 1}
                       onClick={() => move(i, i + 1)}
                     >
@@ -63,7 +64,7 @@ export function EditionsPanel() {
                     <button
                       type="button"
                       className="qr-btn qr-btn--ghost qr-btn--icon qr-btn--sm"
-                      aria-label={`Lepas ${name} dari proyek`}
+                      aria-label={t('Lepas {name} dari proyek', { name })}
                       onClick={() => set(editions.filter((x) => x !== id))}
                     >
                       <Icon name="x" size="sm" />
@@ -74,7 +75,7 @@ export function EditionsPanel() {
                       className={job.status === 'queued' ? 'qr-progress is-indeterminate tx-ed-progress' : 'qr-progress tx-ed-progress'}
                       style={{ '--v': job.progress } as CSSProperties}
                       role="progressbar"
-                      aria-label={`Memasang ${name}`}
+                      aria-label={t('Memasang {name}', { name })}
                       aria-valuenow={Math.round(job.progress * 100)}
                       aria-valuemin={0}
                       aria-valuemax={100}
@@ -85,11 +86,11 @@ export function EditionsPanel() {
                       <button
                         type="button"
                         className="qr-btn qr-btn--secondary qr-btn--sm tx-ed-install"
-                        aria-label={`Pasang ${name}`}
+                        aria-label={t('Pasang {name}', { name })}
                         onClick={() => void useEditions.getState().install(id)}
                       >
                         <Icon name="download" size="sm" />
-                        Belum terpasang, pasang sekarang
+                        {t('Belum terpasang, pasang sekarang')}
                       </button>
                     )
                   )}
@@ -101,18 +102,18 @@ export function EditionsPanel() {
         {error && list === null && (
           <p className="qr-error" role="alert">
             <Icon name="circle-alert" size="sm" />
-            Daftar terjemahan belum bisa dimuat.
+            {t('Daftar terjemahan belum bisa dimuat.')}
             <button type="button" className="qr-btn qr-btn--ghost qr-btn--sm" onClick={() => void useEditions.getState().load()}>
-              Coba lagi
+              {t('Coba lagi')}
             </button>
           </p>
         )}
-        <p className="pn-note">Terjemahan teratas menjadi terjemahan utama di video dan subtitle.</p>
+        <p className="pn-note">{t('Terjemahan teratas menjadi terjemahan utama di video dan subtitle.')}</p>
       </div>
       <div className="st-left__foot">
         <button type="button" className="qr-btn qr-btn--secondary" onClick={() => setPicking(true)}>
           <Icon name="plus" />
-          Tambah terjemahan
+          {t('Tambah terjemahan')}
         </button>
       </div>
       {picking && <EditionPicker onClose={() => setPicking(false)} />}

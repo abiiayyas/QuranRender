@@ -3,6 +3,8 @@
 Aplikasi desktop untuk mengubah rekaman tilawah menjadi video berteks: ayat Arab, terjemahan, dan sorotan per kata yang
 sinkron dengan suara qari. Hasilnya MP4 (dan SRT/VTT) yang siap diunggah ke YouTube, Shorts, Reels, atau TikTok.
 
+Antarmuka tersedia dalam Bahasa Indonesia dan English (Pengaturan > Umum > Bahasa). *The app is available in English too.*
+
 Semua proyek dan berkas disimpan di komputermu. Internet hanya dipakai untuk mengunduh tilawah, teks Uthmani/QPC,
 terjemahan, sinkron AI (HF Space publik), dan AI trim (kunci API milikmu).
 
@@ -13,11 +15,11 @@ dan proyek tersimpan otomatis.
 
 | Langkah | Isi |
 |---|---|
-| Beranda | Pilih surah dan rentang ayat, qari, format (9:16, 16:9, 1:1), dan jenis teks Arab |
+| Beranda | Buat proyek (surah, rentang ayat, qari, format, jenis teks Arab) atau proyek kosong; daftar proyek dengan nama surah dan langkah berikutnya |
 | 1 Sumber | Impor berkas audio/video, unduh tilawah qari (MP3Quran, QDC), atau unduh dari YouTube; potong awal dan akhir |
 | 2 Sinkron | Sinkron AI (Quranic Universal Aligner) atau timestamp bawaan QDC/MP3Quran; periksa dan rapikan segmen |
 | 3 Teks | Pasang terjemahan (Kemenag bawaan, edisi lain dari Quran.com), isi otomatis, AI trim (API atau AI CLI) untuk ayat yang terpotong, peringatan dan belah otomatis untuk teks yang terlalu panjang |
-| 4 Editor | Preset gaya, latar (warna, gambar, video dengan loop, gerak, foto stok, gambar AI), overlay (teks, gambar, nama qari, kemajuan, ajakan, gelombang suara), timeline yang bisa dizoom, pratinjau langsung dengan sorotan per kata |
+| 4 Editor | Preset gaya, latar (warna, gambar, video dengan loop, gerak, foto stok, gambar AI), overlay (teks, gambar, nama qari, kemajuan, ajakan, gelombang suara, Subscribe/Follow berkala), timeline yang bisa dizoom, pratinjau langsung dengan sorotan per kata |
 | Ekspor | MP4 720p/1080p/4K pada 30/60 fps, SRT/VTT, chapter YouTube; diperiksa dulu oleh aturan amanah teks |
 | Thumbnail | Cover JPG di bawah 2 MB dari gambar atau bingkai video proyek, teks digambar aplikasi |
 | Publikasi | Judul, deskripsi, hashtag, dan bab per platform (Shorts, TikTok, Reels, YouTube), draf awal dari data proyek, AI opsional |

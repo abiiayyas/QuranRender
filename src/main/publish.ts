@@ -1,3 +1,4 @@
+import { getLang, t } from '@shared/i18n'
 import { randomUUID } from 'node:crypto'
 import { existsSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -50,9 +51,9 @@ function themeLines(p: Project): string[] {
   return p.segments
     .filter((s) => s.kind === 'ayah')
     .slice(0, 4)
-    .map((s) => s.translations.find((t) => t.edition === edition)?.text ?? '')
+    .map((s) => s.translations.find((x) => x.edition === edition)?.text ?? '')
     .filter(Boolean)
-    .map((t) => t.slice(0, 180))
+    .map((x) => x.slice(0, 180))
 }
 
 function parseJson(text: string): unknown {
@@ -83,7 +84,7 @@ async function generate(projectId: string, platforms: PlatformId[]) {
       {
         role: 'system',
         content: [
-          'You write upload copy for videos of Qur’an recitation, in warm, polite Indonesian.',
+          `You write upload copy for videos of Qur’an recitation, in warm, polite ${getLang() === 'en' ? 'English' : 'Indonesian'}.`,
           'Rules: never write, quote, or paraphrase Qur’anic Arabic or ayah wording; never state virtues, rewards, or claims about the reciter that the facts do not give; no clickbait.',
           'Use only the facts given. Say who recited and which translation was used when the facts have it.',
           'Hashtags: 3 to 6, each starting with #, no spaces inside, no punctuation inside.',
@@ -102,16 +103,16 @@ async function generate(projectId: string, platforms: PlatformId[]) {
 
 async function frame(projectId: string, assetId: string, ms: number) {
   const src = getAsset(assetId)
-  if (src.projectId !== projectId || src.kind !== 'video') throw new Error('Bingkai hanya bisa diambil dari video proyek ini.')
+  if (src.projectId !== projectId || src.kind !== 'video') throw new Error(t('Bingkai hanya bisa diambil dari video proyek ini.'))
   const abs = assetAbsPath(src.projectId, src.path)
-  if (!existsSync(abs)) throw new Error('Berkas video sudah tidak ada di folder proyek.')
+  if (!existsSync(abs)) throw new Error(t('Berkas video sudah tidak ada di folder proyek.'))
   const at = Math.max(0, Math.min(ms, (src.durationMs ?? ms) - 100))
   const path = `media/${randomUUID()}.jpg`
   const out = join(projectDir(projectId), path)
   await ffmpeg(['-ss', String(at / 1000), '-i', abs, '-frames:v', '1', '-q:v', '2', out])
-  if (!existsSync(out)) throw new Error('Bingkai tidak bisa diambil pada posisi itu.')
+  if (!existsSync(out)) throw new Error(t('Bingkai tidak bisa diambil pada posisi itu.'))
   const { width, height } = await probe(out)
-  return insertAsset({ projectId, kind: 'image', path, name: `Bingkai ${mmss(at)} dari ${src.name}`, durationMs: null, width, height, source: 'frame', meta: { fromAssetId: assetId, ms: at } })
+  return insertAsset({ projectId, kind: 'image', path, name: t('Bingkai {time} dari {name}', { time: mmss(at), name: src.name }), durationMs: null, width, height, source: 'frame', meta: { fromAssetId: assetId, ms: at } })
 }
 
 async function thumbnail(projectId: string, saveAs: boolean) {
@@ -119,7 +120,7 @@ async function thumbnail(projectId: string, saveAs: boolean) {
   const name = `${safeName(project.title)} - thumbnail.jpg`
   let outPath: string
   if (saveAs) {
-    const opts = { title: 'Simpan salinan thumbnail', defaultPath: join(ensureFolder(getSettings().exportFolder), name), filters: [{ name: 'JPEG', extensions: ['jpg'] }] }
+    const opts = { title: t('Simpan salinan thumbnail'), defaultPath: join(ensureFolder(getSettings().exportFolder), name), filters: [{ name: 'JPEG', extensions: ['jpg'] }] }
     const win = BrowserWindow.getFocusedWindow()
     const r = win ? await dialog.showSaveDialog(win, opts) : await dialog.showSaveDialog(opts)
     if (r.canceled || !r.filePath) return null
@@ -129,13 +130,13 @@ async function thumbnail(projectId: string, saveAs: boolean) {
   }
 
   return startJob(projectId, 'thumbnail', 'cpu', async (ctx) => {
-    ctx.progress(0.1, 'Menyiapkan mesin render…')
+    ctx.progress(0.1, t('Menyiapkan mesin render…'))
     const p = getProject(projectId)
     const surah = surahList().find((s) => s.id === p.surah)?.nameLatin ?? null
     const spec = p.thumbnail ?? defaultThumbnail(p, surah)
     const image = spec.assetId ? getAssetOrNull(spec.assetId) : null
     if (image && (image.projectId !== projectId || image.kind !== 'image' || !existsSync(assetAbsPath(projectId, image.path)))) {
-      throw new Error('Gambar latar thumbnail sudah tidak ada. Silakan pilih gambar lain.')
+      throw new Error(t('Gambar latar thumbnail sudah tidak ada. Silakan pilih gambar lain.'))
     }
     const server = await startFileServer()
     try {
@@ -160,7 +161,7 @@ export function registerPublishIpc(): void {
   handle('publish', 'thumbnail', (projectId, saveAs) => thumbnail(projectId, saveAs))
   handle('publish', 'generate', (projectId, platforms) => generate(projectId, platforms.filter((id) => PLATFORMS.some((p) => p.id === id))))
   handle('publish', 'saveText', async (defaultName, text) => {
-    const opts = { title: 'Simpan teks publikasi', defaultPath: join(ensureFolder(getSettings().exportFolder), safeName(defaultName)), filters: [{ name: 'Teks', extensions: ['txt'] }] }
+    const opts = { title: t('Simpan teks publikasi'), defaultPath: join(ensureFolder(getSettings().exportFolder), safeName(defaultName)), filters: [{ name: t('Teks'), extensions: ['txt'] }] }
     const win = BrowserWindow.getFocusedWindow()
     const r = win ? await dialog.showSaveDialog(win, opts) : await dialog.showSaveDialog(opts)
     if (r.canceled || !r.filePath) return null

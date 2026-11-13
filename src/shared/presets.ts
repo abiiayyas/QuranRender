@@ -1,3 +1,4 @@
+import { msg } from './i18n'
 import { DEFAULT_STYLE, type StyleSettings } from './style'
 import type { Background } from './types'
 
@@ -21,29 +22,29 @@ const style = (id: string, s: Partial<StyleSettings>): StyleSettings => ({ ...DE
 export const PRESETS: Preset[] = [
   {
     id: 'hening',
-    name: 'Hening Grafit',
-    description: 'Latar polos grafit pekat tanpa distraksi, untuk tilawah khusyuk.',
+    name: msg('Hening Grafit'),
+    description: msg('Latar polos grafit pekat tanpa distraksi, untuk tilawah khusyuk.'),
     style: style('hening', {}),
     background: bg('#101114')
   },
   {
     id: 'besar',
-    name: 'Besar (Hafalan)',
-    description: 'Teks ayat sangat besar di tengah layar tanpa terjemahan, untuk hafalan.',
+    name: msg('Besar (Hafalan)'),
+    description: msg('Teks ayat sangat besar di tengah layar tanpa terjemahan, untuk hafalan.'),
     style: style('besar', { arabicSize: 0.12, arabicColor: '#F4F5F7', inactiveOpacity: 0.5, showTranslation: false }),
     background: bg('#101114')
   },
   {
     id: 'subuh',
-    name: 'Subuh',
-    description: 'Nada fajar yang lembut dengan terjemahan di bawah ayat.',
+    name: msg('Subuh'),
+    description: msg('Nada fajar yang lembut dengan terjemahan di bawah ayat.'),
     style: style('subuh', { arabicColor: '#F4F5F7', shadow: true, translationColor: '#E5E7EB' }),
     background: bg('#2A1F26', 0.55)
   },
   {
     id: 'senja',
-    name: 'Senja',
-    description: 'Nada jingga temaram dengan sorotan kotak lembut pada kata yang dibaca.',
+    name: msg('Senja'),
+    description: msg('Nada jingga temaram dengan sorotan kotak lembut pada kata yang dibaca.'),
     style: style('senja', {
       arabicColor: '#F4F5F7',
       highlight: 'box',
@@ -56,8 +57,8 @@ export const PRESETS: Preset[] = [
   },
   {
     id: 'madinah',
-    name: 'Madinah Hijau',
-    description: 'Hijau zaitun malam dengan bingkai garis ganda keemasan.',
+    name: msg('Madinah Hijau'),
+    description: msg('Hijau zaitun malam dengan bingkai garis ganda keemasan.'),
     style: style('madinah', {
       arabicColor: '#E6C687',
       highlightColor: '#FFE9B0',
@@ -71,8 +72,8 @@ export const PRESETS: Preset[] = [
   },
   {
     id: 'naskh-klasik',
-    name: 'Naskh Klasik',
-    description: 'Kertas krem seperti halaman mushaf, teks gelap dan terjemahan berhuruf serif.',
+    name: msg('Naskh Klasik'),
+    description: msg('Kertas krem seperti halaman mushaf, teks gelap dan terjemahan berhuruf serif.'),
     style: style('naskh-klasik', {
       arabicSize: 0.082,
       arabicColor: '#1A1C20',
@@ -84,8 +85,8 @@ export const PRESETS: Preset[] = [
   },
   {
     id: 'terang',
-    name: 'Kertas Terang',
-    description: 'Kertas gading, teks hitam pekat, sorotan garis bawah nila.',
+    name: msg('Kertas Terang'),
+    description: msg('Kertas gading, teks hitam pekat, sorotan garis bawah nila.'),
     style: style('terang', {
       arabicColor: '#1A1C20',
       highlight: 'underline',
@@ -96,8 +97,8 @@ export const PRESETS: Preset[] = [
   },
   {
     id: 'kartu-apung',
-    name: 'Kartu Apung',
-    description: 'Ayat dan terjemahan di dalam kartu translusen bersudut membulat.',
+    name: msg('Kartu Apung'),
+    description: msg('Ayat dan terjemahan di dalam kartu translusen bersudut membulat.'),
     style: style('kartu-apung', {
       arabicSize: 0.082,
       arabicColor: '#F4F5F7',
@@ -112,8 +113,8 @@ export const PRESETS: Preset[] = [
   },
   {
     id: 'editorial-split',
-    name: 'Editorial',
-    description: 'Kartu grafit solid yang tegas dengan sorotan kotak pada kata yang dibaca.',
+    name: msg('Editorial'),
+    description: msg('Kartu grafit solid yang tegas dengan sorotan kotak pada kata yang dibaca.'),
     style: style('editorial-split', {
       arabicSize: 0.085,
       arabicColor: '#F4F5F7',
@@ -129,8 +130,8 @@ export const PRESETS: Preset[] = [
   },
   {
     id: 'kajian-side-panel',
-    name: 'Kajian',
-    description: 'Teks ringkas di dalam panel gelap, cocok di atas video kajian. Nama surah tampil di atas.',
+    name: msg('Kajian'),
+    description: msg('Teks ringkas di dalam panel gelap, cocok di atas video kajian. Nama surah tampil di atas.'),
     style: style('kajian-side-panel', {
       arabicSize: 0.07,
       arabicColor: '#F4F5F7',
@@ -145,8 +146,8 @@ export const PRESETS: Preset[] = [
   },
   {
     id: 'siaran-lower-third',
-    name: 'Papan Siaran',
-    description: 'Ayat dan terjemahan di sepertiga bawah pada pita gelap selebar layar; latar tetap terlihat di atasnya.',
+    name: msg('Papan Siaran'),
+    description: msg('Ayat dan terjemahan di sepertiga bawah pada pita gelap selebar layar; latar tetap terlihat di atasnya.'),
     style: style('siaran-lower-third', {
       arabicSize: 0.07,
       arabicColor: '#F4F5F7',
@@ -162,8 +163,8 @@ export const PRESETS: Preset[] = [
   },
   {
     id: 'tadabbur-wbw',
-    name: 'Tadabbur Kosakata',
-    description: 'Ayat di bagian atas dengan terjemahan di bawahnya dan sorotan kotak pada kata yang dibaca.',
+    name: msg('Tadabbur Kosakata'),
+    description: msg('Ayat di bagian atas dengan terjemahan di bawahnya dan sorotan kotak pada kata yang dibaca.'),
     style: style('tadabbur-wbw', {
       arabicSize: 0.085,
       arabicColor: '#F4F5F7',

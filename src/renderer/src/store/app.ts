@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import type { Lang } from '@shared/i18n'
 
 export type Route = { name: 'home' } | { name: 'settings'; back?: Route } | { name: 'project'; id: string }
 
@@ -18,6 +19,8 @@ interface Confirm {
 }
 
 interface AppState {
+  /** Mirrors the saved language; changing it remounts the app (see main.tsx) so every screen redraws in it. */
+  lang: Lang
   route: Route
   toasts: Toast[]
   confirm: Confirm | null
@@ -29,6 +32,7 @@ interface AppState {
 let nextId = 1
 
 export const useApp = create<AppState>((set, get) => ({
+  lang: 'id',
   route: { name: 'home' },
   toasts: [],
   confirm: null,

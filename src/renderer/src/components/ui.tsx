@@ -1,6 +1,7 @@
 import React, { useEffect, useId, useRef } from "react";
 import type { Job } from "@shared/types";
 import { useApp } from "../store/app";
+import { t } from "@shared/i18n";
 
 export function Icon({ name, size }: { name: string; size?: "sm" | "lg" }): React.ReactElement {
   const cls = size === "sm" ? "qr-ic qr-ic--sm" : size === "lg" ? "qr-ic qr-ic--lg" : "qr-ic";
@@ -125,7 +126,7 @@ export function ErrorAlert({
       {onClose && (
         <span className="qr-alert__actions">
           <button type="button" className="qr-btn qr-btn--ghost qr-btn--sm" onClick={onClose}>
-            Tutup
+            {t("Tutup")}
           </button>
         </span>
       )}
@@ -206,7 +207,7 @@ export function Sheet({
           <button
             type="button"
             className="qr-btn qr-btn--ghost qr-btn--icon qr-btn--sm"
-            aria-label="Tutup"
+            aria-label={t("Tutup")}
             onClick={onClose}
           >
             <Icon name="x" size="sm" />
@@ -224,23 +225,23 @@ export function Toasts(): React.ReactElement {
   const dismiss = useApp((s) => s.dismiss);
   return (
     <div className="toasts" role="status" aria-live="polite">
-      {toasts.map((t) => (
-        <div key={t.id} className={t.kind === "error" ? "qr-toast qr-toast--danger" : t.kind === "success" ? "qr-toast qr-toast--success" : "qr-toast"}>
-          <Icon name={t.kind === "error" ? "circle-alert" : t.kind === "success" ? "circle-check" : "info"} />
-          <div className="qr-toast__body">{t.text}</div>
-          {t.action && (
+      {toasts.map((toast) => (
+        <div key={toast.id} className={toast.kind === "error" ? "qr-toast qr-toast--danger" : toast.kind === "success" ? "qr-toast qr-toast--success" : "qr-toast"}>
+          <Icon name={toast.kind === "error" ? "circle-alert" : toast.kind === "success" ? "circle-check" : "info"} />
+          <div className="qr-toast__body">{toast.text}</div>
+          {toast.action && (
             <button
               type="button"
               className="qr-btn qr-btn--ghost qr-btn--sm"
               onClick={() => {
-                t.action!.run();
-                dismiss(t.id);
+                toast.action!.run();
+                dismiss(toast.id);
               }}
             >
-              {t.action.label}
+              {toast.action.label}
             </button>
           )}
-          <button type="button" className="qr-btn qr-btn--ghost qr-btn--icon qr-btn--sm" aria-label="Tutup" onClick={() => dismiss(t.id)}>
+          <button type="button" className="qr-btn qr-btn--ghost qr-btn--icon qr-btn--sm" aria-label={t("Tutup")} onClick={() => dismiss(toast.id)}>
             <Icon name="x" size="sm" />
           </button>
         </div>
@@ -265,7 +266,7 @@ export function ConfirmHost(): React.ReactElement | null {
       footer={
         <>
           <button type="button" className="qr-btn qr-btn--secondary" onClick={() => close(false)}>
-            Batal
+            {t("Batal")}
           </button>
           <button type="button" className={`qr-btn ${c.danger ? "qr-btn--danger" : "qr-btn--primary"}`} onClick={() => close(true)}>
             {c.confirmLabel}
@@ -287,7 +288,7 @@ export function JobProgress({ job, label }: { job: Job | null; label: string }):
       <div className="qr-job" role="status">
         <span className="qr-job__code">{job.status === "queued" ? "…" : `${pct}%`}</span>
         <span className="qr-job__title">
-          <span>{job.status === "queued" ? `${label} (menunggu antrean)` : label}</span>
+          <span>{job.status === "queued" ? t("{label} (menunggu antrean)", { label }) : label}</span>
           {job.message && <small>{job.message}</small>}
         </span>
         <span className="qr-job__state">
@@ -303,7 +304,7 @@ export function JobProgress({ job, label }: { job: Job | null; label: string }):
         </span>
         <span className="qr-job__actions">
           <button type="button" className="qr-btn qr-btn--ghost qr-btn--sm" onClick={() => void window.api.jobs.cancel(job.id)}>
-            Batalkan
+            {t("Batalkan")}
           </button>
         </span>
       </div>
@@ -329,12 +330,12 @@ export function RangePicker({
   const info = surahs.find((s) => s.id === surah);
   const ayat = Array.from({ length: info?.ayahCount ?? 0 }, (_, i) => i + 1);
   const f = from ?? 1;
-  const t = to ?? info?.ayahCount ?? 1;
+  const upTo = to ?? info?.ayahCount ?? 1;
   return (
     <div className="range-form stack">
       <div className="qr-fieldset">
         <label className="qr-label" htmlFor={ids[0]}>
-          Surah
+          {t("Surah")}
         </label>
         <span className="qr-field">
           <select
@@ -346,7 +347,7 @@ export function RangePicker({
             }}
           >
             <option value="" disabled>
-              Pilih surah
+              {t("Pilih surah")}
             </option>
             {surahs.map((s) => (
               <option key={s.id} value={s.id}>
@@ -360,10 +361,10 @@ export function RangePicker({
         <div className="grid-2">
           <div className="qr-fieldset">
             <label className="qr-label" htmlFor={ids[1]}>
-              Dari ayat
+              {t("Dari ayat")}
             </label>
             <span className="qr-field">
-              <select id={ids[1]} value={f} onChange={(e) => onChange({ surah: info.id, from: Number(e.target.value), to: Math.max(t, Number(e.target.value)) })}>
+              <select id={ids[1]} value={f} onChange={(e) => onChange({ surah: info.id, from: Number(e.target.value), to: Math.max(upTo, Number(e.target.value)) })}>
                 {ayat.map((n) => (
                   <option key={n} value={n}>
                     {n}
@@ -374,10 +375,10 @@ export function RangePicker({
           </div>
           <div className="qr-fieldset">
             <label className="qr-label" htmlFor={ids[2]}>
-              Sampai ayat
+              {t("Sampai ayat")}
             </label>
             <span className="qr-field">
-              <select id={ids[2]} value={t} onChange={(e) => onChange({ surah: info.id, from: Math.min(f, Number(e.target.value)), to: Number(e.target.value) })}>
+              <select id={ids[2]} value={upTo} onChange={(e) => onChange({ surah: info.id, from: Math.min(f, Number(e.target.value)), to: Number(e.target.value) })}>
                 {ayat.map((n) => (
                   <option key={n} value={n}>
                     {n}

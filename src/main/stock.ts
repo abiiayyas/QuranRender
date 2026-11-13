@@ -1,3 +1,4 @@
+import { t } from '@shared/i18n'
 import { randomUUID } from 'node:crypto'
 import { createWriteStream } from 'node:fs'
 import { copyFile, mkdir, rename, rm } from 'node:fs/promises'
@@ -23,7 +24,7 @@ const CACHE_MS: Record<StockProvider, number> = { pexels: 60 * 60_000, unsplash:
 
 function needKey(p: StockProvider): string {
   const key = getStockKey(p)
-  if (!key) throw new Error(`Kunci ${providerLabel(p)} belum disimpan. Silakan masukkan kuncinya dulu.`)
+  if (!key) throw new Error(t('Kunci {name} belum disimpan. Silakan masukkan kuncinya dulu.', { name: providerLabel(p) }))
   return key
 }
 
@@ -32,17 +33,17 @@ async function call(provider: StockProvider, url: string, init: RequestInit): Pr
   try {
     return await fetch(url, init)
   } catch {
-    throw new Error(`Tidak bisa terhubung ke ${providerLabel(provider)}. Silakan periksa koneksi internet Anda.`)
+    throw new Error(t('Tidak bisa terhubung ke {name}. Silakan periksa koneksi internet Anda.', { name: providerLabel(provider) }))
   }
 }
 
 function checkQuery(q: StockQuery): StockQuery {
   const provider = checkProvider(q.provider)
   const info = STOCK_PROVIDERS.find((p) => p.id === provider)!
-  if (!info.kinds.includes(q.kind)) throw new Error(`${info.label} hanya menyediakan ${q.kind === 'video' ? 'foto' : 'video'}.`)
-  if (!['portrait', 'landscape', 'square'].includes(q.orientation)) throw new Error('Orientasi tidak dikenal.')
+  if (!info.kinds.includes(q.kind)) throw new Error(q.kind === 'video' ? t('{name} hanya menyediakan foto.', { name: info.label }) : t('{name} hanya menyediakan video.', { name: info.label }))
+  if (!['portrait', 'landscape', 'square'].includes(q.orientation)) throw new Error(t('Orientasi tidak dikenal.'))
   const query = typeof q.query === 'string' ? q.query.trim() : ''
-  if (!query) throw new Error('Silakan ketik kata kunci dulu.')
+  if (!query) throw new Error(t('Silakan ketik kata kunci dulu.'))
   return { provider, kind: q.kind, query, orientation: q.orientation, page: Math.max(1, Math.floor(Number(q.page)) || 1) }
 }
 
@@ -56,7 +57,7 @@ async function search(raw: StockQuery): Promise<StockPage> {
   const res = await call(q.provider, req.url, { headers: req.headers, signal: AbortSignal.timeout(20_000) })
   if (!res.ok) throw new Error(stockHttpError(q.provider, res.status, (await res.text().catch(() => '')).slice(0, 300)))
   const json: unknown = await res.json().catch(() => {
-    throw new Error(`Jawaban dari ${providerLabel(q.provider)} tidak terbaca. Silakan coba lagi.`)
+    throw new Error(t('Jawaban dari {name} tidak terbaca. Silakan coba lagi.', { name: providerLabel(q.provider) }))
   })
   const page = parseStockPage(q, json)
   cacheSet(cacheKey, page)
@@ -76,8 +77,8 @@ function existingAsset(projectId: string, item: StockItem): Asset | null {
 /** Streams into a temp file, refusing anything over the size cap, and returns the response's content type. */
 async function fetchToFile(provider: StockProvider, url: string, dest: string): Promise<string> {
   const res = await call(provider, url, { redirect: 'follow', signal: AbortSignal.timeout(5 * 60_000) })
-  if (!res.ok || !res.body) throw new Error(`Berkas dari ${providerLabel(provider)} tidak bisa diunduh (kode ${res.status}). Silakan coba yang lain.`)
-  const tooBig = new Error('Berkas ini lebih dari 100 MB. Silakan pilih yang lain.')
+  if (!res.ok || !res.body) throw new Error(t('Berkas dari {name} tidak bisa diunduh (kode {status}). Silakan coba yang lain.', { name: providerLabel(provider), status: res.status }))
+  const tooBig = new Error(t('Berkas ini lebih dari 100 MB. Silakan pilih yang lain.'))
   if (Number(res.headers.get('content-length')) > MAX_BYTES) throw tooBig
   let size = 0
   const cap = new Transform({
@@ -113,7 +114,7 @@ function assertProviderHost(provider: StockProvider, url: unknown): void {
   } catch {
     // falls through to the error below
   }
-  if (!host || !HOSTS[provider].test(host)) throw new Error('Alamat berkas tidak valid.')
+  if (!host || !HOSTS[provider].test(host)) throw new Error(t('Alamat berkas tidak valid.'))
 }
 
 const text = (v: unknown, max = 200): string => (typeof v === 'string' ? v.slice(0, max) : '')
@@ -121,7 +122,7 @@ const text = (v: unknown, max = 200): string => (typeof v === 'string' ? v.slice
 async function download(projectId: string, raw: StockItem): Promise<Asset> {
   getProject(projectId)
   const provider = checkProvider(raw.provider)
-  if (raw.kind !== 'photo' && raw.kind !== 'video') throw new Error('Jenis berkas tidak dikenal.')
+  if (raw.kind !== 'photo' && raw.kind !== 'video') throw new Error(t('Jenis berkas tidak dikenal.'))
   assertProviderHost(provider, raw.downloadUrl)
   const item: StockItem = {
     ...raw,
@@ -144,9 +145,9 @@ async function download(projectId: string, raw: StockItem): Promise<Asset> {
     const name = `${providerLabel(provider)} ${item.id}`
     if (item.kind === 'photo') {
       const ext = IMAGE_TYPES[type]
-      if (!ext) throw new Error('Format gambar ini belum didukung. Silakan pilih yang lain.')
+      if (!ext) throw new Error(t('Format gambar ini belum didukung. Silakan pilih yang lain.'))
       const p = await probe(tmp)
-      if (!p.hasVideo || !p.width || !p.height) throw new Error('Berkas ini tidak bisa dibaca sebagai gambar. Silakan pilih yang lain.')
+      if (!p.hasVideo || !p.width || !p.height) throw new Error(t('Berkas ini tidak bisa dibaca sebagai gambar. Silakan pilih yang lain.'))
       const rel = `media/${randomUUID()}.${ext}`
       await mkdir(join(projectDir(projectId), 'media'), { recursive: true })
       const dest = assetAbsPath(projectId, rel)
@@ -156,7 +157,7 @@ async function download(projectId: string, raw: StockItem): Promise<Asset> {
       // store() moves the file in and converts it when Chromium could not play it.
       await rename(tmp, mp4)
       const pre = await probe(mp4)
-      if (!pre.hasVideo) throw new Error('Berkas ini tidak berisi gambar video. Silakan pilih yang lain.')
+      if (!pre.hasVideo) throw new Error(t('Berkas ini tidak berisi gambar video. Silakan pilih yang lain.'))
       const stored = await store(projectId, mp4, pre, { folder: 'media', move: true })
       asset = insertAsset({ projectId, kind: 'video', path: stored.path, name: `${name}.mp4`, durationMs: stored.probe.durationMs, width: stored.probe.width, height: stored.probe.height, source: 'stock', meta })
     }
@@ -172,7 +173,7 @@ export function registerStockIpc(): void {
   handle('stock', 'setKey', (provider, key) => {
     const p = checkProvider(provider)
     const value = typeof key === 'string' ? key.trim() : ''
-    if (!value) throw new Error('Kunci kosong. Silakan tempel kunci dari situs penyedia.')
+    if (!value) throw new Error(t('Kunci kosong. Silakan tempel kunci dari situs penyedia.'))
     setStockKey(p, value)
     return stockKeyStatus(p)
   })

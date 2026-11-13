@@ -2,13 +2,14 @@ import { existsSync } from 'node:fs'
 import { rename, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import Database from 'better-sqlite3'
+import { t } from '@shared/i18n'
 import type { ArabicScript, SurahInfo, Verse } from '@shared/types'
 import { canonicalCount, toCanonicalSlots } from '@shared/verses'
 import { cacheGet, cacheSet } from './db'
 import { handle } from './ipc'
 import { qpcFontsDir, quranDbPath } from './paths'
 
-const OFFLINE = 'Teks Uthmani/QPC perlu internet saat pertama dipakai.'
+const offline = (): string => t('Teks Uthmani/QPC perlu internet saat pertama dipakai.')
 const FONT_HOSTS = ['https://verses.quran.foundation', 'https://static.qurancdn.com']
 
 let quranDb: Database.Database | null = null
@@ -29,7 +30,7 @@ export function surahList(): SurahInfo[] {
 
 export function surahInfo(id: number): SurahInfo {
   const info = surahList()[id - 1]
-  if (!info) throw new Error(`Surah ${id} tidak ditemukan.`)
+  if (!info) throw new Error(t('Surah {id} tidak ditemukan.', { id }))
   return info
 }
 
@@ -38,7 +39,7 @@ export function canonicalWordCount(surah: number, ayah: number): number {
   const row = db().prepare('SELECT word_count AS n FROM ayah WHERE surah_id = ? AND number = ?').get(surah, ayah) as
     | { n: number }
     | undefined
-  if (!row) throw new Error(`Ayat ${surah}:${ayah} tidak ditemukan.`)
+  if (!row) throw new Error(t('Ayat {surah}:{ayah} tidak ditemukan.', { surah, ayah }))
   return canonicalCount(surah, ayah, row.n)
 }
 
@@ -47,7 +48,7 @@ export function kemenagAyahText(surah: number, ayah: number): string {
   const row = db().prepare('SELECT text FROM ayah WHERE surah_id = ? AND number = ?').get(surah, ayah) as
     | { text: string }
     | undefined
-  if (!row) throw new Error(`Ayat ${surah}:${ayah} tidak ditemukan.`)
+  if (!row) throw new Error(t('Ayat {surah}:{ayah} tidak ditemukan.', { surah, ayah }))
   return row.text
 }
 
@@ -86,9 +87,9 @@ async function fetchJson<T>(url: string): Promise<T> {
   try {
     res = await fetch(url, { signal: AbortSignal.timeout(30_000) })
   } catch {
-    throw new Error(OFFLINE)
+    throw new Error(offline())
   }
-  if (!res.ok) throw new Error(`${OFFLINE} (HTTP ${res.status})`)
+  if (!res.ok) throw new Error(`${offline()} (HTTP ${res.status})`)
   return (await res.json()) as T
 }
 
@@ -108,7 +109,7 @@ async function chapter(surah: number): Promise<QdcAyah[]> {
       end: v.words.find((w) => w.char_type_name === 'end')?.code_v2 ?? ''
     }
   })
-  if (ayahs.length !== surahInfo(surah).ayahCount) throw new Error(`Data Quran.com untuk surah ${surah} tidak lengkap.`)
+  if (ayahs.length !== surahInfo(surah).ayahCount) throw new Error(t('Data Quran.com untuk surah {surah} tidak lengkap.', { surah }))
   cacheSet(key, ayahs)
   return ayahs
 }
@@ -142,7 +143,7 @@ async function downloadFont(dest: string, path: string): Promise<void> {
       await rm(tmp, { force: true })
     }
   }
-  throw new Error(`${OFFLINE} (${lastError instanceof Error ? lastError.message : String(lastError)})`)
+  throw new Error(`${offline()} (${lastError instanceof Error ? lastError.message : String(lastError)})`)
 }
 
 export async function getVerses(surah: number, from: number, to: number, script: ArabicScript): Promise<Verse[]> {

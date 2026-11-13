@@ -1,3 +1,4 @@
+import { t } from '@shared/i18n'
 import { parseQdc, type ProviderTiming, type QdcVerseTiming } from '@shared/timedSegments'
 import type { Reciter } from '@shared/types'
 import { cacheGet, cacheSet } from '../db'
@@ -44,6 +45,6 @@ export async function qdcChapter(id: number, surah: number, signal: AbortSignal)
     signal
   )
   const f = audio_files?.[0]
-  if (!f?.audio_url) throw new Error('Rekaman surah ini tidak tersedia untuk qari tersebut.')
+  if (!f?.audio_url) throw new Error(t('Rekaman surah ini tidak tersedia untuk qari tersebut.'))
   return { url: f.audio_url, timing: parseQdc(f.verse_timings ?? []) }
 }

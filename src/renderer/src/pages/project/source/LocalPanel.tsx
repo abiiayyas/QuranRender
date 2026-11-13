@@ -1,4 +1,5 @@
 import { useState, type DragEvent } from 'react'
+import { t } from '@shared/i18n'
 import { ErrorAlert, Icon } from '../../../components/ui'
 import { errorText } from '../../../lib/format'
 import { toast } from '../../../store/app'
@@ -21,7 +22,7 @@ export function LocalPanel({ busy }: { busy: boolean }) {
     setImporting(path ? (path.split(/[\\/]/).pop() ?? path) : '')
     try {
       const asset = await window.api.sources.importFile(id, path)
-      if (asset) toast('success', `${asset.name} sudah menjadi sumber proyek.`)
+      if (asset) toast('success', t('{name} sudah menjadi sumber proyek.', { name: asset.name }))
     } catch (e) {
       setError(errorText(e))
     } finally {
@@ -35,20 +36,20 @@ export function LocalPanel({ busy }: { busy: boolean }) {
     if (disabled) return
     const files = [...e.dataTransfer.files]
     if (files.length !== 1) {
-      setError('Silakan seret satu berkas saja.')
+      setError(t('Silakan seret satu berkas saja.'))
       return
     }
     const path = window.api.files.pathOf(files[0])
     const ext = path.split('.').pop()?.toLowerCase() ?? ''
-    if (!path) setError('Berkas ini tidak bisa dibaca. Silakan pilih lewat tombol.')
-    else if (!ACCEPT.includes(ext)) setError(`Format .${ext} belum didukung. Silakan pakai ${ACCEPT.join(', ')}.`)
+    if (!path) setError(t('Berkas ini tidak bisa dibaca. Silakan pilih lewat tombol.'))
+    else if (!ACCEPT.includes(ext)) setError(t('Format .{ext} belum didukung. Silakan pakai {formats}.', { ext, formats: ACCEPT.join(', ') }))
     else void run(path)
   }
 
   return (
     <div className="import-form">
-      <p className="pn-h">Berkas di komputer</p>
-      {error && <ErrorAlert title="Impor gagal" message={error} onClose={() => setError(null)} />}
+      <p className="pn-h">{t('Berkas di komputer')}</p>
+      {error && <ErrorAlert title={t('Impor gagal')} message={error} onClose={() => setError(null)} />}
       <div
         className={over && !disabled ? 'qr-drop qr-empty import-drop is-dragover' : 'qr-drop qr-empty import-drop'}
         onDragOver={(e) => {
@@ -61,17 +62,17 @@ export function LocalPanel({ busy }: { busy: boolean }) {
       >
         {importing !== null ? <span className="qr-spin" /> : <Icon name="upload" />}
         <span className="qr-empty__title" aria-live="polite">
-          {importing !== null ? 'Sedang mengimpor…' : over ? 'Lepaskan untuk mengimpor' : 'Seret rekaman ke sini'}
+          {importing !== null ? t('Sedang mengimpor…') : over ? t('Lepaskan untuk mengimpor') : t('Seret rekaman ke sini')}
         </span>
-        <span>{importing || 'Audio (mp3, m4a, wav, flac, ogg, opus) atau video (mp4, mov, mkv, webm).'}</span>
+        <span>{importing || t('Audio (mp3, m4a, wav, flac, ogg, opus) atau video (mp4, mov, mkv, webm).')}</span>
         {importing === null && (
           <button type="button" className="qr-btn qr-btn--primary qr-btn--sm" disabled={disabled} onClick={() => void run()}>
             <Icon name="folder-open" />
-            Pilih berkas
+            {t('Pilih berkas')}
           </button>
         )}
       </div>
-      <span className="qr-help">Video dipakai suaranya sebagai sumber, dan gambarnya bisa dijadikan latar di Editor.</span>
+      <span className="qr-help">{t('Video dipakai suaranya sebagai sumber, dan gambarnya bisa dijadikan latar di Editor.')}</span>
     </div>
   )
 }

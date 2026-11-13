@@ -1,3 +1,4 @@
+import { t } from './i18n'
 import { ALIGNER_MAP, WORD_MAP, type WordMapEntry } from './wordMap'
 
 const index = (map: readonly WordMapEntry[]): Map<string, WordMapEntry> => new Map(map.map((e) => [`${e[0]}:${e[1]}`, e]))
@@ -34,18 +35,18 @@ export function toCanonicalSlots(surah: number, ayah: number, datasetWords: stri
   if (!entry) return datasetWords.slice()
   const [, , canonical, dataset, groups] = entry
   if (datasetWords.length !== dataset) {
-    throw new Error(`Jumlah kata ayat ${surah}:${ayah} tidak sesuai peta kata (${datasetWords.length}, seharusnya ${dataset}).`)
+    throw new Error(t('Jumlah kata ayat {surah}:{ayah} tidak sesuai peta kata ({found}, seharusnya {expected}).', { surah, ayah, found: datasetWords.length, expected: dataset }))
   }
   const slots: string[] = []
   let d = 0
   for (const [cFirst, cCount, dFirst, dCount] of groups) {
     while (slots.length < cFirst - 1) slots.push(datasetWords[d++])
-    if (d !== dFirst - 1) throw new Error(`Peta kata ayat ${surah}:${ayah} tidak konsisten.`)
+    if (d !== dFirst - 1) throw new Error(t('Peta kata ayat {surah}:{ayah} tidak konsisten.', { surah, ayah }))
     slots.push(datasetWords.slice(d, d + dCount).join(' '))
     for (let i = 1; i < cCount; i++) slots.push('')
     d += dCount
   }
   while (d < datasetWords.length) slots.push(datasetWords[d++])
-  if (slots.length !== canonical) throw new Error(`Peta kata ayat ${surah}:${ayah} tidak konsisten.`)
+  if (slots.length !== canonical) throw new Error(t('Peta kata ayat {surah}:{ayah} tidak konsisten.', { surah, ayah }))
   return slots
 }

@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { t } from '@shared/i18n'
 import { segmentLabel, snapMs, type Edge } from '@shared/segments'
 import type { Segment, Verse } from '@shared/types'
 import { verseKey } from '@shared/video'
@@ -21,7 +22,7 @@ export function SyncTimeline({
   durationMs,
   peaks,
   peaksError,
-  t,
+  now,
   playing,
   selectedId,
   onSelect,
@@ -33,7 +34,7 @@ export function SyncTimeline({
   durationMs: number
   peaks: ReadonlyArray<number>
   peaksError: boolean
-  t: number
+  now: number
   playing: boolean
   selectedId: string | null
   onSelect: (id: string) => void
@@ -59,9 +60,9 @@ export function SyncTimeline({
   useEffect(() => {
     const el = outer.current
     if (!el || !playing || zoom === 1 || durationMs <= 0) return
-    const x = (t / durationMs) * el.scrollWidth
+    const x = (now / durationMs) * el.scrollWidth
     if (x < el.scrollLeft || x > el.scrollLeft + el.clientWidth - 24) el.scrollLeft = Math.max(0, x - el.clientWidth * 0.1)
-  }, [t, playing, zoom, durationMs])
+  }, [now, playing, zoom, durationMs])
 
   useEffect(() => {
     if (!selectedId) return
@@ -85,13 +86,13 @@ export function SyncTimeline({
   return (
     <div className="sync-tl">
       <div className="sync-tl__bar">
-        <span className="qr-tc">{formatMs(t)}</span>
+        <span className="qr-tc">{formatMs(now)}</span>
         <span className="qr-tc qr-tc--dim">/ {formatMs(durationMs)}</span>
         <span className="spacer" />
         <button
           type="button"
           className="qr-btn qr-btn--ghost qr-btn--icon qr-btn--sm"
-          aria-label="Perkecil tampilan"
+          aria-label={t('Perkecil tampilan')}
           disabled={zoom === ZOOMS[0]}
           onClick={() => setZoom(ZOOMS[Math.max(0, ZOOMS.indexOf(zoom) - 1)])}
         >
@@ -100,7 +101,7 @@ export function SyncTimeline({
         <button
           type="button"
           className="qr-btn qr-btn--ghost qr-btn--icon qr-btn--sm"
-          aria-label="Perbesar tampilan"
+          aria-label={t('Perbesar tampilan')}
           disabled={zoom === ZOOMS[ZOOMS.length - 1]}
           onClick={() => setZoom(ZOOMS[Math.min(ZOOMS.length - 1, ZOOMS.indexOf(zoom) + 1)])}
         >
@@ -131,7 +132,7 @@ export function SyncTimeline({
           <div className="sync-tl__ruler" aria-hidden="true">
             {ticks.map((ms) => (
               <span key={ms} style={{ left: pct(ms) }}>
-                {formatMs(ms).replace(/,\d$/, '')}
+                {formatMs(ms).replace(/[,.]\d$/, '')}
               </span>
             ))}
           </div>
@@ -155,7 +156,7 @@ export function SyncTimeline({
                     const d = drag.current
                     if (!d || d.id !== s.id) return
                     const targets = segments.filter((o) => o.id !== s.id).flatMap((o) => [o.startMs, o.endMs])
-                    targets.push(t)
+                    targets.push(now)
                     onEdge(s.id, which, snapMs(msAt(e.clientX), targets, SNAP_PX * msPerPx))
                   }}
                   onPointerUp={() => {
@@ -174,7 +175,7 @@ export function SyncTimeline({
                   className={cls}
                   style={{ left: pct(s.startMs), width: pct(s.endMs - s.startMs) }}
                   title={`${label} · ${formatMs(s.startMs)}–${formatMs(s.endMs)}`}
-                  aria-label={`Segmen ${label}, ${formatMs(s.startMs)} sampai ${formatMs(s.endMs)}`}
+                  aria-label={t('Segmen {label}, {from} sampai {to}', { label, from: formatMs(s.startMs), to: formatMs(s.endMs) })}
                   aria-pressed={s.id === selectedId}
                   onClick={() => onSelect(s.id)}
                 >
@@ -188,12 +189,12 @@ export function SyncTimeline({
           <div className="sync-tl__wave">
             {selected && <div className="sync-tl__band" style={{ left: pct(selected.startMs), width: pct(selected.endMs - selected.startMs) }} />}
             {peaks.length > 0 ? (
-              <Waveform peaks={peaks} label="Gelombang suara seluruh audio" />
+              <Waveform peaks={peaks} label={t('Gelombang suara seluruh audio')} />
             ) : (
-              <span className="lane-note">{peaksError ? 'Gelombang suara tidak bisa dimuat.' : 'Memuat gelombang suara…'}</span>
+              <span className="lane-note">{peaksError ? t('Gelombang suara tidak bisa dimuat.') : t('Memuat gelombang suara…')}</span>
             )}
           </div>
-          <div className="qr-playhead" style={{ left: pct(t) }} />
+          <div className="qr-playhead" style={{ left: pct(now) }} />
         </div>
       </div>
     </div>

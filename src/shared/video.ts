@@ -1,3 +1,4 @@
+import type { Lang } from './i18n'
 import type { Aspect, Asset, Project, SurahInfo, Verse } from './types'
 
 /** Composition id in src/remotion/Root.tsx; preview (Player) and export (renderMedia) both use it. */
@@ -18,6 +19,8 @@ export interface VideoProps {
   height: number
   fps: number
   durationMs: number
+  /** Language of the text the composition writes itself (lower third, subscribe prompt, ...); the same in preview and export. */
+  lang: Lang
   /** Full URL of the source's loudness table (see src/shared/spectrum.ts); set only when the project has a visualizer overlay. */
   spectrumUrl?: string | null
   baseUrl: {

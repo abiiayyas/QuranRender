@@ -1,3 +1,4 @@
+import { t } from '@shared/i18n'
 import { execFile, spawn } from 'node:child_process'
 import { accessSync, constants, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
@@ -85,7 +86,7 @@ export async function cliStatus(refresh = false): Promise<CliStatus> {
 
 /** The executable's name when the tool is a known CLI that is missing from PATH; null when it can be run. */
 export async function missingBin(tool: CliTool | CliImageTool): Promise<string | null> {
-  const bin = CLI_TOOLS.find((t) => t.id === tool)?.bin
+  const bin = CLI_TOOLS.find((x) => x.id === tool)?.bin
   if (!bin) return null
   return findBin(bin, await searchPath()) ? null : bin
 }
@@ -93,7 +94,7 @@ export async function missingBin(tool: CliTool | CliImageTool): Promise<string |
 // ---------- running it ----------
 
 function abortError(): Error {
-  return Object.assign(new Error('Dibatalkan'), { name: 'AbortError' })
+  return Object.assign(new Error(t('Dibatalkan')), { name: 'AbortError' })
 }
 
 function killTree(pid: number | undefined): void {
@@ -159,26 +160,26 @@ function run(s: Spawn, input: string, name: string, timeoutMs: number, signal?: 
     end(() => reject(e))
   }
   const onAbort = (): void => stop(abortError())
-  const minutes = timeoutMs >= 60_000 ? `${Math.round(timeoutMs / 60_000)} menit` : `${Math.round(timeoutMs / 1000)} detik`
-  const timer = setTimeout(() => stop(new Error(`${name} terlalu lama merespons (lebih dari ${minutes}).`)), timeoutMs)
+  const minutes = timeoutMs >= 60_000 ? t('{n} menit', { n: Math.round(timeoutMs / 60_000) }) : t('{n} detik', { n: Math.round(timeoutMs / 1000) })
+  const timer = setTimeout(() => stop(new Error(t('{name} terlalu lama merespons (lebih dari {time}).', { name, time: minutes }))), timeoutMs)
   signal?.addEventListener('abort', onAbort, { once: true })
 
   child.stdout.setEncoding('utf8').on('data', (d: string) => {
     out += d
-    if (out.length > MAX_OUTPUT) stop(new Error(`${name} mengirim balasan yang terlalu besar.`))
+    if (out.length > MAX_OUTPUT) stop(new Error(t('{name} mengirim balasan yang terlalu besar.', { name })))
   })
   child.stderr.setEncoding('utf8').on('data', (d: string) => {
     err = (err + d).slice(-4000)
   })
   // The CLI may exit before it reads all of stdin (bad flag, not logged in); the exit code tells the story.
   child.stdin.on('error', () => {})
-  child.on('error', (e) => end(() => reject(new Error(`Tidak bisa menjalankan ${name}: ${e.message}`))))
+  child.on('error', (e) => end(() => reject(new Error(t('Tidak bisa menjalankan {name}: {reason}', { name, reason: e.message })))))
   child.on('close', (code) =>
     end(() => {
       if (code === 0) return resolve(includeStderr ? `${out}\n${err}` : out)
       // CLIs colour their errors even when piped; escape codes would show up as garbage in a toast.
       const detail = (err || out).replace(/\u001B\[[0-9;]*m/g, '').trim().split('\n').slice(-6).join('\n').slice(-400)
-      reject(new Error(`${name} berhenti dengan kode ${code}${detail ? `: ${detail}` : ''}. Pastikan CLI sudah login dan bisa dipakai di Terminal.`))
+      reject(new Error(t('{name} berhenti dengan kode {code}{detail}. Pastikan CLI sudah login dan bisa dipakai di Terminal.', { name, code: code ?? '', detail: detail ? `: ${detail}` : '' })))
     })
   )
   child.stdin.end(input)
@@ -202,10 +203,10 @@ async function workspace(): Promise<Workspace> {
 const program = (w: Workspace, bin: string, args: string[]): Spawn => ({ command: bin, args, shell: false, cwd: w.cwd, env: w.env })
 
 function locate(w: Workspace, tool: CliTool | CliImageTool): string {
-  const bin = CLI_TOOLS.find((t) => t.id === tool)?.bin
-  if (!bin) throw new Error('Perintah CLI belum diisi. Buka Pengaturan untuk menambahkannya.')
+  const bin = CLI_TOOLS.find((x) => x.id === tool)?.bin
+  if (!bin) throw new Error(t('Perintah CLI belum diisi. Buka Pengaturan untuk menambahkannya.'))
   const file = findBin(bin, w.path)
-  if (!file) throw new Error(`CLI ${bin} tidak ditemukan di komputer ini. Pasang ${cliToolName(tool)} dan login dulu, lalu coba lagi.`)
+  if (!file) throw new Error(t('CLI {bin} tidak ditemukan di komputer ini. Pasang {tool} dan login dulu, lalu coba lagi.', { bin, tool: cliToolName(tool) }))
   return file
 }
 
@@ -279,12 +280,12 @@ function readImage(file: string, name: string): CliImage {
   try {
     size = statSync(file).size
   } catch {
-    throw new Error(`${name} tidak menghasilkan berkas gambar.`)
+    throw new Error(t('{name} tidak menghasilkan berkas gambar.', { name }))
   }
-  if (size === 0 || size > MAX_IMAGE) throw new Error(`Berkas gambar dari ${name} tidak wajar (${size} byte).`)
+  if (size === 0 || size > MAX_IMAGE) throw new Error(t('Berkas gambar dari {name} tidak wajar ({size} byte).', { name, size }))
   const bytes = readFileSync(file)
   const kind = sniffImage(bytes)
-  if (!kind) throw new Error(`Berkas dari ${name} bukan gambar PNG, JPEG, atau WebP.`)
+  if (!kind) throw new Error(t('Berkas dari {name} bukan gambar PNG, JPEG, atau WebP.', { name }))
   return { bytes, ...kind }
 }
 
@@ -297,8 +298,8 @@ const DEFAULT_BLOCK_MS = 30 * 60 * 1000
 
 function quotaMessage(name: string, until: number): string {
   const mins = Math.max(1, Math.ceil((until - Date.now()) / 60_000))
-  const left = mins >= 60 ? `${Math.floor(mins / 60)} jam ${mins % 60} menit` : `${mins} menit`
-  return `Kuota gambar ${name} habis. Silakan coba lagi sekitar ${left} lagi, atau pilih pembuat gambar lain di Pengaturan.`
+  const left = mins >= 60 ? t('{h} jam {m} menit', { h: Math.floor(mins / 60), m: mins % 60 }) : t('{n} menit', { n: mins })
+  return t('Kuota gambar {name} habis. Silakan coba lagi sekitar {time} lagi, atau pilih pembuat gambar lain di Pengaturan.', { name, time: left })
 }
 
 /** Turns an exhausted-quota reply into an error and remembers it; returns normally when the reply is something else. */
@@ -361,7 +362,7 @@ async function codexImage(w: Workspace, bin: string, name: string, prompt: strin
   }
   if (!files.length) {
     noteQuota('codex', name, said)
-    throw new Error(`${name} tidak membuat gambar${said ? `: ${said.slice(0, 240)}` : '.'} Alat gambar Codex hanya ada di paket ChatGPT yang mendukungnya.`)
+    throw new Error(t('{name} tidak membuat gambar{detail} Alat gambar Codex hanya ada di paket ChatGPT yang mendukungnya.', { name, detail: said ? `: ${said.slice(0, 240)}` : '.' }))
   }
   const newest = files.map((f) => join(dir, f)).sort((a, b) => statSync(b).mtimeMs - statSync(a).mtimeMs)[0]
   try {
@@ -390,7 +391,7 @@ export async function cliImage(o: ImageCliOptions): Promise<CliImage> {
   const w = await workspace()
   try {
     if (o.tool === 'custom') {
-      if (!o.command.trim()) throw new Error('Perintah gambar belum diisi. Buka Pengaturan untuk menambahkannya.')
+      if (!o.command.trim()) throw new Error(t('Perintah gambar belum diisi. Buka Pengaturan untuk menambahkannya.'))
       const out = join(w.cwd, 'image')
       // Quoted here, so a path with spaces works however the command writes {output}.
       const filled = o.command.replaceAll('{output}', `"${out}"`).replaceAll('{aspect}', o.aspect)
@@ -415,7 +416,7 @@ export async function cliImage(o: ImageCliOptions): Promise<CliImage> {
     if (!path) {
       // Antigravity answers in prose when it cannot draw (quota, refusal); show that instead of a vague complaint.
       noteQuota(o.tool, name, reply)
-      throw new Error(`${name} tidak menyebut lokasi gambar yang dibuatnya${reply.trim() ? `: ${reply.trim().slice(0, 240)}` : '.'}`)
+      throw new Error(t('{name} tidak menyebut lokasi gambar yang dibuatnya{detail}', { name, detail: reply.trim() ? `: ${reply.trim().slice(0, 240)}` : '.' }))
     }
     const img = readImage(path, name)
     imageBlocked.delete(o.tool)

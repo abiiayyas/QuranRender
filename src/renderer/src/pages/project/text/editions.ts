@@ -1,3 +1,4 @@
+import { locale } from '@shared/i18n'
 import { create } from 'zustand'
 import type { Edition, Job } from '@shared/types'
 import { errorText } from '../../../lib/format'
@@ -56,11 +57,17 @@ window.api.on.job((job) => {
   }
 })
 
-const names = new Intl.DisplayNames(['id'], { type: 'language' })
+const namesByLang = new Map<string, Intl.DisplayNames>()
 
-/** Indonesian name of a language code; the code itself when unknown. */
+/** Name of a language code in the current UI language; the code itself when unknown. */
 export function languageName(code: string): string {
   try {
+    const tag = locale()
+    let names = namesByLang.get(tag)
+    if (!names) {
+      names = new Intl.DisplayNames([tag], { type: 'language' })
+      namesByLang.set(tag, names)
+    }
     return names.of(code) ?? code
   } catch {
     return code

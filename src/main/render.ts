@@ -1,3 +1,4 @@
+import { t } from '@shared/i18n'
 import { spawn } from 'node:child_process'
 import { existsSync, readdirSync, rmSync, statSync } from 'node:fs'
 import { createServer, type AddressInfo } from 'node:net'
@@ -56,7 +57,7 @@ function buildBundle(root: string): Promise<void> {
   child.stderr.on('data', (d: Buffer) => (log += d.toString()))
   child.on('error', reject)
   child.on('close', (code) =>
-    code === 0 ? resolve() : reject(new Error(`Gagal menyiapkan mesin render:\n${log.trim().split('\n').slice(-6).join('\n')}`))
+    code === 0 ? resolve() : reject(new Error(`${t('Gagal menyiapkan mesin render:')}\n${log.trim().split('\n').slice(-6).join('\n')}`))
   )
   return promise
 }
@@ -66,11 +67,11 @@ async function prepareAssets(): Promise<RenderAssets> {
     const base = join(process.resourcesPath, 'remotion')
     const browserExecutable = findChrome(join(base, 'chrome'))
     if (!existsSync(join(base, 'bundle', 'index.html')) || !browserExecutable) {
-      throw new Error('Mesin render tidak ikut terpasang di aplikasi ini. Silakan pasang ulang dari installer terbaru.')
+      throw new Error(t('Mesin render tidak ikut terpasang di aplikasi ini. Silakan pasang ulang dari installer terbaru.'))
     }
     const remotionModules = join(process.resourcesPath, 'app.asar.unpacked', 'node_modules', '@remotion')
     const compositor = existsSync(remotionModules) ? readdirSync(remotionModules).find((n) => n.startsWith('compositor-')) : undefined
-    if (!compositor) throw new Error('Mesin render tidak ikut terpasang di aplikasi ini. Silakan pasang ulang dari installer terbaru.')
+    if (!compositor) throw new Error(t('Mesin render tidak ikut terpasang di aplikasi ini. Silakan pasang ulang dari installer terbaru.'))
     return { serveUrl: join(base, 'bundle'), browserExecutable, binariesDirectory: join(remotionModules, compositor) }
   }
   const root = app.getAppPath()
@@ -112,7 +113,7 @@ async function freePort(): Promise<number> {
       // No IPv6 on this machine: the IPv4 attempt is enough there.
     }
   }
-  throw new Error('Tidak ada port kosong untuk mesin render.')
+  throw new Error(t('Tidak ada port kosong untuk mesin render.'))
 }
 
 export async function renderVideo(o: {
@@ -171,7 +172,7 @@ export async function renderThumbnail(o: { props: ThumbnailProps; outPath: strin
       if (statSync(o.outPath).size <= THUMBNAIL_MAX_BYTES) return
     }
     rmSync(o.outPath, { force: true })
-    throw new Error('Thumbnail masih lebih dari 2 MB pada mutu terendah. Pakai gambar latar yang lebih sederhana.')
+    throw new Error(t('Thumbnail masih lebih dari 2 MB pada mutu terendah. Pakai gambar latar yang lebih sederhana.'))
   } finally {
     o.signal.removeEventListener('abort', cancel)
   }

@@ -1,3 +1,4 @@
+import { t } from '@shared/i18n'
 import { useEffect, useState } from 'react'
 import type { ArabicScript, Segment, SurahInfo, Verse } from '@shared/types'
 
@@ -21,8 +22,8 @@ export function useSurahs(): SurahInfo[] {
 }
 
 export function rangeLabel(list: SurahInfo[], surah: number | null, from: number | null, to: number | null): string {
-  if (!surah) return 'Surah belum dipilih'
-  const name = list.find((s) => s.id === surah)?.nameLatin ?? `Surah ${surah}`
+  if (!surah) return t('Surah belum dipilih')
+  const name = list.find((s) => s.id === surah)?.nameLatin ?? t('Surah {n}', { n: surah })
   if (!from) return name
   return from === to || !to ? `${name} ${from}` : `${name} ${from}–${to}`
 }

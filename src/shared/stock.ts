@@ -1,3 +1,4 @@
+import { msg } from './i18n'
 export type StockProvider = 'pexels' | 'unsplash' | 'pixabay'
 export type StockKind = 'photo' | 'video'
 export type StockOrientation = 'portrait' | 'landscape' | 'square'
@@ -13,9 +14,9 @@ export interface StockProviderInfo {
 }
 
 export const STOCK_PROVIDERS: StockProviderInfo[] = [
-  { id: 'pexels', label: 'Pexels', keyUrl: 'https://www.pexels.com/api/new/', kinds: ['photo', 'video'], creditNote: 'Foto/video dari Pexels. Mencantumkan fotografer dianjurkan.' },
-  { id: 'unsplash', label: 'Unsplash', keyUrl: 'https://unsplash.com/oauth/applications', kinds: ['photo'], creditNote: 'Foto dari Unsplash. Pencantuman fotografer dan Unsplash diwajibkan.' },
-  { id: 'pixabay', label: 'Pixabay', keyUrl: 'https://pixabay.com/api/docs/', kinds: ['photo', 'video'], creditNote: 'Gambar/video dari Pixabay. Boleh dipakai bebas.' }
+  { id: 'pexels', label: 'Pexels', keyUrl: 'https://www.pexels.com/api/new/', kinds: ['photo', 'video'], creditNote: msg('Foto/video dari Pexels. Mencantumkan fotografer dianjurkan.') },
+  { id: 'unsplash', label: 'Unsplash', keyUrl: 'https://unsplash.com/oauth/applications', kinds: ['photo'], creditNote: msg('Foto dari Unsplash. Pencantuman fotografer dan Unsplash diwajibkan.') },
+  { id: 'pixabay', label: 'Pixabay', keyUrl: 'https://pixabay.com/api/docs/', kinds: ['photo', 'video'], creditNote: msg('Gambar/video dari Pixabay. Boleh dipakai bebas.') }
 ]
 
 export interface StockQuery {

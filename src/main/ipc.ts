@@ -1,3 +1,4 @@
+import { t } from '@shared/i18n'
 import { app, ipcMain, shell } from 'electron'
 import type { StudioApi } from '@shared/api'
 import { registerExportIpc } from './exporter'
@@ -40,7 +41,7 @@ export function registerIpc(): void {
   handle('settings', 'aiReady', () => aiReady())
   handle('settings', 'aiKey', () => aiKeyStatus())
   handle('settings', 'setAiKey', (key) => {
-    if (!key.trim()) throw new Error('Kunci AI kosong.')
+    if (!key.trim()) throw new Error(t('Kunci AI kosong.'))
     setAiKey(key.trim())
     return aiKeyStatus()
   })
@@ -54,7 +55,7 @@ export function registerIpc(): void {
   handle('jobs', 'cancel', (id) => cancelJob(id))
 
   handle('app', 'openExternal', async (url) => {
-    if (!/^https:\/\//i.test(url)) throw new Error('Hanya alamat https yang bisa dibuka.')
+    if (!/^https:\/\//i.test(url)) throw new Error(t('Hanya alamat https yang bisa dibuka.'))
     await shell.openExternal(url)
   })
   handle('app', 'version', () => app.getVersion())

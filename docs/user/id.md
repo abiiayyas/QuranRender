@@ -6,10 +6,11 @@ dengan suara qari. Panduan untuk menjalankan dari kode sumber ada di [`07_BUILD_
 ## 1. Memulai
 
 Di **Beranda**, pilih surah dan rentang ayat (boleh dikosongkan), nama qari, format video (9:16, 16:9, atau 1:1), dan jenis
-teks Arab, lalu klik **Mulai**. Nama proyek boleh diisi, atau dikosongkan untuk memakai nama surah. Proyek tersimpan otomatis; semua langkah bisa dibuka kapan saja lewat deretan langkah di atas.
+teks Arab, lalu klik **Buat proyek**. Nama proyek boleh diisi, atau dikosongkan untuk memakai nama surah. Proyek tersimpan otomatis; semua langkah bisa dibuka kapan saja lewat deretan langkah di atas.
 
-Ingin memulai paling cepat? Klik kartu **Proyek kosong** di daftar proyek: cukup isi nama dan surah, lalu rekaman, terjemahan, dan
-tampilan disiapkan di langkah-langkah berikutnya.
+Ingin memulai paling cepat? Klik **Proyek kosong**: cukup isi nama dan surah, lalu rekaman, terjemahan, dan tampilan disiapkan di langkah-langkah berikutnya.
+
+**Daftar proyek** memuat satu baris per proyek: judul, surah (nomor, nama Latin, nama Arab) beserta rentang ayatnya, qari, jumlah segmen, durasi, tahap pengerjaan, dan langkah berikutnya. Saring menurut tahap, cari menurut judul, surah, atau qari, dan urutkan menurut yang terbaru, surah, atau nama. Kartu **Lanjutkan** di sebelah formulir menyebut langkah berikutnya untuk proyek yang terakhir dikerjakan.
 
 | Teks Arab | Isi |
 |---|---|
@@ -77,8 +78,9 @@ Pratinjau memakai mesin yang sama dengan ekspor, jadi hasilnya sama dengan video
   (kembali ke awal), **Bolak-balik** (maju lalu mundur tanpa loncatan), atau **Pudar** (memudar halus di sambungan).
   Tombol **Cari foto stok atau buat dengan AI** membuka pemilih latar (lihat di bawah).
 - **Overlay:** teks atau gambar (logo, nama channel), **Nama qari** (lower third animasi dengan nama surah), **Kemajuan**
-  (bilah tipis yang terisi selama tilawah), **Ajakan** (kalimat pendek seperti "Jangan lupa bagikan dan doakan"), dan **Gelombang suara** (batang atau gelombang yang
-  bergerak mengikuti suara tilawah; perlu rekaman sumber), dengan
+  (bilah tipis yang terisi selama tilawah), **Ajakan** (kalimat pendek seperti "Jangan lupa bagikan dan doakan"), **Gelombang suara** (batang atau gelombang yang
+  bergerak mengikuti suara tilawah; perlu rekaman sumber), serta **Subscribe** dan **Follow** (tombol yang muncul di waktu Mulai, ditekan,
+  lalu hilang dan muncul lagi sesuai jeda, misalnya tiap 60 detik selama 6 detik; nama akun boleh dicantumkan), dengan
   posisi dan waktu tampil. Geser overlay di linimasa untuk memindahkannya, geser tepinya untuk mengubah panjangnya.
   Linimasa bisa diperbesar (sampai 64×) dan di-scroll untuk rekaman panjang.
 - **Format:** ganti 9:16, 16:9, 1:1, dan tampilkan garis area aman. Garisnya tidak ikut diekspor.
@@ -125,13 +127,20 @@ kalimatnya (butuh kunci API di Pengaturan); AI tidak menulis atau mengutip teks 
 ditolak. Setiap kolom punya tombol Salin, dan **Simpan semua (.txt)** menulis semua platform dalam satu berkas. Periksa hak
 pakai rekaman sebelum mengunggah.
 
-## 8. Konten dan lisensi
+## 8. Pengaturan
+
+- **Umum:** bahasa aplikasi (Bahasa Indonesia atau English), tema, dan jenis teks Arab bawaan. Bahasa juga menentukan pesan dari aplikasi dan
+  teks yang digambar ke dalam video (misalnya tombol Subscribe dan draf Publikasi); terjemahan ayat dipilih terpisah di langkah Teks.
+- **Layanan AI** dan **Pembuat gambar:** lihat langkah Teks dan Editor.
+- **Dukungan:** tautan donasi (PayPal dan Saweria). Donasi sukarela dan tidak membuka fitur apa pun.
+
+## 9. Konten dan lisensi
 
 - Teks dan terjemahan Kemenag: Lajnah Pentashihan Mushaf Al-Qur'an, Kementerian Agama RI.
 - Teks Uthmani, QPC, dan terjemahan lain: Quran.com. Font KFGQPC tidak dibundel; diunduh dari CDN Quran.com.
 - Tilawah: MP3Quran dan Quran.com. Periksa hak pakai rekaman sebelum mengunggah.
 - Kode: GPL-3.0. Remotion gratis untuk individu dan organisasi sampai 3 karyawan.
 
-## 9. Bantuan
+## 10. Bantuan
 
 Laporkan masalah lewat issue di repositori. Sertakan langkah, pesan galat, dan langkah mana yang bermasalah.

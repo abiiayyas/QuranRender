@@ -1,3 +1,4 @@
+import { t } from '@shared/i18n'
 import Database from 'better-sqlite3'
 import { cleanTranslation, KEMENAG } from '@shared/translation'
 import type { Edition, Job } from '@shared/types'
@@ -43,9 +44,9 @@ interface CatalogItem {
 async function getJson<T>(url: string, signal?: AbortSignal): Promise<T> {
   const res = await fetch(url, { signal, headers: { Accept: 'application/json' } }).catch((e: Error) => {
     if (e.name === 'AbortError') throw e
-    throw new Error('Quran.com tidak bisa dihubungi. Periksa koneksi internet lalu coba lagi.')
+    throw new Error(t('Quran.com tidak bisa dihubungi. Periksa koneksi internet lalu coba lagi.'))
   })
-  if (!res.ok) throw new Error(`Quran.com menolak permintaan (${res.status}). Silakan coba lagi nanti.`)
+  if (!res.ok) throw new Error(t('Quran.com menolak permintaan ({status}). Silakan coba lagi nanti.', { status: res.status }))
   return (await res.json()) as T
 }
 
@@ -99,26 +100,26 @@ export function installEdition(editionId: string): Job {
   const running = installing.get(editionId)
   if (running) return getJob(running)
   const rid = Number(/\.qdc(\d+)$/.exec(editionId)?.[1] ?? NaN)
-  if (editionId === KEMENAG || !Number.isInteger(rid)) throw new Error('Edisi ini tidak bisa dipasang dari Quran.com.')
+  if (editionId === KEMENAG || !Number.isInteger(rid)) throw new Error(t('Edisi ini tidak bisa dipasang dari Quran.com.'))
   const job = startJob(null, 'translate', 'net', async (ctx) => {
     try {
       const meta = (await remoteCatalog()).find((e) => e.id === editionId)
-      if (!meta) throw new Error('Edisi ini tidak ada di katalog Quran.com.')
+      if (!meta) throw new Error(t('Edisi ini tidak ada di katalog Quran.com.'))
       ctx.progress(0.05, `Mengunduh ${meta.name}`)
       const data = await getJson<{ translations: { verse_key?: string; text: string }[] }>(
         `${API}/quran/translations/${rid}?fields=verse_key`,
         ctx.signal
       )
       const verses = data.translations ?? []
-      if (verses.length === 0) throw new Error(`${meta.name} belum menyediakan teks lengkap di Quran.com. Silakan pilih edisi lain.`)
-      ctx.progress(0.7, 'Menyimpan teks')
+      if (verses.length === 0) throw new Error(t('{name} belum menyediakan teks lengkap di Quran.com. Silakan pilih edisi lain.', { name: meta.name }))
+      ctx.progress(0.7, t('Menyimpan teks'))
       const rows: [number, number, string][] = []
       for (const v of verses) {
         const m = /^(\d+):(\d+)$/.exec(v.verse_key ?? '')
         const text = cleanTranslation(v.text ?? '')
         if (m && text) rows.push([Number(m[1]), Number(m[2]), text])
       }
-      if (rows.length < 6000) throw new Error(`Teks ${meta.name} dari Quran.com tidak lengkap (${rows.length} ayat). Silakan coba lagi nanti.`)
+      if (rows.length < 6000) throw new Error(t('Teks {name} dari Quran.com tidak lengkap ({n} ayat). Silakan coba lagi nanti.', { name: meta.name, n: rows.length }))
       const db = getDb()
       const insert = db.prepare('INSERT INTO edition_text (edition, surah, ayah, text) VALUES (?, ?, ?, ?)')
       db.transaction(() => {
@@ -136,7 +137,7 @@ export function installEdition(editionId: string): Job {
 }
 
 export function removeEdition(editionId: string): void {
-  if (editionId === KEMENAG) throw new Error('Terjemahan Kemenag sudah bawaan aplikasi dan tidak bisa dihapus.')
+  if (editionId === KEMENAG) throw new Error(t('Terjemahan Kemenag sudah bawaan aplikasi dan tidak bisa dihapus.'))
   getDb().prepare('DELETE FROM editions WHERE id = ?').run(editionId)
 }
 
@@ -154,7 +155,7 @@ export function editionVerses(editionId: string, surah: number, from: number, to
     return out
   }
   if (!getDb().prepare('SELECT 1 FROM editions WHERE id = ?').get(editionId))
-    throw new Error('Edisi terjemahan ini belum terpasang. Silakan pasang dulu.')
+    throw new Error(t('Edisi terjemahan ini belum terpasang. Silakan pasang dulu.'))
   const rows = getDb()
     .prepare('SELECT ayah, text FROM edition_text WHERE edition = ? AND surah = ? AND ayah BETWEEN ? AND ?')
     .all(editionId, surah, from, to) as { ayah: number; text: string }[]

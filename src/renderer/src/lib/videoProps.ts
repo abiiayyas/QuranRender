@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { Asset, Project } from '@shared/types'
+import { getLang } from '@shared/i18n'
 import { canvasSize, type VideoProps } from '@shared/video'
 import { useSurahs, useVerses } from './quran'
 
@@ -26,6 +27,7 @@ export function useVideoProps(project: Project, assets: Record<string, Asset>, f
   const lastEnd = project.segments.reduce((m, s) => Math.max(m, s.endMs), 0)
   const durationMs = Math.max(source?.durationMs ?? lastEnd, 1000)
   const { width, height } = canvasSize(project.aspect, 1080)
+  const lang = getLang()
 
   // The visualizer draws from a loudness table main makes once per source; fetched only when an overlay needs it.
   const wantsSpectrum = project.overlays.some((o) => o.kind === 'visualizer') && !!project.sourceAssetId
@@ -57,9 +59,10 @@ export function useVideoProps(project: Project, assets: Record<string, Asset>, f
       height,
       fps,
       durationMs,
+      lang,
       spectrumUrl,
       baseUrl: { asset: 'studio://asset/', font: 'studio://fonts/' }
     }),
-    [project, used, verses, surah, width, height, fps, durationMs, spectrumUrl]
+    [project, used, verses, surah, width, height, fps, durationMs, lang, spectrumUrl]
   )
 }

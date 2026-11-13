@@ -1,3 +1,4 @@
+import { t, locale } from '@shared/i18n'
 import { readFile } from 'node:fs/promises'
 import { basename } from 'node:path'
 import { newSegmentId, REVIEW_CONFIDENCE } from '@shared/segments'
@@ -61,8 +62,8 @@ export interface AlignerResult {
 
 // Errors --------------------------------------------------------------------------------------------------------
 
-const OFFLINE = 'Tidak dapat terhubung ke layanan penyelaras online (Hugging Face Space). Periksa koneksi internet lalu coba lagi.'
-const TIMEOUT = 'Layanan penyelaras (Hugging Face Space) tidak menanggapi dalam batas waktu. Silakan coba lagi beberapa saat lagi.'
+const offlineText = (): string => t('Tidak dapat terhubung ke layanan penyelaras online (Hugging Face Space). Periksa koneksi internet lalu coba lagi.')
+const timeoutText = (): string => t('Layanan penyelaras (Hugging Face Space) tidak menanggapi dalam batas waktu. Silakan coba lagi beberapa saat lagi.')
 
 function errorText(v: unknown): string | null {
   if (v == null) return null
@@ -88,22 +89,22 @@ function statusError(status: number, body: string): Error {
   const detail = errorText(field(v, 'error')) ?? errorText(field(v, 'detail'))
   const base =
     status === 404
-      ? 'Layanan penyelaras tidak ditemukan (Space mungkin dipindahkan atau dimatikan)'
+      ? t('Layanan penyelaras tidak ditemukan (Space mungkin dipindahkan atau dimatikan)')
       : status === 413
-        ? 'Berkas audio terlalu besar untuk layanan penyelaras'
+        ? t('Berkas audio terlalu besar untuk layanan penyelaras')
         : status === 429
-          ? 'Layanan penyelaras sedang membatasi permintaan (kuota habis). Silakan coba lagi nanti'
+          ? t('Layanan penyelaras sedang membatasi permintaan (kuota habis). Silakan coba lagi nanti')
           : status >= 502 && status <= 504
-            ? 'Layanan penyelaras sedang tidak tersedia atau baru dinyalakan. Mohon tunggu 1–2 menit lalu coba lagi'
-            : `Layanan penyelaras menolak permintaan (HTTP ${status})`
+            ? t('Layanan penyelaras sedang tidak tersedia atau baru dinyalakan. Mohon tunggu 1–2 menit lalu coba lagi')
+            : t('Layanan penyelaras menolak permintaan (HTTP {status})', { status })
   return new Error(detail ? `${base}: ${detail}` : `${base}.`)
 }
 
 /** fetch's own failures (DNS, refused, TLS) carry a cause code; timeouts arrive as TimeoutError. */
 function networkError(e: unknown, outer: AbortSignal): unknown {
   if (outer.aborted || !(e instanceof Error)) return e
-  if (e.name === 'TimeoutError') return new Error(TIMEOUT)
-  if (e.name === 'TypeError' || field(e.cause, 'code')) return new Error(OFFLINE)
+  if (e.name === 'TimeoutError') return new Error(timeoutText())
+  if (e.name === 'TypeError' || field(e.cause, 'code')) return new Error(offlineText())
   return e
 }
 
@@ -125,7 +126,7 @@ export async function alignFile(
   onStage: (stage: AlignStage, message: string, elapsedMs: number) => void
 ): Promise<AlignerResult> {
   const bytes = await readFile(file)
-  onStage('uploading', `Mengunggah audio (${(bytes.length / 1_048_576).toFixed(1)} MB)…`, 0)
+  onStage('uploading', t('Mengunggah audio ({size} MB)…', { size: (bytes.length / 1_048_576).toLocaleString(locale(), { minimumFractionDigits: 1, maximumFractionDigits: 1 }) }), 0)
   const form = new FormData()
   form.append('files', new Blob([bytes]), basename(file))
   const up = await request(`${SPACE_URL}/gradio_api/upload`, { method: 'POST', body: form }, signal, UPLOAD_TIMEOUT_MS)
@@ -133,9 +134,9 @@ export async function alignFile(
   if (!up.ok) throw statusError(up.status, upBody)
   const paths = parseJson(upBody)
   const serverPath = Array.isArray(paths) && typeof paths[0] === 'string' ? paths[0] : null
-  if (!serverPath) throw new Error('Jawaban layanan penyelaras tidak dapat dibaca: unggahan tidak mengembalikan jalur berkas.')
+  if (!serverPath) throw new Error(t('Jawaban layanan penyelaras tidak dapat dibaca: unggahan tidak mengembalikan jalur berkas.'))
 
-  onStage('queued', 'Menunggu giliran di server penyelaras…', 0)
+  onStage('queued', t('Menunggu giliran di server penyelaras…'), 0)
   const call = await request(
     `${SPACE_URL}/gradio_api/call/${API}`,
     {
@@ -158,7 +159,7 @@ export async function alignFile(
   const callBody = await call.text()
   if (!call.ok) throw statusError(call.status, callBody)
   const eventId = field(parseJson(callBody), 'event_id')
-  if (typeof eventId !== 'string' || !eventId) throw new Error('Jawaban layanan penyelaras tidak dapat dibaca: panggilan tidak mengembalikan event_id.')
+  if (typeof eventId !== 'string' || !eventId) throw new Error(t('Jawaban layanan penyelaras tidak dapat dibaca: panggilan tidak mengembalikan event_id.'))
   return await waitResult(eventId, signal, onStage)
 }
 
@@ -173,7 +174,7 @@ async function waitResult(eventId: string, signal: AbortSignal, onStage: (stage:
     MAX_WAIT_MS
   ).catch((e) => {
     clearTimeout(idleTimer)
-    throw idle.signal.aborted && !signal.aborted ? new Error(TIMEOUT) : e
+    throw idle.signal.aborted && !signal.aborted ? new Error(timeoutText()) : e
   })
   if (!res.ok || !res.body) {
     clearTimeout(idleTimer)
@@ -198,25 +199,25 @@ async function waitResult(eventId: string, signal: AbortSignal, onStage: (stage:
         if (ev.event === 'complete') return parseComplete(ev.data)
         if (ev.event === 'error') {
           const raw = ev.data.trim()
-          const msg = errorText(parseJson(raw)) ?? (raw && raw !== 'null' ? raw : null)
+          const reason = errorText(parseJson(raw)) ?? (raw && raw !== 'null' ? raw : null)
           throw new Error(
-            msg
-              ? `Layanan penyelaras gagal memproses audio: ${msg}`
-              : 'Layanan penyelaras gagal memproses audio tanpa keterangan (kuota GPU bersama mungkin habis). Silakan coba lagi nanti.'
+            reason
+              ? t('Layanan penyelaras gagal memproses audio: {reason}', { reason })
+              : t('Layanan penyelaras gagal memproses audio tanpa keterangan (kuota GPU bersama mungkin habis). Silakan coba lagi nanti.')
           )
         }
         const elapsed = Date.now() - started
-        onStage('processing', `Server sedang memproses audio… ${minutesSeconds(elapsed)}`, elapsed)
+        onStage('processing', t('Server sedang memproses audio… {time}', { time: minutesSeconds(elapsed) }), elapsed)
       }
     }
   } catch (e) {
-    if (idle.signal.aborted && !signal.aborted) throw new Error(TIMEOUT)
+    if (idle.signal.aborted && !signal.aborted) throw new Error(timeoutText())
     throw networkError(e, signal)
   } finally {
     clearTimeout(idleTimer)
     reader.cancel().catch(() => undefined)
   }
-  throw new Error('Koneksi ke layanan penyelaras berakhir sebelum hasil tersedia. Silakan coba lagi.')
+  throw new Error(t('Koneksi ke layanan penyelaras berakhir sebelum hasil tersedia. Silakan coba lagi.'))
 }
 
 function parseSse(block: string): { event: string; data: string } | null {
@@ -231,7 +232,7 @@ function parseSse(block: string): { event: string; data: string } | null {
 
 function minutesSeconds(ms: number): string {
   const s = Math.floor(ms / 1000)
-  return s >= 60 ? `${Math.floor(s / 60)} mnt ${s % 60} dtk` : `${s} dtk`
+  return s >= 60 ? t('{m} mnt {s} dtk', { m: Math.floor(s / 60), s: s % 60 }) : t('{s} dtk', { s })
 }
 
 function isSegment(v: unknown): v is AlignerSegment {
@@ -242,11 +243,11 @@ function isSegment(v: unknown): v is AlignerSegment {
 export function parseComplete(data: string): AlignerResult {
   const v = parseJson(data)
   const obj: unknown = Array.isArray(v) ? v[0] : v
-  if (!obj || typeof obj !== 'object') throw new Error('Jawaban layanan penyelaras tidak dapat dibaca: hasil kosong atau bukan JSON.')
+  if (!obj || typeof obj !== 'object') throw new Error(t('Jawaban layanan penyelaras tidak dapat dibaca: hasil kosong atau bukan JSON.'))
   const raw = field(obj, 'segments')
   const segments = Array.isArray(raw) ? raw.filter(isSegment) : []
   const err = errorText(field(obj, 'error'))
-  if (err && segments.length === 0) throw new Error(`Layanan penyelaras gagal memproses audio: ${err}`)
+  if (err && segments.length === 0) throw new Error(t('Layanan penyelaras gagal memproses audio: {reason}', { reason: err }))
   return { segments, error: field(obj, 'error') }
 }
 
@@ -267,15 +268,15 @@ function parseLocation(s: string | undefined): [number, number, number] | null {
   return [surah, ayah, surah > 0 ? alignerToCanonical(surah, ayah, w) : w]
 }
 
-function specialKind(t: string | null | undefined): Exclude<SegmentKind, 'ayah'> | null {
-  const n = (t ?? '').toLowerCase().replace(/[^a-z]/g, '')
+function specialKind(label: string | null | undefined): Exclude<SegmentKind, 'ayah'> | null {
+  const n = (label ?? '').toLowerCase().replace(/[^a-z]/g, '')
   if (['basmala', 'basmalah', 'bismillah'].includes(n)) return 'basmalah'
   if (['istiadha', 'istiadhah', 'istiaza', 'istiadzah', 'taawwudh'].includes(n)) return 'istiadzah'
   return null
 }
 
 const ms = (sec: number): number => Math.round(Math.max(0, sec) * 1000)
-const sec1 = (s: number): string => s.toFixed(1).replace('.', ',')
+const sec1 = (s: number): string => (locale() === 'id-ID' ? s.toFixed(1).replace('.', ',') : s.toFixed(1))
 
 interface Part {
   surah: number
@@ -301,7 +302,7 @@ export function mapAlignment(result: AlignerResult, wordCount: (surah: number, a
     if (!counts.has(k)) {
       const n = wordCount(s, a)
       counts.set(k, n)
-      if (!n) warnings.push(`Ayat ${k} dari penyelaras tidak dikenali; bagiannya dilewati.`)
+      if (!n) warnings.push(t('Ayat {k} dari penyelaras tidak dikenali; bagiannya dilewati.', { k }))
     }
     return counts.get(k) ?? null
   }
@@ -311,7 +312,7 @@ export function mapAlignment(result: AlignerResult, wordCount: (surah: number, a
     const segEnd = Math.max(segStart, ms(seg.time_to))
     const err = errorText(seg.error)
     if (err) {
-      warnings.push(`Bagian ${sec1(seg.time_from)}–${sec1(seg.time_to)} dtk tidak dikenali penyelaras (${err}); silakan sinkronkan manual.`)
+      warnings.push(t('Bagian {from}–{to} dtk tidak dikenali penyelaras ({err}); silakan sinkronkan manual.', { from: sec1(seg.time_from), to: sec1(seg.time_to), err }))
       continue
     }
     // The segment model has no separate flag for skipped or repeated words; capping the confidence below the review
@@ -327,7 +328,7 @@ export function mapAlignment(result: AlignerResult, wordCount: (surah: number, a
     if (seg.kind === 'special') {
       const kind = specialKind(seg.special_type)
       if (!kind) {
-        warnings.push(`Bagian ${sec1(seg.time_from)}–${sec1(seg.time_to)} dtk berisi bacaan khusus "${seg.special_type ?? '?'}" yang belum didukung; dilewati.`)
+        warnings.push(t('Bagian {from}–{to} dtk berisi bacaan khusus "{kind}" yang belum didukung; dilewati.', { from: sec1(seg.time_from), to: sec1(seg.time_to), kind: seg.special_type ?? '?' }))
         continue
       }
       const words = (seg.words ?? []).map((w, i) => timed(w, parseLocation(w.location)?.[2] || i + 1))
@@ -375,7 +376,7 @@ export function mapAlignment(result: AlignerResult, wordCount: (surah: number, a
         const to = a === a2 ? w2 : n
         parts.push({ surah: s, ayah: a, from, to: Math.max(from, to), startMs: segStart, endMs: segEnd, words: [] })
       }
-      const total = Math.max(1, parts.reduce((t, p) => t + p.to - p.from + 1, 0))
+      const total = Math.max(1, parts.reduce((sum, p) => sum + p.to - p.from + 1, 0))
       let acc = 0
       parts.forEach((p, i) => {
         p.startMs = segStart + Math.round(((segEnd - segStart) * acc) / total)
@@ -384,7 +385,7 @@ export function mapAlignment(result: AlignerResult, wordCount: (surah: number, a
       })
     }
     if (parts.length === 0) {
-      warnings.push(`Bagian ${sec1(seg.time_from)}–${sec1(seg.time_to)} dtk tidak memuat rujukan ayat; dilewati.`)
+      warnings.push(t('Bagian {from}–{to} dtk tidak memuat rujukan ayat; dilewati.', { from: sec1(seg.time_from), to: sec1(seg.time_to) }))
       continue
     }
     for (const p of parts) {
@@ -407,7 +408,7 @@ export function mapAlignment(result: AlignerResult, wordCount: (surah: number, a
   const ayahs = out.filter((s) => s.kind === 'ayah')
   const surah = ayahs[0]?.surah
   const inSurah = ayahs.filter((s) => s.surah === surah).map((s) => s.ayah)
-  if (out.length === 0) warnings.push('Penyelaras tidak menemukan bacaan ayat di audio ini.')
+  if (out.length === 0) warnings.push(t('Penyelaras tidak menemukan bacaan ayat di audio ini.'))
   return {
     segments: out,
     detected: surah ? { surah, from: Math.min(...inSurah), to: Math.max(...inSurah) } : null,

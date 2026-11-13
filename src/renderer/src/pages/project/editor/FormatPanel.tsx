@@ -1,3 +1,4 @@
+import { t } from '@shared/i18n'
 import type { Aspect } from '@shared/types'
 import { Segmented } from '../../../components/ui'
 import { useProject } from '../../../store/project'
@@ -13,16 +14,16 @@ export function FormatPanel({ guides, onGuides }: { guides: boolean; onGuides: (
   const aspect = useProject((s) => s.project!.aspect)
   return (
     <div className="ed-panel-body">
-      <Section title="Format video">
-        <Segmented<Aspect> ariaLabel="Format video" value={aspect} onChange={(a) => useProject.getState().update({ aspect: a })} options={ASPECTS} />
-        <p className="pn-note">Ukuran teks mengikuti sisi pendek bingkai, jadi tampilannya tetap seimbang di semua format.</p>
+      <Section title={t('Format video')}>
+        <Segmented<Aspect> ariaLabel={t('Format video')} value={aspect} onChange={(a) => useProject.getState().update({ aspect: a })} options={ASPECTS} />
+        <p className="pn-note">{t('Ukuran teks mengikuti sisi pendek bingkai, jadi tampilannya tetap seimbang di semua format.')}</p>
       </Section>
-      <Section title="Bantuan">
+      <Section title={t('Bantuan')}>
         <label className="ed-row ed-row--switch">
-          <span className="ed-row__lbl">Tampilkan area aman</span>
+          <span className="ed-row__lbl">{t('Tampilkan area aman')}</span>
           <input type="checkbox" role="switch" className="qr-switch" checked={guides} onChange={(e) => onGuides(e.target.checked)} />
         </label>
-        <p className="pn-note">Garis putus-putus menandai bagian yang bisa tertutup tombol dan keterangan aplikasi tempat video diputar. Tidak ikut diekspor.</p>
+        <p className="pn-note">{t('Garis putus-putus menandai bagian yang bisa tertutup tombol dan keterangan aplikasi tempat video diputar. Tidak ikut diekspor.')}</p>
       </Section>
     </div>
   )

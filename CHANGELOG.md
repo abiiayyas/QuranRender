@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.7.0
+
+- **English:** the whole interface, messages from the app, the text drawn into videos (lower third, Subscribe/Follow) and the Publish
+  drafts now come in Bahasa Indonesia and English. Choose in Pengaturan > Umum > Bahasa; a fresh install follows the system
+  language, and an existing install stays Indonesian. Terjemahan ayat tetap dipilih terpisah di langkah Teks. Panduan: `docs/user/en.md`.
+- **Pengaturan** didesain ulang: navigasi bagian di kiri (Umum, Layanan AI, Pembuat gambar, Dukungan, Tentang) yang mengikuti
+  gulir, dengan pilihan Bahasa, dan bagian **Dukungan** berisi tautan donasi PayPal dan Saweria.
+- **Beranda:** daftar proyek kini satu baris per proyek, memuat nomor, nama Latin dan Arab surah serta rentang ayat, qari, jumlah
+  segmen, durasi, tahap, dan langkah berikutnya; bisa disaring, dicari menurut surah, dan diurutkan menurut surah. Panel statis
+  "Cara kerja" diganti kartu **Lanjutkan** yang menyebut langkah berikutnya untuk proyek terakhir; panduan lima langkah hanya
+  tampil selama belum ada proyek. Tombol **Proyek kosong** pindah ke formulir.
+- **Overlay Subscribe dan Follow:** tombol animasi yang muncul di waktu Mulai, ditekan, lalu hilang dan muncul lagi sesuai jeda
+  (bawaan 6 detik tiap 60 detik), dengan nama akun opsional. Dihitung murni dari waktu, jadi pratinjau dan ekspor sama.
+- Prompt Publikasi AI mengikuti bahasa aplikasi.
+
 ## 0.6.0
 
 - **Gelombang suara (visualizer):** overlay baru yang bergerak mengikuti suara tilawah, bergaya Batang atau Gelombang. Tinggi,

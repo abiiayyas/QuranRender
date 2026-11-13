@@ -1,3 +1,4 @@
+import { t } from '@shared/i18n'
 import { segmentArabic } from '@shared/subtitles'
 import { acceptFragment, editionLanguage, isPartial } from '@shared/translation'
 import type { Job, Segment, SegmentTranslation, Verse } from '@shared/types'
@@ -66,11 +67,11 @@ export function startAiTrim(projectId: string, editionId: string, segmentIds?: s
       const full = texts[key]
       if (!verse || !full || !isPartial(seg, verse.words.length)) continue
       // Without explicit ids, the user's own and earlier AI cuts stay as they are.
-      const status = seg.translations.find((t) => t.edition === editionId)?.status
+      const status = seg.translations.find((x) => x.edition === editionId)?.status
       if (!segmentIds && (status === 'manual' || status === 'ai')) continue
       items.push({ seg, full, arabicFull: verse.words.filter(Boolean).join(' '), arabicPart: segmentArabic(seg, verses), count: verse.words.length })
     }
-    if (items.length === 0) return 'Tidak ada ayat terpotong yang perlu dipotong AI.'
+    if (items.length === 0) return t('Tidak ada ayat terpotong yang perlu dipotong AI.')
 
     const results = new Map<string, SegmentTranslation>()
     const apply = (): void => {
@@ -79,9 +80,9 @@ export function startAiTrim(projectId: string, editionId: string, segmentIds?: s
       const segments = latest.segments.map((s) => {
         const r = results.get(s.id)
         if (!r) return s
-        const cur = s.translations.find((t) => t.edition === editionId)
+        const cur = s.translations.find((x) => x.edition === editionId)
         if (cur?.status === 'manual' && !segmentIds) return s
-        return { ...s, translations: cur ? s.translations.map((t) => (t.edition === editionId ? r : t)) : [...s.translations, r] }
+        return { ...s, translations: cur ? s.translations.map((x) => (x.edition === editionId ? r : x)) : [...s.translations, r] }
       })
       patchProject(projectId, { segments })
     }
@@ -91,8 +92,8 @@ export function startAiTrim(projectId: string, editionId: string, segmentIds?: s
     const size = viaCli ? CLI_BATCH : BATCH
     try {
       for (let i = 0; i < items.length; i += size) {
-        const range = `${i + 1}–${Math.min(i + size, items.length)} dari ${items.length} segmen`
-        ctx.progress(i / items.length, viaCli ? `Memotong ${range}. AI CLI butuh sekitar satu menit per kelompok.` : `Memotong ${range}`)
+        const vars = { from: i + 1, to: Math.min(i + size, items.length), total: items.length, n: items.length }
+        ctx.progress(i / items.length, viaCli ? t('Memotong {from}–{to} dari {total} segmen. AI CLI butuh sekitar satu menit per kelompok.', vars) : t('Memotong {from}–{to} dari {total} segmen', vars))
         const batch = items.slice(i, i + size)
         const payload = {
           translation_language: language,
@@ -127,7 +128,7 @@ export function startAiTrim(projectId: string, editionId: string, segmentIds?: s
     apply()
     const review = [...results.values()].filter((r) => r.status === 'review').length
     return review > 0
-      ? `${results.size - review} segmen dipotong AI, ${review} perlu dicek manual.`
-      : `${results.size} segmen dipotong AI. Silakan periksa hasilnya.`
+      ? t('{done} segmen dipotong AI, {review} perlu dicek manual.', { done: results.size - review, review, n: results.size - review })
+      : t('{n} segmen dipotong AI. Silakan periksa hasilnya.', { n: results.size })
   })
 }

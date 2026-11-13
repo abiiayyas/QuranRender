@@ -1,3 +1,4 @@
+import { t } from '@shared/i18n'
 import { spawn } from 'node:child_process'
 import { ffmpegPath, ffprobePath } from './paths'
 
@@ -25,14 +26,14 @@ function run(bin: string, args: string[], o: { signal?: AbortSignal; onStderr?: 
     child.on('error', reject)
     child.on('close', (code) => {
       if (code === 0) resolve({ stdout: Buffer.concat(out), stderr: err })
-      else reject(new Error(`${bin.split(/[\\/]/).pop()} gagal (kode ${code}): ${err.trim().split('\n').slice(-3).join(' ')}`))
+      else reject(new Error(t('{bin} gagal (kode {code}): {detail}', { bin: bin.split(/[\\/]/).pop() ?? bin, code: code ?? '', detail: err.trim().split('\n').slice(-3).join(' ') })))
     })
   })
 }
 
 export async function probe(path: string): Promise<Probe> {
   const { stdout } = await run(ffprobePath(), ['-v', 'error', '-print_format', 'json', '-show_format', '-show_streams', path]).catch(() => {
-    throw new Error('Berkas ini tidak bisa dibaca sebagai audio atau video.')
+    throw new Error(t('Berkas ini tidak bisa dibaca sebagai audio atau video.'))
   })
   const data = JSON.parse(stdout.toString()) as {
     format?: { duration?: string }

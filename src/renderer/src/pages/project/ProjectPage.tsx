@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { advanceStatus, type Project, type Step } from '@shared/types'
+import { msg, t } from '@shared/i18n'
 import { Icon } from '../../components/ui'
 import { errorText } from '../../lib/format'
 import { toast, useApp } from '../../store/app'
@@ -13,10 +14,10 @@ import { TextStep } from './TextStep'
 import { ThumbnailDialog } from './ThumbnailDialog'
 
 const STEPS: { n: Step; label: string; status: Project['status'] }[] = [
-  { n: 1, label: 'Sumber', status: 'draft' },
-  { n: 2, label: 'Sinkron', status: 'source' },
-  { n: 3, label: 'Teks', status: 'synced' },
-  { n: 4, label: 'Editor', status: 'editing' }
+  { n: 1, label: msg('Sumber'), status: 'draft' },
+  { n: 2, label: msg('Sinkron'), status: 'source' },
+  { n: 3, label: msg('Teks'), status: 'synced' },
+  { n: 4, label: msg('Editor'), status: 'editing' }
 ]
 
 /** A step shows a check when its own work is complete; every step stays clickable. */
@@ -77,7 +78,8 @@ export function ProjectPage({ id }: { id: string }) {
     go({ name: 'home' })
   }
 
-  const saveLabel = saveState === 'saved' ? 'Tersimpan' : saveState === 'saving' ? 'Menyimpan…' : saveState === 'dirty' ? 'Belum disimpan' : 'Gagal menyimpan'
+  const saveLabel =
+    saveState === 'saved' ? t('Tersimpan') : saveState === 'saving' ? t('Menyimpan…') : saveState === 'dirty' ? t('Belum disimpan') : t('Gagal menyimpan')
 
   return (
     <div className="project">
@@ -85,12 +87,12 @@ export function ProjectPage({ id }: { id: string }) {
         <div className="l">
           <button type="button" className="qr-btn qr-btn--ghost" onClick={() => void leave()}>
             <Icon name="chevron-left" />
-            Beranda
+            {t('Beranda')}
           </button>
           <span className="st-name">
             <input
               className="title-input"
-              aria-label="Judul proyek"
+              aria-label={t('Judul proyek')}
               value={project.title}
               onChange={(e) => useProject.getState().update({ title: e.target.value }, 'title')}
             />
@@ -100,12 +102,12 @@ export function ProjectPage({ id }: { id: string }) {
             {saveLabel}
             {saveState === 'error' && (
               <button type="button" className="qr-btn qr-btn--ghost qr-btn--sm" onClick={() => void useProject.getState().save()}>
-                Coba lagi
+                {t('Coba lagi')}
               </button>
             )}
           </span>
         </div>
-        <ol className="qr-flow" aria-label="Langkah">
+        <ol className="qr-flow" aria-label={t('Langkah')}>
           {STEPS.map(({ n, label }, i) => {
             const cur = n === project.step
             const done = stepDone(project, n)
@@ -118,7 +120,7 @@ export function ProjectPage({ id }: { id: string }) {
                 )}
                 <button type="button" aria-current={cur ? 'step' : undefined} onClick={() => setStep(n)}>
                   <span className="qr-flow__n">{done && !cur ? <Icon name="check" size="sm" /> : n}</span>
-                  <span>{label}</span>
+                  <span>{t(label)}</span>
                 </button>
               </li>
             )
@@ -131,19 +133,19 @@ export function ProjectPage({ id }: { id: string }) {
           </button>
           <button type="button" className="qr-btn qr-btn--ghost" onClick={() => setDialog('publish')}>
             <Icon name="clipboard-check" />
-            Publikasi
+            {t('Publikasi')}
           </button>
           <button
             type="button"
             className="qr-btn qr-btn--ghost qr-btn--icon"
-            aria-label="Pengaturan"
+            aria-label={t('Pengaturan')}
             onClick={() => void useProject.getState().flush().then(() => go({ name: 'settings', back: { name: 'project', id } }))}
           >
             <Icon name="settings" />
           </button>
           <button type="button" className="qr-btn qr-btn--primary" disabled={!project.sourceAssetId || project.segments.length === 0} onClick={() => setExportOpen(true)}>
             <Icon name="file-output" />
-            Ekspor
+            {t('Ekspor')}
           </button>
         </div>
       </header>

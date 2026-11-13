@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, Fragment } from 'react'
+import { t } from '@shared/i18n'
 import { manualSegment, MIN_SEGMENT_MS, needsReview, segmentAt, segmentLabel, segmentWordTexts, setEdge, sortSegments, wordAt, type Edge } from '@shared/segments'
 import type { Asset, Project, Segment } from '@shared/types'
 import { verseKey } from '@shared/video'
@@ -26,11 +27,11 @@ export function SyncStep({ onNext }: { onNext: () => void }) {
       <div className="center-fill">
         <div className="qr-empty">
           <Icon name="audio-waveform" size="lg" />
-          <span className="qr-empty__title">Belum ada audio</span>
-          <span>Sinkron membutuhkan rekaman tilawah. Silakan tambahkan sumber audio atau video terlebih dahulu.</span>
+          <span className="qr-empty__title">{t('Belum ada audio')}</span>
+          <span>{t('Sinkron membutuhkan rekaman tilawah. Silakan tambahkan sumber audio atau video terlebih dahulu.')}</span>
           <button type="button" className="qr-btn qr-btn--primary" onClick={() => useProject.getState().applyPatch({ step: 1 })}>
             <Icon name="chevron-left" />
-            Ke langkah Sumber
+            {t('Ke langkah Sumber')}
           </button>
         </div>
       </div>
@@ -74,21 +75,21 @@ function SyncWorkspace({ project, asset, onNext }: { project: Project; asset: As
   }, [selected, list])
 
   // While playing, the selection follows the audio.
-  const { t, playing, seek, toggle, playRange } = audio
+  const { t: now, playing, seek, toggle, playRange } = audio
   useEffect(() => {
     if (!playing) return
-    const at = segmentAt(list, t)
+    const at = segmentAt(list, now)
     if (at && at.id !== selectedId) setSelectedId(at.id)
-  }, [t, playing, list, selectedId])
+  }, [now, playing, list, selectedId])
 
   const select = useCallback(
     (id: string) => {
       const s = list.find((x) => x.id === id)
       if (!s) return
       setSelectedId(id)
-      if (!playing || t < s.startMs || t >= s.endMs) seek(s.startMs)
+      if (!playing || now < s.startMs || now >= s.endMs) seek(s.startMs)
     },
-    [list, playing, t, seek]
+    [list, playing, now, seek]
   )
 
   const commit = (next: Segment[], key?: string, selectId?: string) => {
@@ -102,16 +103,16 @@ function SyncWorkspace({ project, asset, onNext }: { project: Project; asset: As
   }
 
   const addAtPlayhead = async () => {
-    const at = Math.round(t)
+    const at = Math.round(now)
     const inside = segmentAt(list, at)
     if (inside) {
-      toast('info', `Posisi pemutar ada di dalam segmen ${segmentLabel(inside)}. Silakan pindahkan pemutar ke bagian yang belum bersegmen.`)
+      toast('info', t('Posisi pemutar ada di dalam segmen {label}. Silakan pindahkan pemutar ke bagian yang belum bersegmen.', { label: segmentLabel(inside) }))
       return
     }
     const nextStart = list.find((s) => s.startMs > at)?.startMs ?? durationMs
     const end = Math.min(nextStart, at + NEW_SEGMENT_MS)
     if (end - at < MIN_SEGMENT_MS) {
-      toast('info', 'Ruang kosong di posisi pemutar terlalu sempit untuk segmen baru.')
+      toast('info', t('Ruang kosong di posisi pemutar terlalu sempit untuk segmen baru.'))
       return
     }
     // Continue after the last ayah heard before this point: the rest of a partial ayah, else the next ayah.
@@ -166,18 +167,19 @@ function SyncWorkspace({ project, asset, onNext }: { project: Project; asset: As
 
   const arFont = useArabicFont(script, Object.keys(verses).length > 0)
   const stageWords = selected ? segmentWordTexts(selected, verseOf(selected, verses)) : []
-  const current = selected && t >= selected.startMs && t < selected.endMs ? wordAt(selected, t) : null
+  const current = selected && now >= selected.startMs && now < selected.endMs ? wordAt(selected, now) : null
   const surahName = selected?.kind === 'ayah' ? surahs.find((s) => s.id === selected.surah)?.nameLatin : undefined
 
   return (
     <div className="st-body sync-body">
-      <aside className="st-left" aria-label="Segmen">
+      <aside className="st-left" aria-label={t('Segmen')}>
         <div className="st-left__body">
           <AlignPanel />
           <div className="sync-summary">
-            <h2 className="pn-h">Segmen</h2>
+            <h2 className="pn-h">{t('Segmen')}</h2>
             <span className="muted">
-              {list.length} segmen{reviewCount > 0 ? ` · ${reviewCount} perlu dicek` : ''}
+              {t('{n} segmen', { n: list.length })}
+              {reviewCount > 0 ? ` · ${t('{n} perlu dicek', { n: reviewCount })}` : ''}
             </span>
           </div>
           <SegmentList segments={list} verses={verses} selectedId={selectedId} onSelect={select} />
@@ -185,10 +187,10 @@ function SyncWorkspace({ project, asset, onNext }: { project: Project; asset: As
         <div className="st-left__foot">
           <button type="button" className="qr-btn qr-btn--secondary" disabled={reviewCount === 0} onClick={nextReview}>
             <Icon name="triangle-alert" />
-            Berikutnya yang perlu dicek
+            {t('Berikutnya yang perlu dicek')}
           </button>
           <button type="button" className="qr-btn qr-btn--primary" onClick={onNext}>
-            Lanjut ke Teks
+            {t('Lanjut ke Teks')}
             <Icon name="chevron-right" />
           </button>
         </div>
@@ -215,35 +217,35 @@ function SyncWorkspace({ project, asset, onNext }: { project: Project; asset: As
                     ))}
                 </p>
               ) : (
-                <p className="muted">Memuat teks ayat…</p>
+                <p className="muted">{t('Memuat teks ayat…')}</p>
               )}
             </>
           ) : (
-            <p className="muted">Pilih segmen untuk melihat teksnya.</p>
+            <p className="muted">{t('Pilih segmen untuk melihat teksnya.')}</p>
           )}
         </div>
         <div className="sync-transport qr-transport">
-          <button type="button" className="qr-btn qr-btn--ghost qr-btn--icon" aria-label="Mundur 2 detik" title="Mundur 2 detik" onClick={() => seek(Math.max(0, t - 2000))}>
+          <button type="button" className="qr-btn qr-btn--ghost qr-btn--icon" aria-label={t('Mundur 2 detik')} title={t('Mundur 2 detik')} onClick={() => seek(Math.max(0, now - 2000))}>
             <Icon name="skip-back" />
           </button>
-          <button type="button" className="qr-btn qr-btn--secondary qr-btn--icon" aria-label={playing ? 'Jeda' : 'Putar'} title="Putar/jeda (Spasi)" onClick={toggle}>
+          <button type="button" className="qr-btn qr-btn--secondary qr-btn--icon" aria-label={playing ? t('Jeda') : t('Putar')} title={t('Putar/jeda (Spasi)')} onClick={toggle}>
             <Icon name={playing ? 'pause' : 'play'} />
           </button>
           <button
             type="button"
             className="qr-btn qr-btn--ghost qr-btn--icon"
-            aria-label="Maju 2 detik"
-            title="Maju 2 detik"
-            onClick={() => seek(Math.min(durationMs || Infinity, t + 2000))}
+            aria-label={t('Maju 2 detik')}
+            title={t('Maju 2 detik')}
+            onClick={() => seek(Math.min(durationMs || Infinity, now + 2000))}
           >
             <Icon name="step-forward" />
           </button>
           <button type="button" className="qr-btn qr-btn--ghost" disabled={!selected} onClick={() => selected && playRange(selected.startMs, selected.endMs)}>
             <Icon name="play" />
-            Putar segmen
+            {t('Putar segmen')}
           </button>
           <span className="spacer" />
-          <span className="muted sync-keys">Spasi: putar/jeda · ←/→: segmen sebelum/berikutnya</span>
+          <span className="muted sync-keys">{t('Spasi: putar/jeda · ←/→: segmen sebelum/berikutnya')}</span>
         </div>
         <SyncTimeline
           segments={list}
@@ -251,7 +253,7 @@ function SyncWorkspace({ project, asset, onNext }: { project: Project; asset: As
           durationMs={durationMs}
           peaks={peaks}
           peaksError={peaksError}
-          t={t}
+          now={now}
           playing={playing}
           selectedId={selectedId}
           onSelect={select}
@@ -260,7 +262,7 @@ function SyncWorkspace({ project, asset, onNext }: { project: Project; asset: As
         />
       </main>
 
-      <aside className="st-insp" aria-label="Detail segmen">
+      <aside className="st-insp" aria-label={t('Detail segmen')}>
         {selected ? (
           <SegmentInspector
             seg={selected}
@@ -268,7 +270,7 @@ function SyncWorkspace({ project, asset, onNext }: { project: Project; asset: As
             verses={verses}
             surahs={surahs}
             script={script}
-            t={t}
+            now={now}
             durationMs={durationMs}
             commit={commit}
             playRange={playRange}
@@ -276,10 +278,10 @@ function SyncWorkspace({ project, asset, onNext }: { project: Project; asset: As
           />
         ) : (
           <div className="insp-pad">
-            <p className="insp-empty">Belum ada segmen yang dipilih.</p>
+            <p className="insp-empty">{t('Belum ada segmen yang dipilih.')}</p>
             <button type="button" className="qr-btn qr-btn--secondary" onClick={() => void addAtPlayhead()}>
               <Icon name="plus" />
-              Tambah segmen di pemutar
+              {t('Tambah segmen di pemutar')}
             </button>
           </div>
         )}

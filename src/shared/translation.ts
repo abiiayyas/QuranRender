@@ -1,3 +1,4 @@
+import { msg } from './i18n'
 import type { Segment, SegmentTranslation, TranslationStatus } from './types'
 
 /** The bundled edition; it cannot be removed. */
@@ -19,11 +20,11 @@ const BASMALAH: Record<string, string> = {
 }
 
 export const STATUS_LABEL: Record<TranslationStatus, string> = {
-  full: 'Utuh',
-  auto: 'Dipotong otomatis',
-  ai: 'Dipotong AI',
-  manual: 'Diedit',
-  review: 'Perlu dicek'
+  full: msg('Utuh'),
+  auto: msg('Dipotong otomatis'),
+  ai: msg('Dipotong AI'),
+  manual: msg('Diedit'),
+  review: msg('Perlu dicek')
 }
 
 /**

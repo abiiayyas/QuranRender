@@ -1,3 +1,4 @@
+import { msg, t } from '@shared/i18n'
 import { useEffect } from 'react'
 import { ConfirmHost, Toasts } from './components/ui'
 import { errorText } from './lib/format'
@@ -8,15 +9,15 @@ import { useApp } from './store/app'
 import { useProject } from './store/project'
 
 const KIND_LABEL: Record<string, string> = {
-  download: 'Unduh tilawah',
-  youtube: 'Unduh YouTube',
-  trim: 'Potong audio',
-  align: 'Sinkron AI',
-  translate: 'Pasang terjemahan',
-  aitrim: 'AI trim',
-  export: 'Ekspor',
-  ytdlp: 'Unduh yt-dlp',
-  thumbnail: 'Thumbnail'
+  download: msg('Unduh tilawah'),
+  youtube: msg('Unduh YouTube'),
+  trim: msg('Potong audio'),
+  align: msg('Sinkron AI'),
+  translate: msg('Pasang terjemahan'),
+  aitrim: msg('AI trim'),
+  export: msg('Ekspor'),
+  ytdlp: msg('Unduh yt-dlp'),
+  thumbnail: msg('Thumbnail')
 }
 
 export function App() {
@@ -28,10 +29,10 @@ export function App() {
       window.api.on.job((job) => {
         p().upsertJob(job)
         const { toast } = useApp.getState()
-        if (job.status === 'failed' && job.error) toast('error', `${KIND_LABEL[job.kind] ?? 'Proses'} gagal: ${errorText(job.error)}`)
+        if (job.status === 'failed' && job.error) toast('error', t('{kind} gagal: {error}', { kind: t(KIND_LABEL[job.kind] ?? msg('Proses')), error: errorText(job.error) }))
         if (job.status === 'done' && (job.kind === 'export' || job.kind === 'thumbnail') && job.message) {
           const path = job.message
-          toast('success', job.kind === 'export' ? 'Video selesai diekspor.' : 'Thumbnail tersimpan.', { label: 'Buka folder', run: () => void window.api.exporter.reveal(path) })
+          toast('success', job.kind === 'export' ? t('Video selesai diekspor.') : t('Thumbnail tersimpan.'), { label: t('Buka folder'), run: () => void window.api.exporter.reveal(path) })
         }
       }),
       window.api.on.project((e) => {

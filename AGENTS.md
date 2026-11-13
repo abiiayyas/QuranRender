@@ -36,6 +36,9 @@ Data uji terpisah dari data asli: `QR_USER_DATA=/tmp/qr-dev npm run dev`.
 | `src/main/cli.ts`, `ai.ts` | AI CLI dan `chat()` (API atau CLI), satu pintu untuk AI trim dan Publikasi |
 | `src/main/imagegen.ts`, `stock.ts` | Gambar latar dari AI dan dari Pexels/Unsplash/Pixabay |
 | `src/shared/spectrum.ts`, `src/main/spectrum.ts`, `src/remotion/Visualizer.tsx` | Overlay gelombang suara: tabel level 32 pita per 1/30 dtk dihitung sekali dari audio sumber (cache `cache/spectrum-*.bin`), digambar murni terhadap waktu |
+| `src/shared/i18n.ts`, `src/shared/i18n/en/` | `t()`, `msg()`, bahasa aktif; kamus Inggris per area. Bahasa tersimpan di `Settings.language`, diganti lewat `applyLanguage` (renderer) dan `setLang` (main); ganti bahasa me-remount root |
+| `src/shared/support.ts` | Tautan donasi di Pengaturan > Dukungan (PayPal, Saweria); tautan kosong tidak ditampilkan |
+| `src/shared/subscribe.ts`, `src/remotion/Prompt.tsx` | Overlay Subscribe/Follow yang muncul berkala: waktunya fungsi murni dari waktu (`promptPhase`) |
 | `src/main/publish.ts` | Thumbnail (JPG dari komposisi `quran-thumbnail`), bingkai video, teks publikasi per platform |
 | `src/renderer/src/store/project.ts` | State proyek, autosave 1,2 dtk, undo/redo |
 | `src/renderer/src/pages/project/` | Stepper dan keempat langkah, dialog ekspor |
@@ -54,7 +57,9 @@ Data uji terpisah dari data asli: `QR_USER_DATA=/tmp/qr-dev npm run dev`.
 6. **Kolom milik main** (`sourceAssetId`, `segments` hasil job) diubah lewat `patchProject`; renderer menggabungkannya
    dengan `applyPatch`. Panggil `flush()` sebelum IPC yang membaca proyek dari database.
 7. **Migrasi database hanya ditambah** di akhir `MIGRATIONS` (`src/main/db.ts`).
-8. **UI berbahasa Indonesia**, hangat dan sopan. Kode dan komentar berbahasa Inggris; komentar menjelaskan *alasan*.
+8. **UI dalam Bahasa Indonesia dan English**, hangat dan sopan. Teks Indonesia adalah sumbernya: kuncinya teks Indonesia itu sendiri, `t('...')`
+   (`@shared/i18n`); tanpa entri Inggris di `src/shared/i18n/en/*.ts`, `npm test` gagal. `t()` dipanggil saat render, tidak di level modul; label di tabel konstan
+   memakai `msg('...')`. Kode dan komentar berbahasa Inggris; komentar menjelaskan *alasan*.
 9. **Desain:** hanya kelas dan token dari `design/system/` serta `styles.css`. Tanpa gambar makhluk bernyawa, tanpa ikon
    musik, teks Arab tidak pernah dipakai sebagai hiasan.
 10. Setiap perubahan dicatat di [CHANGELOG.md](CHANGELOG.md).

@@ -1,3 +1,5 @@
+import { msg, t } from './i18n'
+
 export type PlatformId = 'shorts' | 'tiktok' | 'reels' | 'youtube'
 
 export interface Platform {
@@ -14,10 +16,10 @@ export interface Platform {
 }
 
 export const PLATFORMS: Platform[] = [
-  { id: 'shorts', label: 'YouTube Shorts', hint: 'Judul pendek dan deskripsi untuk video vertikal.', hasTitle: true, titleMax: 100, textMax: 5000, autoTag: '#Shorts' },
-  { id: 'tiktok', label: 'TikTok', hint: 'Satu keterangan pendek dengan beberapa hashtag.', hasTitle: false, titleMax: 0, textMax: 2200, autoTag: null },
-  { id: 'reels', label: 'Reels (FB/IG)', hint: 'Satu keterangan untuk Reels Facebook dan Instagram.', hasTitle: false, titleMax: 0, textMax: 2200, autoTag: null },
-  { id: 'youtube', label: 'YouTube', hint: 'Judul, deskripsi, bab, dan hashtag untuk video panjang.', hasTitle: true, titleMax: 100, textMax: 5000, autoTag: null }
+  { id: 'shorts', label: 'YouTube Shorts', hint: msg('Judul pendek dan deskripsi untuk video vertikal.'), hasTitle: true, titleMax: 100, textMax: 5000, autoTag: '#Shorts' },
+  { id: 'tiktok', label: 'TikTok', hint: msg('Satu keterangan pendek dengan beberapa hashtag.'), hasTitle: false, titleMax: 0, textMax: 2200, autoTag: null },
+  { id: 'reels', label: 'Reels (FB/IG)', hint: msg('Satu keterangan untuk Reels Facebook dan Instagram.'), hasTitle: false, titleMax: 0, textMax: 2200, autoTag: null },
+  { id: 'youtube', label: 'YouTube', hint: msg('Judul, deskripsi, bab, dan hashtag untuk video panjang.'), hasTitle: true, titleMax: 100, textMax: 5000, autoTag: null }
 ]
 
 export const platformOf = (id: PlatformId): Platform => PLATFORMS.find((p) => p.id === id)!
@@ -56,7 +58,7 @@ export function hashtagOf(text: string): string {
 }
 
 export function hashtagList(text: string): string[] {
-  return [...new Set(text.split(/\s+/).filter((t) => t.startsWith('#') && t.length > 1))]
+  return [...new Set(text.split(/\s+/).filter((w) => w.startsWith('#') && w.length > 1))]
 }
 
 export const AUDIO_SOURCE_NAME: Record<string, string> = { mp3quran: 'MP3Quran', qdc: 'Quran.com' }
@@ -64,18 +66,19 @@ export const AUDIO_SOURCE_NAME: Record<string, string> = { mp3quran: 'MP3Quran',
 /** The first draft, written without AI: facts and attribution only, so it is always correct and always available. */
 export function draftFor(platform: PlatformId, f: PublishFacts): PublishDraft {
   const p = platformOf(platform)
-  const what = `QS ${f.surahName}${f.ayahLabel ? ` ayat ${f.ayahLabel}` : ''}`
-  const by = f.reciter.trim() ? ` oleh ${f.reciter.trim()}` : ''
-  const lines = [`Tilawah ${what}${by}.`]
-  if (platform === 'youtube') lines.push('Teks Arab ditampilkan apa adanya, lengkap dengan terjemahan dan sorotan per kata.')
+  const range = /[–-]/.test(f.ayahLabel)
+  const what = f.ayahLabel ? t('QS {surah} ayat {ayah}', { surah: f.surahName, ayah: f.ayahLabel, n: range ? 2 : 1 }) : t('QS {surah}', { surah: f.surahName })
+  const reciter = f.reciter.trim()
+  const lines = [reciter ? t('Tilawah {what} oleh {reciter}.', { what, reciter }) : t('Tilawah {what}.', { what })]
+  if (platform === 'youtube') lines.push(t('Teks Arab ditampilkan apa adanya, lengkap dengan terjemahan dan sorotan per kata.'))
   const credits = [
-    f.translationName ? `Terjemahan: ${f.translationName}.` : '',
-    f.audioSource ? `Sumber audio: ${f.audioSource}.` : '',
-    f.backgroundCredit?.trim() ? `Latar: ${f.backgroundCredit.trim()}.` : ''
+    f.translationName ? t('Terjemahan: {name}.', { name: f.translationName }) : '',
+    f.audioSource ? t('Sumber audio: {name}.', { name: f.audioSource }) : '',
+    f.backgroundCredit?.trim() ? t('Latar: {credit}.', { credit: f.backgroundCredit.trim() }) : ''
   ].filter(Boolean)
-  const tags = ['#Quran', '#Tilawah', hashtagOf(f.surahName), hashtagOf(f.reciter)].filter(Boolean)
+  const tags = [t('#Quran'), t('#Tilawah'), hashtagOf(f.surahName), hashtagOf(f.reciter)].filter(Boolean)
   return {
-    title: p.hasTitle ? `${what}${by}`.slice(0, p.titleMax) : '',
+    title: p.hasTitle ? (reciter ? t('{what} oleh {reciter}', { what, reciter }) : what).slice(0, p.titleMax) : '',
     body: [lines.join(' '), credits.join(' ')].filter(Boolean).join('\n\n'),
     hashtags: [...new Set(tags)].join(' ')
   }
@@ -85,16 +88,16 @@ export function draftFor(platform: PlatformId, f: PublishFacts): PublishDraft {
 export function withBackgroundCredit(d: PublishDraft, credit: string | null | undefined): PublishDraft {
   const c = credit?.trim()
   if (!c || d.body.includes(c)) return d
-  return { ...d, body: [d.body.trim(), `Latar: ${c}.`].filter(Boolean).join('\n\n') }
+  return { ...d, body: [d.body.trim(), t('Latar: {credit}.', { credit: c })].filter(Boolean).join('\n\n') }
 }
 
 /** What the user pastes into the platform's description (or caption) box. */
 export function pastedText(platform: PlatformId, d: PublishDraft, chapters: string[] = []): string {
   const p = platformOf(platform)
   const tags = hashtagList(d.hashtags)
-  if (p.autoTag && !tags.some((t) => t.toLowerCase() === p.autoTag!.toLowerCase())) tags.push(p.autoTag)
+  if (p.autoTag && !tags.some((x) => x.toLowerCase() === p.autoTag!.toLowerCase())) tags.push(p.autoTag)
   // YouTube needs at least three chapters, the first at 0:00, to show them in the player.
-  const chapterBlock = platform === 'youtube' && chapters.length >= 3 ? `Bab:\n${chapters.join('\n')}` : ''
+  const chapterBlock = platform === 'youtube' && chapters.length >= 3 ? `${t('Bab:')}\n${chapters.join('\n')}` : ''
   return [d.body.trim(), chapterBlock, tags.join(' ')].filter(Boolean).join('\n\n')
 }
 
@@ -103,7 +106,7 @@ export function kitAsText(kit: PublishKit, chaptersOf: (id: PlatformId) => strin
   return PLATFORMS.filter((p) => kit[p.id])
     .map((p) => {
       const d = kit[p.id]!
-      return [`=== ${p.label} ===`, p.hasTitle ? `Judul:\n${d.title}\n` : '', `${p.hasTitle ? 'Deskripsi' : 'Keterangan'}:\n${pastedText(p.id, d, chaptersOf(p.id))}`].filter(Boolean).join('\n')
+      return [`=== ${p.label} ===`, p.hasTitle ? `${t('Judul:')}\n${d.title}\n` : '', `${p.hasTitle ? t('Deskripsi:') : t('Keterangan:')}\n${pastedText(p.id, d, chaptersOf(p.id))}`].filter(Boolean).join('\n')
     })
     .join('\n\n')
 }

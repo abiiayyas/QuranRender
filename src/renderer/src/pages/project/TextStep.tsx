@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { t } from '@shared/i18n'
 import { segmentArabic } from '@shared/subtitles'
 import { isPartial } from '@shared/translation'
 import type { Segment } from '@shared/types'
@@ -59,7 +60,7 @@ export function TextStep({ onNext }: { onNext: () => void }) {
     setFilling(true)
     try {
       const changed = await fillProject(editionIds)
-      if (announce) toast('info', changed > 0 ? `Terjemahan ${changed} segmen sudah diisi.` : 'Semua terjemahan sudah terisi.')
+      if (announce) toast('info', changed > 0 ? t('Terjemahan {n} segmen sudah diisi.', { n: changed }) : t('Semua terjemahan sudah terisi.'))
     } catch (e) {
       toast('error', errorText(e))
     } finally {
@@ -117,7 +118,7 @@ export function TextStep({ onNext }: { onNext: () => void }) {
     try {
       const ai = await window.api.settings.aiReady()
       if (!ai.ready) {
-        setNoKey(ai.hint || 'AI belum siap.')
+        setNoKey(ai.hint || t('AI belum siap.'))
         return
       }
       setNoKey(false)
@@ -148,14 +149,14 @@ export function TextStep({ onNext }: { onNext: () => void }) {
           toast(
             'info',
             trimNeeded > 0
-              ? `${trimNeeded} segmen terlalu panjang karena terjemahannya belum dipotong sesuai kata yang dibaca. Silakan pakai AI trim, atau ketik potongannya.`
-              : 'Segmen ini tidak bisa dibelah lagi tanpa memotong di tengah kata. Silakan kecilkan ukuran Arab di Editor.'
+              ? t('{n} segmen terlalu panjang karena terjemahannya belum dipotong sesuai kata yang dibaca. Silakan pakai AI trim, atau ketik potongannya.', { n: trimNeeded })
+              : t('Segmen ini tidak bisa dibelah lagi tanpa memotong di tengah kata. Silakan kecilkan ukuran Arab di Editor.')
           )
           return
         }
         useProject.getState().update({ segments: next })
         await fillProject(installed)
-        toast('success', `Dibelah menjadi ${cuts} bagian tambahan. Terjemahan tiap bagian dipotong otomatis; gunakan AI trim untuk hasil yang lebih halus.`)
+        toast('success', t('Dibelah menjadi {n} bagian tambahan. Terjemahan tiap bagian dipotong otomatis; gunakan AI trim untuk hasil yang lebih halus.', { n: cuts }))
       } catch (e) {
         toast('error', errorText(e))
       } finally {
@@ -166,10 +167,10 @@ export function TextStep({ onNext }: { onNext: () => void }) {
   )
   const onSplit = useCallback((segId: string) => void splitLong([segId]), [splitLong])
 
-  const { playing, t, playRange, pause } = audio
+  const { playing, t: time, playRange, pause } = audio
   // Read through a ref so the callback stays stable and rows do not re-render on every audio frame.
-  const now = useRef({ playing, t })
-  now.current = { playing, t }
+  const now = useRef({ playing, t: time })
+  now.current = { playing, t: time }
   const onPlay = useCallback(
     (seg: Segment) => {
       const { playing: on, t: at } = now.current
@@ -191,24 +192,26 @@ export function TextStep({ onNext }: { onNext: () => void }) {
 
   const label = (seg: Segment): string => {
     if (seg.kind === 'basmalah') return 'Basmalah'
-    if (seg.kind === 'istiadzah') return "Isti'adzah"
-    const name = surahs.find((s) => s.id === seg.surah)?.nameLatin ?? `Surah ${seg.surah}`
+    if (seg.kind === 'istiadzah') return t("Isti'adzah")
+    const name = surahs.find((s) => s.id === seg.surah)?.nameLatin ?? t('Surah {id}', { id: seg.surah })
     const n = counts(seg)
-    return isPartial(seg, n) ? `${name} ${seg.ayah} · kata ${seg.wordFrom}–${seg.wordTo} dari ${n}` : `${name} ${seg.ayah}`
+    return isPartial(seg, n)
+      ? t('{name} {ayah} · kata {from}–{to} dari {total}', { name, ayah: seg.ayah, from: seg.wordFrom, to: seg.wordTo, total: n })
+      : `${name} ${seg.ayah}`
   }
 
   return (
     <div className="tx-body">
       <EditionsPanel />
-      <section className="tx-main" aria-label="Teks dan terjemahan">
+      <section className="tx-main" aria-label={t('Teks dan terjemahan')}>
         <div className="tx-bar">
           <div className="tx-bar__info">
-            <b>{segments.length} segmen</b>
-            {primary && <span className="muted">{reviewCount > 0 ? `${reviewCount} perlu dicek` : 'Semua sudah siap'}</span>}
+            <b>{t('{n} segmen', { n: segments.length })}</b>
+            {primary && <span className="muted">{reviewCount > 0 ? t('{n} perlu dicek', { n: reviewCount }) : t('Semua sudah siap')}</span>}
           </div>
           <label className="tx-filter">
             <input type="checkbox" className="qr-check" checked={onlyReview} onChange={(e) => setOnlyReview(e.target.checked)} />
-            Hanya yang perlu dicek
+            {t('Hanya yang perlu dicek')}
           </label>
           <button
             type="button"
@@ -217,40 +220,40 @@ export function TextStep({ onNext }: { onNext: () => void }) {
             onClick={() => void fill(installed, true)}
           >
             {filling ? <span className="qr-spin" /> : <Icon name="languages" />}
-            Isi terjemahan
+            {t('Isi terjemahan')}
           </button>
           <button
             type="button"
             className="qr-btn qr-btn--secondary"
             disabled={!!aiJob || !primary || partialCount === 0}
-            title={partialCount === 0 ? 'Tidak ada ayat yang terpotong.' : undefined}
+            title={partialCount === 0 ? t('Tidak ada ayat yang terpotong.') : undefined}
             onClick={() => void startAi()}
           >
             <Icon name="scissors" />
-            AI trim ayat terpotong
+            {t('AI trim ayat terpotong')}
           </button>
         </div>
-        <JobProgress job={aiJob} label="AI trim ayat terpotong" />
+        <JobProgress job={aiJob} label={t('AI trim ayat terpotong')} />
         {tooLong.length > 0 && (
           <div className="qr-alert qr-alert--warning tx-alert" role="status">
             <Icon name="triangle-alert" />
             <div className="qr-alert__content">
-              <span className="qr-alert__title">{tooLong.length} segmen terlalu panjang untuk satu layar</span>
+              <span className="qr-alert__title">{t('{n} segmen terlalu panjang untuk satu layar', { n: tooLong.length })}</span>
               <span className="qr-alert__body">
-                Tulisannya akan mengecil sampai sulit dibaca, atau menutupi nama surah dan qari.
-                {tooLong.length - needTrim > 0 && ' Ayat yang panjang bisa dibelah di jeda yang wajar; terjemahan tiap bagian ikut dipotong.'}
-                {needTrim > 0 && ` ${needTrim} segmen panjang karena terjemahannya belum dipotong sesuai kata yang dibaca: pakai AI trim.`}
+                {t('Tulisannya akan mengecil sampai sulit dibaca, atau menutupi nama surah dan qari.')}
+                {tooLong.length - needTrim > 0 && ` ${t('Ayat yang panjang bisa dibelah di jeda yang wajar; terjemahan tiap bagian ikut dipotong.')}`}
+                {needTrim > 0 && ` ${t('{n} segmen panjang karena terjemahannya belum dipotong sesuai kata yang dibaca: pakai AI trim.', { n: needTrim })}`}
               </span>
             </div>
             <span className="qr-alert__actions">
               <button type="button" className="qr-btn qr-btn--secondary qr-btn--sm" disabled={splitting} onClick={() => void splitLong()}>
                 {splitting ? <span className="qr-spin" /> : <Icon name="scissors" size="sm" />}
-                Belah otomatis
+                {t('Belah otomatis')}
               </button>
               {needTrim > 0 && (
                 <button type="button" className="qr-btn qr-btn--secondary qr-btn--sm" disabled={!!aiJob} onClick={() => void startAi()}>
                   <Icon name="languages" size="sm" />
-                  AI trim
+                  {t('AI trim')}
                 </button>
               )}
             </span>
@@ -260,15 +263,15 @@ export function TextStep({ onNext }: { onNext: () => void }) {
           <div className="qr-alert qr-alert--warning tx-alert" role="alert">
             <Icon name="key-round" />
             <div className="qr-alert__content">
-              <span className="qr-alert__title">AI belum siap</span>
-              <span className="qr-alert__body">{noKey} Silakan atur kunci layanan atau AI CLI di Pengaturan agar ayat yang terpotong bisa dipotong terjemahannya secara otomatis.</span>
+              <span className="qr-alert__title">{t('AI belum siap')}</span>
+              <span className="qr-alert__body">{t('{hint} Silakan atur kunci layanan atau AI CLI di Pengaturan agar ayat yang terpotong bisa dipotong terjemahannya secara otomatis.', { hint: noKey })}</span>
             </div>
             <span className="qr-alert__actions">
               <button type="button" className="qr-btn qr-btn--secondary qr-btn--sm" onClick={() => void openSettings()}>
-                Buka Pengaturan
+                {t('Buka Pengaturan')}
               </button>
               <button type="button" className="qr-btn qr-btn--ghost qr-btn--sm" onClick={() => setNoKey(false)}>
-                Tutup
+                {t('Tutup')}
               </button>
             </span>
           </div>
@@ -277,7 +280,7 @@ export function TextStep({ onNext }: { onNext: () => void }) {
           <div className="qr-alert qr-alert--warning tx-alert" role="status">
             <Icon name="triangle-alert" />
             <div className="qr-alert__content">
-              <span className="qr-alert__body">Terjemahan utama belum terpasang di perangkat ini. Silakan pasang dari panel kiri.</span>
+              <span className="qr-alert__body">{t('Terjemahan utama belum terpasang di perangkat ini. Silakan pasang dari panel kiri.')}</span>
             </div>
           </div>
         )}
@@ -286,12 +289,12 @@ export function TextStep({ onNext }: { onNext: () => void }) {
             <div className="center-fill">
               <div className="qr-empty">
                 <Icon name="list" size="lg" />
-                <span className="qr-empty__title">Belum ada segmen</span>
-                <span>Silakan sinkronkan audio di langkah Sinkron dulu, lalu terjemahan bisa diisi di sini.</span>
+                <span className="qr-empty__title">{t('Belum ada segmen')}</span>
+                <span>{t('Silakan sinkronkan audio di langkah Sinkron dulu, lalu terjemahan bisa diisi di sini.')}</span>
               </div>
             </div>
           ) : shown.length === 0 ? (
-            <p className="pn-note">Tidak ada segmen yang perlu dicek. Terima kasih sudah memeriksa.</p>
+            <p className="pn-note">{t('Tidak ada segmen yang perlu dicek. Terima kasih sudah memeriksa.')}</p>
           ) : (
             <ol className="tx-rows">
               {shown.map((seg) => {
@@ -307,7 +310,7 @@ export function TextStep({ onNext }: { onNext: () => void }) {
                     whole={partial ? (whole[`${seg.surah}:${seg.ayah}`] ?? null) : null}
                     partial={partial}
                     secondaries={secondaries}
-                    playing={playing && t >= seg.startMs && t < seg.endMs}
+                    playing={playing && time >= seg.startMs && time < seg.endMs}
                     aiBusy={!!aiJob}
                     tooLong={!!fit[seg.id]?.overflow}
                     splitBusy={splitting}
@@ -323,10 +326,10 @@ export function TextStep({ onNext }: { onNext: () => void }) {
           )}
         </div>
         <div className="tx-foot">
-          {primary && reviewCount > 0 && <span className="muted">Masih ada {reviewCount} segmen yang perlu dicek sebelum ekspor.</span>}
+          {primary && reviewCount > 0 && <span className="muted">{t('Masih ada {n} segmen yang perlu dicek sebelum ekspor.', { n: reviewCount })}</span>}
           <span className="spacer" />
           <button type="button" className="qr-btn qr-btn--primary" onClick={onNext}>
-            Lanjut ke Editor
+            {t('Lanjut ke Editor')}
             <Icon name="chevron-right" />
           </button>
         </div>

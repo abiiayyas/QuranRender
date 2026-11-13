@@ -1,3 +1,4 @@
+import { t } from '@shared/i18n'
 import { buildCliPrompt, cliToolName, extractJson } from '@shared/aiTools'
 import type { AiReady } from '@shared/types'
 import { askCli, CLI_TEST_TIMEOUT_MS, missingBin } from './cli'
@@ -31,7 +32,7 @@ async function chatCli(messages: ChatMessage[], o: ChatOptions): Promise<string>
   let prompt = base
   for (let attempt = 0; attempt < 2; attempt++) {
     const text = await askCli({ tool: cliTool, command: cliCommand, model: cliModel, prompt, timeoutMs: o.timeoutMs, signal: o.signal })
-    if (!text.trim()) throw new Error(`${cliToolName(cliTool)} berjalan tapi tidak membalas apa pun.`)
+    if (!text.trim()) throw new Error(t('{tool} berjalan tapi tidak membalas apa pun.', { tool: cliToolName(cliTool) }))
     if (!o.json) return text
     try {
       // Callers parse the reply themselves; handing back the clean document spares them prose and code fences around it.
@@ -40,13 +41,13 @@ async function chatCli(messages: ChatMessage[], o: ChatOptions): Promise<string>
       prompt = `${base}\n\nYour previous reply was not valid JSON. Reply again with the JSON object only, starting with { and ending with }.`
     }
   }
-  throw new Error(`${cliToolName(cliTool)} tidak membalas dengan JSON yang valid. Silakan coba lagi, atau pilih CLI atau model lain di Pengaturan.`)
+  throw new Error(t('{tool} tidak membalas dengan JSON yang valid. Silakan coba lagi, atau pilih CLI atau model lain di Pengaturan.', { tool: cliToolName(cliTool) }))
 }
 
 async function chatApi(messages: ChatMessage[], o: ChatOptions): Promise<string> {
   const { aiBaseUrl, aiModel } = getSettings()
   const key = getAiKey()
-  if (!key && !isLocalEndpoint(aiBaseUrl)) throw new Error('Kunci AI belum diatur. Buka Pengaturan untuk menambahkannya.')
+  if (!key && !isLocalEndpoint(aiBaseUrl)) throw new Error(t('Kunci AI belum diatur. Buka Pengaturan untuk menambahkannya.'))
   const res = await fetch(`${aiBaseUrl.replace(/\/+$/, '')}/chat/completions`, {
     method: 'POST',
     signal: o.signal,
@@ -59,15 +60,15 @@ async function chatApi(messages: ChatMessage[], o: ChatOptions): Promise<string>
     })
   }).catch((e: Error) => {
     if (e.name === 'AbortError') throw e
-    throw new Error(`Layanan AI tidak bisa dihubungi (${aiBaseUrl}). Periksa koneksi dan alamatnya.`)
+    throw new Error(t('Layanan AI tidak bisa dihubungi ({url}). Periksa koneksi dan alamatnya.', { url: aiBaseUrl }))
   })
   if (!res.ok) {
     const body = await res.text().catch(() => '')
-    throw new Error(`Layanan AI menolak permintaan (${res.status}). ${body.slice(0, 200)}`.trim())
+    throw new Error(t('Layanan AI menolak permintaan ({status}). {detail}', { status: res.status, detail: body.slice(0, 200) }).trim())
   }
   const data = (await res.json()) as { choices?: { message?: { content?: string } }[] }
   const text = data.choices?.[0]?.message?.content
-  if (typeof text !== 'string') throw new Error('Balasan layanan AI tidak berisi teks.')
+  if (typeof text !== 'string') throw new Error(t('Balasan layanan AI tidak berisi teks.'))
   return text
 }
 
@@ -76,25 +77,25 @@ export async function aiReady(): Promise<AiReady> {
   const { aiProvider, aiBaseUrl, cliTool, cliCommand } = getSettings()
   if (aiProvider === 'cli') {
     if (cliTool === 'custom') {
-      return cliCommand.trim() ? { ready: true, via: 'cli', hint: '' } : { ready: false, via: null, hint: 'Perintah CLI belum diisi di Pengaturan.' }
+      return cliCommand.trim() ? { ready: true, via: 'cli', hint: '' } : { ready: false, via: null, hint: t('Perintah CLI belum diisi di Pengaturan.') }
     }
     const missing = await missingBin(cliTool)
     return missing
-      ? { ready: false, via: null, hint: `CLI ${missing} tidak ditemukan di komputer ini. Pasang ${cliToolName(cliTool)} dan login, atau pilih penyedia lain di Pengaturan.` }
+      ? { ready: false, via: null, hint: t('CLI {missing} tidak ditemukan di komputer ini. Pasang {tool} dan login, atau pilih penyedia lain di Pengaturan.', { missing, tool: cliToolName(cliTool) }) }
       : { ready: true, via: 'cli', hint: '' }
   }
   try {
     if (getAiKey() || isLocalEndpoint(aiBaseUrl)) return { ready: true, via: 'api', hint: '' }
   } catch {
-    return { ready: false, via: null, hint: 'Kunci AI tersimpan tapi tidak bisa dibuka lagi. Masukkan ulang kuncinya di Pengaturan.' }
+    return { ready: false, via: null, hint: t('Kunci AI tersimpan tapi tidak bisa dibuka lagi. Masukkan ulang kuncinya di Pengaturan.') }
   }
-  return { ready: false, via: null, hint: 'Kunci AI belum diatur. Buka Pengaturan untuk menambahkannya.' }
+  return { ready: false, via: null, hint: t('Kunci AI belum diatur. Buka Pengaturan untuk menambahkannya.') }
 }
 
 /** A tiny real request, so the test proves the whole path: program found, logged in, answering. */
 export async function testAi(): Promise<string> {
   const { aiProvider, cliTool } = getSettings()
   const reply = await chat([{ role: 'user', content: 'Reply with the single word: OK' }], { maxTokens: 5, timeoutMs: CLI_TEST_TIMEOUT_MS })
-  const via = aiProvider === 'cli' ? ` lewat ${cliToolName(cliTool)}` : ''
-  return `Terhubung${via}. Balasan model: ${reply.trim().slice(0, 40)}`
+  const answer = reply.trim().slice(0, 40)
+  return aiProvider === 'cli' ? t('Terhubung lewat {tool}. Balasan model: {reply}', { tool: cliToolName(cliTool), reply: answer }) : t('Terhubung. Balasan model: {reply}', { reply: answer })
 }

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { t } from '@shared/i18n'
 import { needsReview, segmentLabel } from '@shared/segments'
 import type { Segment, Verse } from '@shared/types'
 import { verseKey } from '@shared/video'
@@ -6,7 +7,7 @@ import { Icon } from '../../../components/ui'
 import { formatMs } from '../../../lib/format'
 
 export function ConfidenceBadge({ seg }: { seg: Segment }) {
-  if (seg.confidence == null) return <span className="qr-badge qr-badge--plain">Manual</span>
+  if (seg.confidence == null) return <span className="qr-badge qr-badge--plain">{t('Manual')}</span>
   const pct = Math.round(seg.confidence * 100)
   return <span className={`qr-badge ${needsReview(seg) ? 'qr-badge--warning' : 'qr-badge--success'}`}>{pct}%</span>
 }
@@ -29,10 +30,10 @@ export function SegmentList({
   }, [selectedId])
 
   if (segments.length === 0)
-    return <p className="pn-note">Belum ada segmen. Jalankan sinkron otomatis, atau tambahkan segmen secara manual di posisi pemutar.</p>
+    return <p className="pn-note">{t('Belum ada segmen. Jalankan sinkron otomatis, atau tambahkan segmen secara manual di posisi pemutar.')}</p>
 
   return (
-    <div className="seg-list" ref={ref} role="list" aria-label="Daftar segmen">
+    <div className="seg-list" ref={ref} role="list" aria-label={t('Daftar segmen')}>
       {segments.map((s) => {
         const review = needsReview(s)
         const label = segmentLabel(s, verses[verseKey(s.surah, s.ayah)]?.words.length)
@@ -51,9 +52,9 @@ export function SegmentList({
                 </small>
               </span>
               {review && (
-                <span className="sync-flag" title="Perlu dicek">
+                <span className="sync-flag" title={t('Perlu dicek')}>
                   <Icon name="triangle-alert" size="sm" />
-                  <span className="sr-only">Perlu dicek</span>
+                  <span className="sr-only">{t('Perlu dicek')}</span>
                 </span>
               )}
               <ConfidenceBadge seg={s} />

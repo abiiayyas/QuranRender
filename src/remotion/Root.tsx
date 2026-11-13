@@ -52,6 +52,7 @@ const defaultProps: Props = {
   ...size,
   fps: 30,
   durationMs: 5000,
+  lang: 'id',
   baseUrl: { asset: '', font: '' }
 }
 

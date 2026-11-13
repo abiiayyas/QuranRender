@@ -1,6 +1,10 @@
+import { msg, t } from './i18n'
 import type { Overlay } from './types'
 
-export const CTA_DEFAULT_TEXT = 'Jangan lupa bagikan dan doakan'
+export const CTA_DEFAULT_TEXT = msg('Jangan lupa bagikan dan doakan')
+
+/** The default call-to-action text in the current language. The constant stays Indonesian: it is saved into overlays. */
+export const ctaDefaultText = (): string => t(CTA_DEFAULT_TEXT)
 
 export interface OverlayPhase {
   /** 0..1: how far the entrance has run. */
@@ -36,18 +40,20 @@ export function readableOn(hex: string): '#101114' | '#FFFFFF' {
 }
 
 /** Name an overlay in lists and on the timeline. */
-export function overlayLabel(o: Pick<Overlay, 'kind' | 'text'>): string {
+export function overlayLabel(o: Pick<Overlay, 'kind' | 'text' | 'variant'>): string {
   switch (o.kind) {
     case 'qari':
-      return 'Nama qari'
+      return t('Nama qari')
     case 'progress':
-      return 'Kemajuan'
+      return t('Kemajuan')
     case 'cta':
-      return o.text.trim() || CTA_DEFAULT_TEXT
+      return o.text.trim() || ctaDefaultText()
+    case 'prompt':
+      return o.variant === 'follow' ? 'Follow' : 'Subscribe'
     case 'visualizer':
-      return 'Gelombang suara'
+      return t('Gelombang suara')
     case 'image':
-      return 'Gambar'
+      return t('Gambar')
     default:
       return o.text
   }

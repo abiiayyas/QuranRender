@@ -1,4 +1,5 @@
 import type { Aspect } from './types'
+import { msg, t } from './i18n'
 
 /** AI CLIs that are installed and logged in on this computer (or a command the user wrote). */
 export type CliTool = 'claude' | 'codex' | 'agy' | 'opencode' | 'custom'
@@ -18,21 +19,21 @@ export interface CliToolInfo<T extends string = CliTool> {
 }
 
 export const CLI_TOOLS: CliToolInfo[] = [
-  { id: 'claude', name: 'Claude Code', bin: 'claude', note: 'Perintah `claude`, memakai login Claude di komputer ini.' },
-  { id: 'codex', name: 'Codex CLI', bin: 'codex', note: 'Perintah `codex exec`, memakai login ChatGPT di komputer ini.' },
-  { id: 'agy', name: 'Antigravity', bin: 'agy', note: 'Perintah `agy`, memakai login Google Antigravity di komputer ini.' },
-  { id: 'opencode', name: 'OpenCode', bin: 'opencode', note: 'Perintah `opencode run`, memakai penyedia yang sudah diatur di OpenCode. Model ditulis `penyedia/model`.' },
-  { id: 'custom', name: 'Perintah sendiri', bin: null, note: 'CLI lain. Prompt dikirim lewat stdin, balasan dibaca dari stdout.' }
+  { id: 'claude', name: 'Claude Code', bin: 'claude', note: msg('Perintah `claude`, memakai login Claude di komputer ini.') },
+  { id: 'codex', name: 'Codex CLI', bin: 'codex', note: msg('Perintah `codex exec`, memakai login ChatGPT di komputer ini.') },
+  { id: 'agy', name: 'Antigravity', bin: 'agy', note: msg('Perintah `agy`, memakai login Google Antigravity di komputer ini.') },
+  { id: 'opencode', name: 'OpenCode', bin: 'opencode', note: msg('Perintah `opencode run`, memakai penyedia yang sudah diatur di OpenCode. Model ditulis `penyedia/model`.') },
+  { id: 'custom', name: msg('Perintah sendiri'), bin: null, note: msg('CLI lain. Prompt dikirim lewat stdin, balasan dibaca dari stdout.') }
 ]
 
 export const CLI_IMAGE_TOOLS: CliToolInfo<CliImageTool>[] = [
-  { id: 'agy', name: 'Antigravity', bin: 'agy', note: 'Memakai alat gambar bawaan Antigravity. Satu gambar sekitar 1 menit.' },
-  { id: 'codex', name: 'Codex (ChatGPT)', bin: 'codex', note: 'Memakai alat gambar bawaan Codex dan memakai kuota paket ChatGPT-mu.' },
-  { id: 'custom', name: 'Perintah sendiri', bin: null, note: 'Prompt masuk lewat stdin; perintah harus menulis satu file gambar ke {output}.' }
+  { id: 'agy', name: 'Antigravity', bin: 'agy', note: msg('Memakai alat gambar bawaan Antigravity. Satu gambar sekitar 1 menit.') },
+  { id: 'codex', name: 'Codex (ChatGPT)', bin: 'codex', note: msg('Memakai alat gambar bawaan Codex dan memakai kuota paket ChatGPT-mu.') },
+  { id: 'custom', name: msg('Perintah sendiri'), bin: null, note: msg('Prompt masuk lewat stdin; perintah harus menulis satu file gambar ke {output}.') }
 ]
 
-export const cliToolName = (tool: CliTool): string => CLI_TOOLS.find((t) => t.id === tool)?.name ?? tool
-export const cliImageToolName = (tool: CliImageTool): string => CLI_IMAGE_TOOLS.find((t) => t.id === tool)?.name ?? tool
+export const cliToolName = (tool: CliTool): string => t(CLI_TOOLS.find((x) => x.id === tool)?.name ?? tool)
+export const cliImageToolName = (tool: CliImageTool): string => t(CLI_IMAGE_TOOLS.find((x) => x.id === tool)?.name ?? tool)
 
 /** Aliases Claude Code accepts; they always point at the newest model of a tier. */
 export const CLAUDE_MODEL_ALIASES = ['opus', 'sonnet', 'haiku']
@@ -41,13 +42,13 @@ export const CLAUDE_MODEL_ALIASES = ['opus', 'sonnet', 'haiku']
 const SAFE_MODEL = /^[A-Za-z0-9._:/@+-]+$/
 
 export function checkModel(model: string): void {
-  if (model && !SAFE_MODEL.test(model)) throw new Error('Nama model hanya boleh berisi huruf, angka, dan tanda . _ : / @ + -')
+  if (model && !SAFE_MODEL.test(model)) throw new Error(t('Nama model hanya boleh berisi huruf, angka, dan tanda . _ : / @ + -'))
 }
 
 /** Fills `{model}` of a user command; a command that needs a model cannot run without one (the flag would dangle). */
 export function fillCommand(command: string, model: string): string {
-  if (!command.trim()) throw new Error('Perintah CLI belum diisi. Buka Pengaturan untuk menambahkannya.')
-  if (command.includes('{model}') && !model) throw new Error('Perintah memakai {model}, tapi kolom Model belum diisi. Isi modelnya di Pengaturan.')
+  if (!command.trim()) throw new Error(t('Perintah CLI belum diisi. Buka Pengaturan untuk menambahkannya.'))
+  if (command.includes('{model}') && !model) throw new Error(t('Perintah memakai {model}, tapi kolom Model belum diisi. Isi modelnya di Pengaturan.'))
   return command.replaceAll('{model}', model)
 }
 
@@ -73,9 +74,9 @@ export function buildCliPrompt(messages: PromptMessage[], json: boolean): string
 
 /** Pulls a JSON value out of a reply that may carry think tags, code fences or prose. Throws when there is none. */
 export function extractJson(text: string): unknown {
-  const t = text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim()
-  const attempts = [t]
-  const fence = /```(?:json)?\s*([\s\S]*?)```/i.exec(t)
+  const text0 = text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim()
+  const attempts = [text0]
+  const fence = /```(?:json)?\s*([\s\S]*?)```/i.exec(text0)
   if (fence) attempts.push(fence[1].trim())
   for (const a of attempts) {
     try {
@@ -84,16 +85,16 @@ export function extractJson(text: string): unknown {
       // try the next shape
     }
   }
-  const start = t.indexOf('{')
-  const end = t.lastIndexOf('}')
+  const start = text0.indexOf('{')
+  const end = text0.lastIndexOf('}')
   if (start >= 0 && end > start) {
     try {
-      return JSON.parse(t.slice(start, end + 1))
+      return JSON.parse(text0.slice(start, end + 1))
     } catch {
       // fall through
     }
   }
-  throw new Error('Balasan bukan JSON.')
+  throw new Error(t('Balasan bukan JSON.'))
 }
 
 // ---------- Antigravity (agy) ----------
@@ -122,12 +123,15 @@ export function agyReply(stdout: string): string {
       // not an event line
     }
   }
-  if (!result) throw new Error('Antigravity selesai tanpa mengirim hasil. Coba lagi.')
-  if (result.status !== 'SUCCESS') throw new Error(`Antigravity gagal: ${result.error || result.status}`)
+  if (!result) throw new Error(t('Antigravity selesai tanpa mengirim hasil. Coba lagi.'))
+  if (result.status !== 'SUCCESS') throw new Error(t('Antigravity gagal: {reason}', { reason: result.error || result.status || '' }))
   const denied = (result.denied_actions ?? []).map((d) => d.display_name || d.action).filter(Boolean)
   if (denied.length > 0 && !(result.response ?? '').trim()) {
     throw new Error(
-      `Antigravity menolak menjalankan ${denied.join(', ')} karena butuh izin yang tidak bisa ditanyakan dari aplikasi. Aplikasi sengaja tidak memakai --dangerously-skip-permissions. Beri izin sempit di pengaturan Antigravity, atau pilih CLI lain.`
+      t(
+        'Antigravity menolak menjalankan {actions} karena butuh izin yang tidak bisa ditanyakan dari aplikasi. Aplikasi sengaja tidak memakai --dangerously-skip-permissions. Beri izin sempit di pengaturan Antigravity, atau pilih CLI lain.',
+        { actions: denied.join(', ') }
+      )
     )
   }
   return result.response ?? ''

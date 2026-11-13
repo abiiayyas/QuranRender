@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
+import { locale } from '@shared/i18n'
 
-/** m:ss,cc — hundredths, because word and ayah boundaries need finer steps than formatMs gives. */
+/** m:ss,cc (m:ss.cc in English) — hundredths, because word and ayah boundaries need finer steps than formatMs gives. */
 export function formatTime(ms: number): string {
   const cs = Math.round(Math.max(0, ms) / 10)
   const m = Math.floor(cs / 6000)
   const s = Math.floor((cs % 6000) / 100)
-  return `${m}:${String(s).padStart(2, '0')},${String(cs % 100).padStart(2, '0')}`
+  const sep = locale() === 'en-US' ? '.' : ','
+  return `${m}:${String(s).padStart(2, '0')}${sep}${String(cs % 100).padStart(2, '0')}`
 }
 
 /** Accepts `ss`, `m:ss`, `h:mm:ss`, with `,` or `.` decimals. Null when it is not a time. */

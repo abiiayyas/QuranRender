@@ -1,3 +1,4 @@
+import { t } from '@shared/i18n'
 import { spawn } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import { existsSync } from 'node:fs'
@@ -31,13 +32,13 @@ async function ensureYtDlp(projectId: string, signal: AbortSignal): Promise<void
     // Owned by the project that needed it, so its progress shows there.
     startJob(projectId, 'ytdlp', 'net', async (ctx) => {
       try {
-        ctx.progress(0.02, 'Mengunduh yt-dlp…')
+        ctx.progress(0.02, t('Mengunduh yt-dlp…'))
         const dest = ytdlpPath()
         await downloadFile(YTDLP_URL, dest, { signal: ctx.signal, onProgress: (f) => ctx.progress(f) })
         await chmod(dest, 0o755)
         resolve()
       } catch (e) {
-        reject(ctx.signal.aborted ? new Error('Unduhan yt-dlp dibatalkan.') : e)
+        reject(ctx.signal.aborted ? new Error(t('Unduhan yt-dlp dibatalkan.')) : e)
         throw e
       }
     })
@@ -57,10 +58,10 @@ export function checkYoutubeUrl(url: unknown): string {
   try {
     u = new URL(String(url).trim())
   } catch {
-    throw new Error('Alamat YouTube tidak valid.')
+    throw new Error(t('Alamat YouTube tidak valid.'))
   }
   if (u.protocol !== 'https:' || !YT_HOSTS.includes(u.hostname.toLowerCase())) {
-    throw new Error('Silakan masukkan alamat https dari youtube.com atau youtu.be.')
+    throw new Error(t('Silakan masukkan alamat https dari youtube.com atau youtu.be.'))
   }
   return u.toString()
 }
@@ -85,7 +86,7 @@ function run(args: string[], signal: AbortSignal, onLine: (line: string) => void
   child.on('error', reject)
   child.on('close', (code) => {
     if (code === 0) resolve()
-    else reject(new Error(`Video YouTube tidak bisa diunduh. ${lastError}`.trim()))
+    else reject(new Error(`${t('Video YouTube tidak bisa diunduh.')} ${lastError}`.trim()))
   })
   return promise
 }
@@ -125,15 +126,15 @@ export function startYoutube(projectId: string, rawUrl: string): Job {
           else if (line.startsWith('QRFILE ')) file = line.slice(7).trim()
           else {
             const m = /^\[download\]\s+(\d+(?:\.\d+)?)%/.exec(line)
-            if (m) ctx.progress(0.05 + (Number(m[1]) / 100) * 0.85, 'Mengunduh audio dari YouTube…')
+            if (m) ctx.progress(0.05 + (Number(m[1]) / 100) * 0.85, t('Mengunduh audio dari YouTube…'))
           }
         }
       )
       if (!file || !existsSync(file)) file = join(dir, (await readdir(dir)).find((f) => f.startsWith('audio.')) ?? '')
-      if (!existsSync(file)) throw new Error('Video YouTube tidak bisa diunduh.')
-      ctx.progress(0.92, 'Menyimpan ke proyek…')
+      if (!existsSync(file)) throw new Error(t('Video YouTube tidak bisa diunduh.'))
+      ctx.progress(0.92, t('Menyimpan ke proyek…'))
       await importSource(projectId, file, { source: 'youtube', name: title || 'Audio YouTube', move: true, signal: ctx.signal, meta: { url } })
-      return 'Audio YouTube sudah masuk ke proyek.'
+      return t('Audio YouTube sudah masuk ke proyek.')
     } finally {
       await rm(dir, { recursive: true, force: true })
     }

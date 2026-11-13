@@ -1,4 +1,5 @@
 import { useId, useState } from 'react'
+import { t } from '@shared/i18n'
 import { ErrorAlert, Icon } from '../../../components/ui'
 import { errorText } from '../../../lib/format'
 import { useProject } from '../../../store/project'
@@ -34,22 +35,22 @@ export function YoutubePanel({ busy }: { busy: boolean }) {
       }}
     >
       <p className="pn-h">YouTube</p>
-      {error && <ErrorAlert title="Unduhan gagal" message={error} onClose={() => setError(null)} />}
+      {error && <ErrorAlert title={t('Unduhan gagal')} message={error} onClose={() => setError(null)} />}
       <div className="qr-fieldset">
         <label className="qr-label" htmlFor={id}>
-          Alamat video
+          {t('Alamat video')}
         </label>
         <span className={url && !valid ? 'qr-field is-invalid' : 'qr-field'}>
           <input id={id} type="url" inputMode="url" placeholder="https://youtu.be/…" value={url} onChange={(e) => setUrl(e.target.value)} />
         </span>
-        {url && !valid && <span className="qr-error">Silakan masukkan alamat https dari youtube.com atau youtu.be.</span>}
+        {url && !valid && <span className="qr-error">{t('Silakan masukkan alamat https dari youtube.com atau youtu.be.')}</span>}
       </div>
       <button type="submit" className="qr-btn qr-btn--primary" disabled={!valid || busy}>
         <Icon name="download" />
-        Unduh audio
+        {t('Unduh audio')}
       </button>
-      <span className="qr-help">Hanya suaranya yang diunduh. Pada pemakaian pertama, aplikasi mengunduh alat yt-dlp terlebih dahulu.</span>
-      <span className="qr-help">Pastikan Anda berhak memakai rekaman tersebut.</span>
+      <span className="qr-help">{t('Hanya suaranya yang diunduh. Pada pemakaian pertama, aplikasi mengunduh alat yt-dlp terlebih dahulu.')}</span>
+      <span className="qr-help">{t('Pastikan Anda berhak memakai rekaman tersebut.')}</span>
     </form>
   )
 }

@@ -1,3 +1,4 @@
+import { t } from '@shared/i18n'
 import { randomUUID } from 'node:crypto'
 import { copyFile, mkdir, rename, rm, stat } from 'node:fs/promises'
 import { basename, extname, join } from 'node:path'
@@ -27,12 +28,12 @@ export async function pickFile(title: string, name: string, extensions: string[]
 
 /** The path may come from the renderer: it must be an existing regular file with an allowed extension. */
 export async function checkFile(path: unknown, allowed: string[]): Promise<string> {
-  if (typeof path !== 'string' || !path) throw new Error('Berkas tidak valid.')
+  if (typeof path !== 'string' || !path) throw new Error(t('Berkas tidak valid.'))
   if (!allowed.includes(extOf(path))) {
-    throw new Error(`Format berkas ini belum didukung. Silakan pilih berkas ${allowed.join(', ')}.`)
+    throw new Error(t('Format berkas ini belum didukung. Silakan pilih berkas {formats}.', { formats: allowed.join(', ') }))
   }
   const st = await stat(path).catch(() => null)
-  if (!st?.isFile()) throw new Error('Berkas tidak ditemukan. Mungkin sudah dipindahkan atau dihapus.')
+  if (!st?.isFile()) throw new Error(t('Berkas tidak ditemukan. Mungkin sudah dipindahkan atau dihapus.'))
   return path
 }
 
@@ -77,7 +78,7 @@ export async function store(
     })
   } catch (e) {
     await rm(dest, { force: true })
-    throw o.signal?.aborted ? e : new Error('Berkas ini tidak bisa dikonversi ke format yang bisa diputar.')
+    throw o.signal?.aborted ? e : new Error(t('Berkas ini tidak bisa dikonversi ke format yang bisa diputar.'))
   }
   if (o.move) await rm(src, { force: true })
   return { path: rel, probe: await probe(dest) }
@@ -91,7 +92,7 @@ export async function importSource(
 ): Promise<Asset> {
   getProject(projectId)
   const pre = await probe(src)
-  if (!pre.hasAudio) throw new Error('Berkas ini tidak berisi suara. Silakan pilih rekaman yang ada audionya.')
+  if (!pre.hasAudio) throw new Error(t('Berkas ini tidak berisi suara. Silakan pilih rekaman yang ada audionya.'))
   const { path, probe: p } = await store(projectId, src, pre, { folder: 'audio', move: o.move, signal: o.signal, onProgress: o.onProgress })
   const asset = insertAsset({
     projectId,
@@ -120,7 +121,7 @@ export async function importMediaFile(projectId: string, src: string): Promise<A
     return insertAsset({ projectId, kind: 'image', path: rel, name: basename(src), durationMs: null, width: p.width, height: p.height, source: 'local', meta: {} })
   }
   const pre = await probe(src)
-  if (!pre.hasVideo) throw new Error('Berkas ini tidak berisi gambar video.')
+  if (!pre.hasVideo) throw new Error(t('Berkas ini tidak berisi gambar video.'))
   const { path, probe: p } = await store(projectId, src, pre, { folder: 'media' })
   return insertAsset({ projectId, kind: 'video', path, name: basename(src), durationMs: p.durationMs, width: p.width, height: p.height, source: 'local', meta: {} })
 }

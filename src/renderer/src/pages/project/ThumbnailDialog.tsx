@@ -11,6 +11,7 @@ import {
   type ThumbnailProps,
   type ThumbnailSpec
 } from '@shared/thumbnail'
+import { msg, t } from '@shared/i18n'
 import { Icon, JobProgress, Segmented, Sheet } from '../../components/ui'
 import { errorText, formatMs } from '../../lib/format'
 import { useSurahs } from '../../lib/quran'
@@ -19,9 +20,9 @@ import { useActiveJob, useProject } from '../../store/project'
 import { Slider } from './editor/controls'
 
 const POSITIONS: { value: ThumbnailSpec['position']; label: string }[] = [
-  { value: 'top', label: 'Atas' },
-  { value: 'center', label: 'Tengah' },
-  { value: 'bottom', label: 'Bawah' }
+  { value: 'top', label: msg('Atas') },
+  { value: 'center', label: msg('Tengah') },
+  { value: 'bottom', label: msg('Bawah') }
 ]
 
 /** Thumbnail / cover for Shorts, Reels and TikTok: a picture from the project plus words the app draws itself. */
@@ -110,11 +111,11 @@ export function ThumbnailDialog({ onClose }: { onClose: () => void }) {
   }
 
   const working = busy || !!job
-  const status = job ? 'Menyimpan…' : saved && saved.spec === specJson ? `Tersimpan di ${saved.path.split('/').pop()}` : 'Belum disimpan'
+  const status = job ? t('Menyimpan…') : saved && saved.spec === specJson ? t('Tersimpan di {file}', { file: saved.path.split('/').pop() ?? '' }) : t('Belum disimpan')
 
   return (
     <Sheet
-      title="Thumbnail dan cover"
+      title={t('Thumbnail dan cover')}
       size="lg"
       onClose={onClose}
       footer={
@@ -124,19 +125,19 @@ export function ThumbnailDialog({ onClose }: { onClose: () => void }) {
           </span>
           <button type="button" className="qr-btn qr-btn--secondary" disabled={working} onClick={() => void save(true)}>
             <Icon name="download" />
-            Simpan salinan…
+            {t('Simpan salinan…')}
           </button>
           <button type="button" className="qr-btn qr-btn--primary" disabled={working} onClick={() => void save(false)}>
             <Icon name="save" />
-            Simpan thumbnail
+            {t('Simpan thumbnail')}
           </button>
         </>
       }
     >
       <p className="qr-help">
-        {size.width}×{size.height} ({project.aspect}), JPG di bawah {THUMBNAIL_MAX_BYTES / 1024 / 1024} MB. Teksnya digambar oleh aplikasi, jadi hurufnya selalu benar. Gambar latar diambil dari proyekmu.
+        {t('{width}×{height} ({aspect}), JPG di bawah {mb} MB. Teksnya digambar oleh aplikasi, jadi hurufnya selalu benar. Gambar latar diambil dari proyekmu.', { width: size.width, height: size.height, aspect: project.aspect, mb: THUMBNAIL_MAX_BYTES / 1024 / 1024 })}
       </p>
-      <JobProgress job={job} label="Menyimpan thumbnail" />
+      <JobProgress job={job} label={t('Menyimpan thumbnail')} />
       <div className="th-body">
         <div className="th-preview">
           <div className="th-frame" style={{ aspectRatio: `${size.width} / ${size.height}`, ['--ratio' as string]: size.width / size.height }}>
@@ -161,27 +162,27 @@ export function ThumbnailDialog({ onClose }: { onClose: () => void }) {
           {bands && (
             <label className="qr-choice">
               <input type="checkbox" className="qr-check" checked={guides} onChange={(e) => setGuides(e.target.checked)} />
-              <span>Tampilkan batas grid profil Instagram</span>
+              <span>{t('Tampilkan batas grid profil Instagram')}</span>
             </label>
           )}
-          {bands && <span className="qr-help">Garis putus-putus: bagian yang tampil di grid profil Instagram. Tidak ikut tersimpan di berkas.</span>}
+          {bands && <span className="qr-help">{t('Garis putus-putus: bagian yang tampil di grid profil Instagram. Tidak ikut tersimpan di berkas.')}</span>}
         </div>
 
         <div className="th-controls">
           <div className="qr-fieldset">
             <label className="qr-label" htmlFor="th-title">
-              Teks utama
+              {t('Teks utama')}
             </label>
             <span className="qr-field">
               <input id="th-title" value={spec.title} maxLength={THUMBNAIL_TITLE_MAX} onChange={(e) => setSpec({ title: e.target.value }, 'thTitle')} />
             </span>
             <span className="qr-help">
-              {spec.title.length}/{THUMBNAIL_TITLE_MAX} huruf · 2 sampai 4 kata paling terbaca. Kata terakhir diberi warna.
+              {t('{n}/{max} huruf · 2 sampai 4 kata paling terbaca. Kata terakhir diberi warna.', { n: spec.title.length, max: THUMBNAIL_TITLE_MAX })}
             </span>
           </div>
           <div className="qr-fieldset">
             <label className="qr-label" htmlFor="th-sub">
-              Teks kecil (opsional)
+              {t('Teks kecil (opsional)')}
             </label>
             <span className="qr-field">
               <input id="th-sub" value={spec.subtitle} onChange={(e) => setSpec({ subtitle: e.target.value }, 'thSub')} />
@@ -190,32 +191,32 @@ export function ThumbnailDialog({ onClose }: { onClose: () => void }) {
           <div className="grid-2">
             <div className="qr-fieldset">
               <span className="qr-label" id="th-pos">
-                Posisi teks
+                {t('Posisi teks')}
               </span>
-              <Segmented labelledBy="th-pos" value={spec.position} onChange={(position) => setSpec({ position })} options={POSITIONS} />
+              <Segmented labelledBy="th-pos" value={spec.position} onChange={(position) => setSpec({ position })} options={POSITIONS.map((o) => ({ ...o, label: t(o.label) }))} />
             </div>
             <div className="qr-fieldset">
               <span className="qr-label" id="th-accent">
-                Warna aksen
+                {t('Warna aksen')}
               </span>
               <div className="th-swatches" role="group" aria-labelledby="th-accent">
                 {THUMBNAIL_ACCENTS.map((c) => (
-                  <button key={c} type="button" className="th-swatch" aria-label={`Warna ${c}`} aria-pressed={spec.accent === c} style={{ background: c }} onClick={() => setSpec({ accent: c })} />
+                  <button key={c} type="button" className="th-swatch" aria-label={t('Warna {color}', { color: c })} aria-pressed={spec.accent === c} style={{ background: c }} onClick={() => setSpec({ accent: c })} />
                 ))}
-                <input type="color" className="ed-color" aria-label="Warna aksen lain" value={spec.accent} onChange={(e) => setSpec({ accent: e.target.value.toUpperCase() }, 'thAccent')} />
+                <input type="color" className="ed-color" aria-label={t('Warna aksen lain')} value={spec.accent} onChange={(e) => setSpec({ accent: e.target.value.toUpperCase() }, 'thAccent')} />
               </div>
             </div>
           </div>
-          <Slider label="Gelap di belakang teks" value={spec.dim} min={0} max={0.9} step={0.01} onChange={(dim) => setSpec({ dim }, 'thDim')} />
+          <Slider label={t('Gelap di belakang teks')} value={spec.dim} min={0} max={0.9} step={0.01} onChange={(dim) => setSpec({ dim }, 'thDim')} />
 
           <div className="qr-fieldset">
             <span className="qr-label" id="th-bg">
-              Gambar latar
+              {t('Gambar latar')}
             </span>
             <div className="th-bg" role="group" aria-labelledby="th-bg">
-              <button type="button" className="th-bg__item" aria-pressed={spec.assetId === null} onClick={() => setSpec({ assetId: null })} title="Warna latar proyek">
+              <button type="button" className="th-bg__item" aria-pressed={spec.assetId === null} onClick={() => setSpec({ assetId: null })} title={t('Warna latar proyek')}>
                 <span className="th-bg__none" style={{ background: project.background.color }} />
-                <small>Polos</small>
+                <small>{t('Polos')}</small>
               </button>
               {images.map((a) => (
                 <button key={a.id} type="button" className="th-bg__item" aria-pressed={spec.assetId === a.id} aria-label={a.name} title={a.name} onClick={() => setSpec({ assetId: a.id })}>
@@ -224,7 +225,7 @@ export function ThumbnailDialog({ onClose }: { onClose: () => void }) {
               ))}
               <button type="button" className="th-bg__item th-bg__add" onClick={() => void importImage()}>
                 <Icon name="plus" />
-                <small>Impor</small>
+                <small>{t('Impor')}</small>
               </button>
             </div>
           </div>
@@ -232,7 +233,7 @@ export function ThumbnailDialog({ onClose }: { onClose: () => void }) {
           {frameVideo && (
             <div className="qr-fieldset th-frame-pick">
               <span className="qr-label" id="th-vid">
-                Ambil bingkai dari video
+                {t('Ambil bingkai dari video')}
               </span>
               {videos.length > 1 && (
                 <Segmented
@@ -242,14 +243,14 @@ export function ThumbnailDialog({ onClose }: { onClose: () => void }) {
                     setFrameFrom(id)
                     setFrameMs(0)
                   }}
-                  options={videos.map((v) => ({ value: v.id, label: v.id === project.sourceAssetId ? 'Video sumber' : 'Video latar' }))}
+                  options={videos.map((v) => ({ value: v.id, label: v.id === project.sourceAssetId ? t('Video sumber') : t('Video latar') }))}
                 />
               )}
               <div className="ed-row">
                 <input
                   type="range"
                   className="qr-slider"
-                  aria-label="Posisi bingkai"
+                  aria-label={t('Posisi bingkai')}
                   min={0}
                   max={Math.max(1, (frameVideo.durationMs ?? 1000) - 100)}
                   step={100}
@@ -262,7 +263,7 @@ export function ThumbnailDialog({ onClose }: { onClose: () => void }) {
               <div>
                 <button type="button" className="qr-btn qr-btn--secondary qr-btn--sm" disabled={working} onClick={() => void takeFrame()}>
                   <Icon name="film" size="sm" />
-                  Jadikan latar thumbnail
+                  {t('Jadikan latar thumbnail')}
                 </button>
               </div>
             </div>

@@ -1,3 +1,4 @@
+import { t } from '@shared/i18n'
 import { randomUUID } from 'node:crypto'
 import { mkdir, rm } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -18,11 +19,11 @@ const MIN_TRIM_MS = 500
 
 function startTrim(projectId: string, inMs: number, outMs: number): Job {
   const p = getProject(projectId)
-  if (!p.sourceAssetId) throw new Error('Belum ada sumber audio untuk dipotong.')
+  if (!p.sourceAssetId) throw new Error(t('Belum ada sumber audio untuk dipotong.'))
   const src = getAsset(p.sourceAssetId)
   const end = src.durationMs ?? Infinity
   if (!Number.isFinite(inMs) || !Number.isFinite(outMs) || inMs < 0 || outMs > end + 50 || outMs - inMs < MIN_TRIM_MS) {
-    throw new Error('Titik potong tidak valid. Pastikan titik keluar setelah titik masuk, dengan jarak minimal setengah detik.')
+    throw new Error(t('Titik potong tidak valid. Pastikan titik keluar setelah titik masuk, dengan jarak minimal setengah detik.'))
   }
   const from = Math.round(inMs)
   const to = Math.round(Math.min(outMs, end))
@@ -35,7 +36,7 @@ function startTrim(projectId: string, inMs: number, outMs: number): Job {
     const codecs = video
       ? ['-c:v', 'libx264', '-preset', 'veryfast', '-crf', '18', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '192k']
       : ['-vn', '-c:a', 'aac', '-b:a', '192k']
-    ctx.progress(0.02, 'Memotong sumber…')
+    ctx.progress(0.02, t('Memotong sumber…'))
     try {
       // Input seeking with re-encoding cuts at the exact sample, so shifted segment times stay true.
       await ffmpeg(['-ss', String(from / 1000), '-to', String(to / 1000), '-i', assetAbsPath(projectId, src.path), ...codecs, '-movflags', '+faststart', dest], {
@@ -62,7 +63,7 @@ function startTrim(projectId: string, inMs: number, outMs: number): Job {
     // Read again: the user may have edited segments while the job waited in the queue.
     const cur = getProject(projectId)
     patchProject(projectId, { sourceAssetId: asset.id, segments: shiftSegments(cur.segments, from, to) })
-    return 'Sumber sudah dipotong.'
+    return t('Sumber sudah dipotong.')
   })
 }
 
@@ -71,7 +72,7 @@ const peaks = new Map<string, Promise<number[]>>()
 
 function assetPeaks(projectId: string, assetId: string, count: number): Promise<number[]> {
   const a = getAsset(assetId)
-  if (a.projectId !== projectId) throw new Error('Berkas proyek tidak ditemukan.')
+  if (a.projectId !== projectId) throw new Error(t('Berkas proyek tidak ditemukan.'))
   const n = Math.min(20_000, Math.max(1, Math.round(count)))
   const key = `${assetId}:${n}`
   let p = peaks.get(key)
@@ -86,14 +87,14 @@ function assetPeaks(projectId: string, assetId: string, count: number): Promise<
 export function registerSourcesIpc(): void {
   handle('sources', 'importFile', async (projectId, path) => {
     const allowed = [...AUDIO_EXT, ...VIDEO_EXT]
-    const picked = path ?? (await pickFile('Pilih rekaman tilawah', 'Audio atau video', allowed))
+    const picked = path ?? (await pickFile(t('Pilih rekaman tilawah'), t('Audio atau video'), allowed))
     if (!picked) return null
     return importSource(projectId, await checkFile(picked, allowed), { source: 'local' })
   })
 
   handle('sources', 'importMedia', async (projectId, kind, path) => {
     const allowed = kind === 'image' ? IMAGE_EXT : kind === 'video' ? VIDEO_EXT : [...IMAGE_EXT, ...VIDEO_EXT]
-    const picked = path ?? (await pickFile(kind === 'image' ? 'Pilih gambar' : kind === 'video' ? 'Pilih video' : 'Pilih gambar atau video', 'Media', allowed))
+    const picked = path ?? (await pickFile(kind === 'image' ? t('Pilih gambar') : kind === 'video' ? t('Pilih video') : t('Pilih gambar atau video'), t('Media'), allowed))
     if (!picked) return null
     return importMediaFile(projectId, await checkFile(picked, allowed))
   })
@@ -101,7 +102,7 @@ export function registerSourcesIpc(): void {
   handle('sources', 'reciters', (provider) => {
     if (provider === 'qdc') return qdcReciters()
     if (provider === 'mp3quran') return mp3quranReciters()
-    throw new Error('Penyedia tilawah tidak dikenal.')
+    throw new Error(t('Penyedia tilawah tidak dikenal.'))
   })
 
   handle('sources', 'download', (projectId, reciterId) => startDownload(projectId, reciterId))

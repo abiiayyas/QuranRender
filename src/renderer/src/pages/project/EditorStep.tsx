@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { Player, type PlayerRef } from '@remotion/player'
+import { msg, t } from '@shared/i18n'
 import { SAFE_AREA } from '@video/common'
 import { QuranVideo } from '@video/QuranVideo'
 import { Icon } from '../../components/ui'
@@ -14,10 +15,10 @@ import { StylePanel } from './editor/StylePanel'
 const FPS = 30
 type Tab = 'gaya' | 'latar' | 'overlay' | 'format'
 const TABS: { id: Tab; label: string; icon: string }[] = [
-  { id: 'gaya', label: 'Gaya', icon: 'type' },
-  { id: 'latar', label: 'Latar', icon: 'image' },
-  { id: 'overlay', label: 'Overlay', icon: 'layers' },
-  { id: 'format', label: 'Format', icon: 'frame' }
+  { id: 'gaya', label: msg('Gaya'), icon: 'type' },
+  { id: 'latar', label: msg('Latar'), icon: 'image' },
+  { id: 'overlay', label: msg('Overlay'), icon: 'layers' },
+  { id: 'format', label: msg('Format'), icon: 'frame' }
 ]
 
 export function EditorStep() {
@@ -38,28 +39,28 @@ export function EditorStep() {
 
   return (
     <div className="ed-layout">
-      <nav className="ed-rail" aria-label="Alat editor">
-        {TABS.map((t) => (
-          <button key={t.id} type="button" className="ed-rail__btn" aria-pressed={tab === t.id} onClick={() => setTab(t.id)}>
-            <Icon name={t.icon} />
-            <span>{t.label}</span>
+      <nav className="ed-rail" aria-label={t('Alat editor')}>
+        {TABS.map((item) => (
+          <button key={item.id} type="button" className="ed-rail__btn" aria-pressed={tab === item.id} onClick={() => setTab(item.id)}>
+            <Icon name={item.icon} />
+            <span>{t(item.label)}</span>
           </button>
         ))}
       </nav>
-      <aside className="ed-panel" aria-label="Pengaturan">
+      <aside className="ed-panel" aria-label={t('Pengaturan')}>
         {tab === 'gaya' && <StylePanel />}
         {tab === 'latar' && <BackgroundPanel />}
         {tab === 'overlay' && <OverlayPanel selectedId={overlayId} onSelect={setOverlayId} durationMs={props.durationMs} />}
         {tab === 'format' && <FormatPanel guides={guides} onGuides={setGuides} />}
       </aside>
-      <main className="ed-stage" aria-label="Pratinjau">
+      <main className="ed-stage" aria-label={t('Pratinjau')}>
         <div className="ed-stage__bar">
           <button type="button" className="qr-btn qr-btn--ghost qr-btn--sm" disabled={!canUndo} onClick={() => useProject.getState().undo()}>
             <Icon name="rotate-ccw" size="sm" />
-            Urungkan
+            {t('Urungkan')}
           </button>
           <button type="button" className="qr-btn qr-btn--ghost qr-btn--sm" disabled={!canRedo} onClick={() => useProject.getState().redo()}>
-            Ulangi
+            {t('Ulangi')}
           </button>
         </div>
         <div className="ed-stage__view">
@@ -87,7 +88,7 @@ export function EditorStep() {
           </div>
         </div>
       </main>
-      <section className="ed-timeline" aria-label="Linimasa">
+      <section className="ed-timeline" aria-label={t('Linimasa')}>
         <EditorTimeline
           project={project}
           source={source}

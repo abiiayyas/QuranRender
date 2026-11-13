@@ -1,4 +1,5 @@
 import { useId, type CSSProperties, type ReactNode } from 'react'
+import { t } from '@shared/i18n'
 import { overlayLabel } from '@shared/overlay'
 import type { Background, Project } from '@shared/types'
 import type { StyleSettings } from '@shared/style'
@@ -21,9 +22,9 @@ export function setOverlay(id: string, patch: Partial<Project['overlays'][number
 }
 
 /** Overlay name for lists: images show their file name, empty text a placeholder. */
-export function overlayName(o: Pick<Project['overlays'][number], 'kind' | 'text'>, assetName?: string): string {
+export function overlayName(o: Pick<Project['overlays'][number], 'kind' | 'text' | 'variant'>, assetName?: string): string {
   if (o.kind === 'image') return assetName || overlayLabel(o)
-  return overlayLabel(o) || '(kosong)'
+  return overlayLabel(o) || t('(kosong)')
 }
 
 export const pct = (v: number): string => `${Math.round(v * 100)}%`

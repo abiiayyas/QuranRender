@@ -1,5 +1,6 @@
 import { useEffect, useId, useMemo, useState } from 'react'
 import type { Reciter } from '@shared/types'
+import { t } from '@shared/i18n'
 import { ErrorAlert, Icon, RangePicker, Segmented } from '../../../components/ui'
 import { errorText } from '../../../lib/format'
 import { rangeLabel, useSurahs } from '../../../lib/quran'
@@ -70,11 +71,11 @@ export function ReciterPanel({ busy }: { busy: boolean }) {
 
   return (
     <div className="import-form">
-      <p className="pn-h">Tilawah qari</p>
-      <Segmented options={PROVIDERS} value={provider} onChange={setProvider} ariaLabel="Penyedia tilawah" />
+      <p className="pn-h">{t('Tilawah qari')}</p>
+      <Segmented options={PROVIDERS} value={provider} onChange={setProvider} ariaLabel={t('Penyedia tilawah')} />
       {!project.surah ? (
         <>
-          <span className="qr-help">Silakan pilih surah dan rentang ayat terlebih dahulu.</span>
+          <span className="qr-help">{t('Silakan pilih surah dan rentang ayat terlebih dahulu.')}</span>
           <RangePicker
             surahs={surahs}
             surah={null}
@@ -85,25 +86,25 @@ export function ReciterPanel({ busy }: { busy: boolean }) {
         </>
       ) : (
         <>
-          <span className="qr-help">Yang diunduh: {rangeLabel(surahs, project.surah, project.ayahFrom, project.ayahTo)}.</span>
+          <span className="qr-help">{t('Yang diunduh: {range}.', { range: rangeLabel(surahs, project.surah, project.ayahFrom, project.ayahTo) })}</span>
           <label className="sr-only" htmlFor={searchId}>
-            Cari qari
+            {t('Cari qari')}
           </label>
           <span className="qr-field">
             <Icon name="search" />
-            <input id={searchId} type="search" placeholder="Cari qari" value={query} onChange={(e) => setQuery(e.target.value)} />
+            <input id={searchId} type="search" placeholder={t('Cari qari')} value={query} onChange={(e) => setQuery(e.target.value)} />
           </span>
           {error && (
-            <ErrorAlert title="Daftar qari tidak bisa dimuat" message={error} onClose={() => setAttempt((n) => n + 1)} />
+            <ErrorAlert title={t('Daftar qari tidak bisa dimuat')} message={error} onClose={() => setAttempt((n) => n + 1)} />
           )}
           {!reciters && !error && (
             <span className="qr-help" role="status">
-              <span className="qr-spin" /> Memuat daftar qari…
+              <span className="qr-spin" /> {t('Memuat daftar qari…')}
             </span>
           )}
           {reciters && (
-            <div className="src-reciters" role="listbox" aria-label="Daftar qari">
-              {shown.length === 0 && <span className="pn-note">Tidak ada qari yang cocok.</span>}
+            <div className="src-reciters" role="listbox" aria-label={t('Daftar qari')}>
+              {shown.length === 0 && <span className="pn-note">{t('Tidak ada qari yang cocok.')}</span>}
               {shown.map((r) => (
                 <button
                   key={r.id}
@@ -122,20 +123,20 @@ export function ReciterPanel({ busy }: { busy: boolean }) {
                       </small>
                     )}
                   </span>
-                  {r.timed && <span className="qr-badge qr-badge--success">tersinkron otomatis</span>}
+                  {r.timed && <span className="qr-badge qr-badge--success">{t('tersinkron otomatis')}</span>}
                 </button>
               ))}
             </div>
           )}
           <button type="button" className="qr-btn qr-btn--primary" disabled={!chosen || busy} onClick={() => void download()}>
             <Icon name="download" />
-            Unduh tilawah
+            {t('Unduh tilawah')}
           </button>
           {chosen && (
             <span className="qr-help">
               {chosen.timed
-                ? 'Waktu tiap ayat ikut diunduh, jadi rekaman langsung tersinkron.'
-                : 'Qari ini belum punya data waktu ayat. Satu surah penuh akan diunduh, lalu disinkronkan di langkah berikutnya.'}
+                ? t('Waktu tiap ayat ikut diunduh, jadi rekaman langsung tersinkron.')
+                : t('Qari ini belum punya data waktu ayat. Satu surah penuh akan diunduh, lalu disinkronkan di langkah berikutnya.')}
             </span>
           )}
         </>

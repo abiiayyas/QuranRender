@@ -1,0 +1,28 @@
+import type { Dict } from './types'
+
+export const components: Dict = {
+  'Tutup': 'Close',
+  'Batal': 'Cancel',
+  'Batalkan': 'Cancel',
+  '{label} (menunggu antrean)': '{label} (queued)',
+  'Surah': 'Surah',
+  'Pilih surah': 'Choose a surah',
+  'Dari ayat': 'From verse',
+  'Sampai ayat': 'To verse',
+  'Surah belum dipilih': 'No surah chosen',
+  'Surah {n}': 'Surah {n}',
+  'Unduh tilawah': 'Download recitation',
+  'Unduh YouTube': 'YouTube download',
+  'Potong audio': 'Trim audio',
+  'Sinkron AI': 'AI sync',
+  'Pasang terjemahan': 'Add translation',
+  'AI trim': 'AI trim',
+  'Ekspor': 'Export',
+  'Unduh yt-dlp': 'Download yt-dlp',
+  'Thumbnail': 'Thumbnail',
+  'Proses': 'Task',
+  '{kind} gagal: {error}': '{kind} failed: {error}',
+  'Video selesai diekspor.': 'Video exported.',
+  'Thumbnail tersimpan.': 'Thumbnail saved.',
+  'Buka folder': 'Open folder'
+}

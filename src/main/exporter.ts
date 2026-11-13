@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { basename, join } from 'node:path'
 import { BrowserWindow, dialog, shell } from 'electron'
+import { getLang, t } from '@shared/i18n'
 import { checkExport } from '@shared/policy'
 import { toSrt, toVtt, youtubeChapters, type SubtitleMode } from '@shared/subtitles'
 import { advanceStatus, type ArabicScript, type Asset, type ExportOptions, type Job, type PolicyIssue, type Project, type Verse } from '@shared/types'
@@ -44,7 +45,7 @@ function referencedAssets(project: Project): Record<string, Asset> {
 export async function buildVideoProps(project: Project, height: number, fps: number, baseUrl: VideoProps['baseUrl']): Promise<VideoProps> {
   const assets = referencedAssets(project)
   const source = project.sourceAssetId ? assets[project.sourceAssetId] : undefined
-  if (!source) throw new Error('Proyek belum memiliki sumber audio.')
+  if (!source) throw new Error(t('Proyek belum memiliki sumber audio.'))
   const lastEnd = Math.max(0, ...project.segments.map((s) => s.endMs))
   const spectrumUrl = project.overlays.some((o) => o.kind === 'visualizer')
     ? `${baseUrl.asset}${encodeURIComponent(project.id)}/${(await ensureSpectrum(project.id, source.id)).split('/').map(encodeURIComponent).join('/')}`
@@ -57,6 +58,7 @@ export async function buildVideoProps(project: Project, height: number, fps: num
     ...canvasSize(project.aspect, height),
     fps,
     durationMs: source.durationMs ?? lastEnd,
+    lang: getLang(),
     spectrumUrl,
     baseUrl
   }
@@ -82,7 +84,7 @@ export function ensureFolder(folder: string): string {
   try {
     mkdirSync(folder, { recursive: true })
   } catch {
-    throw new Error(`Folder ekspor tidak bisa dibuat: ${folder}. Silakan pilih folder lain.`)
+    throw new Error(t('Folder ekspor tidak bisa dibuat: {folder}. Silakan pilih folder lain.', { folder }))
   }
   return folder
 }
@@ -90,14 +92,14 @@ export function ensureFolder(folder: string): string {
 async function start(o: ExportOptions): Promise<Job> {
   const project = getProject(o.projectId)
   if ((await check(project)).some((i) => i.severity === 'error')) {
-    throw new Error('Masih ada masalah yang perlu diperbaiki sebelum ekspor. Silakan periksa daftar di dialog Ekspor.')
+    throw new Error(t('Masih ada masalah yang perlu diperbaiki sebelum ekspor. Silakan periksa daftar di dialog Ekspor.'))
   }
   const folder = ensureFolder(o.folder)
   const name = `${safeName(project.title)} ${stamp()}`
   const outPath = join(folder, `${name}.mp4`)
 
   return startJob(project.id, 'export', 'cpu', async (ctx) => {
-    ctx.progress(0.01, 'Menyiapkan mesin render…')
+    ctx.progress(0.01, t('Menyiapkan mesin render…'))
     // Read again: the user may have edited between the click and the queue slot.
     const p = getProject(project.id)
     const server = await startFileServer()
@@ -107,11 +109,11 @@ async function start(o: ExportOptions): Promise<Job> {
         props,
         outPath,
         signal: ctx.signal,
-        onProgress: (progress, frames, total) => ctx.progress(0.02 + progress * 0.96, `Merender bingkai ${frames} dari ${total}`)
+        onProgress: (progress, frames, total) => ctx.progress(0.02 + progress * 0.96, t('Merender bingkai {frames} dari {total}', { frames, total }))
       })
 
       if (o.srt || o.vtt || o.chapters) {
-        ctx.progress(0.99, 'Menulis subtitle…')
+        ctx.progress(0.99, t('Menulis subtitle…'))
         // QPC words are page-font glyph codes, unreadable as plain text: subtitles use Uthmani text instead.
         const verses = p.script === 'qpc' ? await versesOf(p, 'uthmani') : props.verses
         const mode: SubtitleMode = p.editions.length > 0 ? 'both' : 'arabic'
@@ -139,14 +141,14 @@ export function registerExportIpc(): void {
   handle('exporter', 'defaultFolder', () => ensureFolder(getSettings().exportFolder))
   handle('exporter', 'pickFolder', async () => {
     const win = BrowserWindow.getFocusedWindow()
-    const opts = { title: 'Pilih folder ekspor', defaultPath: getSettings().exportFolder, properties: ['openDirectory', 'createDirectory'] as ('openDirectory' | 'createDirectory')[] }
+    const opts = { title: t('Pilih folder ekspor'), defaultPath: getSettings().exportFolder, properties: ['openDirectory', 'createDirectory'] as ('openDirectory' | 'createDirectory')[] }
     const r = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts)
     const folder = r.canceled ? null : (r.filePaths[0] ?? null)
     if (folder) setSettings({ exportFolder: folder })
     return folder
   })
   handle('exporter', 'reveal', (path) => {
-    if (!existsSync(path)) throw new Error(`Berkas ${basename(path)} sudah tidak ada di folder itu.`)
+    if (!existsSync(path)) throw new Error(t('Berkas {name} sudah tidak ada di folder itu.', { name: basename(path) }))
     shell.showItemInFolder(path)
   })
 }

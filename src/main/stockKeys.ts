@@ -1,3 +1,4 @@
+import { t } from '@shared/i18n'
 import { safeStorage } from 'electron'
 import type { KeyStatus } from '@shared/types'
 import { STOCK_PROVIDERS, type StockProvider } from '@shared/stock'
@@ -10,7 +11,7 @@ const encryptable = (): boolean => safeStorage.isEncryptionAvailable()
 
 export function checkProvider(p: unknown): StockProvider {
   const info = STOCK_PROVIDERS.find((x) => x.id === p)
-  if (!info) throw new Error('Penyedia foto stok tidak dikenal.')
+  if (!info) throw new Error(t('Penyedia foto stok tidak dikenal.'))
   return info.id
 }
 
@@ -20,7 +21,7 @@ export function getStockKey(p: StockProvider): string | null {
   try {
     return encryptable() ? safeStorage.decryptString(row.value) : row.value.toString('utf8')
   } catch {
-    throw new Error('Kunci tersimpan tapi tidak bisa dibuka lagi. Silakan masukkan ulang kuncinya.')
+    throw new Error(t('Kunci tersimpan tapi tidak bisa dibuka lagi. Silakan masukkan ulang kuncinya.'))
   }
 }
 
@@ -38,7 +39,7 @@ export function stockKeyStatus(p: StockProvider): KeyStatus {
     const key = getStockKey(p)
     return { configured: !!key, preview: key ? `${key.slice(0, 4)}••••${key.slice(-3)}` : null }
   } catch {
-    return { configured: true, preview: 'tidak terbaca' }
+    return { configured: true, preview: t('tidak terbaca') }
   }
 }
 

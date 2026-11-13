@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
+import { msg, t } from '@shared/i18n'
 import { STOCK_PROVIDERS, type StockItem, type StockKind, type StockOrientation, type StockProvider } from '@shared/stock'
 import { stockCredit } from '@shared/stockParse'
 import type { Asset, KeyStatus } from '@shared/types'
@@ -7,12 +8,12 @@ import { errorText } from '../../../lib/format'
 import { confirmDialog, toast } from '../../../store/app'
 import { useProject } from '../../../store/project'
 
-const SUGGESTIONS = ['Langit malam', 'Hutan berkabut', 'Masjid', 'Gurun', 'Laut tenang', 'Gunung', 'Hujan', 'Senja']
+const SUGGESTIONS = [msg('Langit malam'), msg('Hutan berkabut'), msg('Masjid'), msg('Gurun'), msg('Laut tenang'), msg('Gunung'), msg('Hujan'), msg('Senja')]
 
 const ORIENTATIONS: { value: StockOrientation; label: string }[] = [
-  { value: 'portrait', label: 'Tegak' },
-  { value: 'landscape', label: 'Mendatar' },
-  { value: 'square', label: 'Persegi' }
+  { value: 'portrait', label: msg('Tegak') },
+  { value: 'landscape', label: msg('Mendatar') },
+  { value: 'square', label: msg('Persegi') }
 ]
 
 const ORIENTATION_OF_ASPECT = { '9:16': 'portrait', '16:9': 'landscape', '1:1': 'square' } as const
@@ -53,28 +54,28 @@ function KeyForm({ provider, onSaved }: { provider: StockProvider; onSaved: (s: 
       <div className="qr-alert qr-alert--info">
         <Icon name="key-round" />
         <div className="qr-alert__content">
-          <span className="qr-alert__title">Perlu kunci {info.label} (gratis)</span>
+          <span className="qr-alert__title">{t('Perlu kunci {name} (gratis)', { name: info.label })}</span>
           <span className="qr-alert__body">
-            {info.label} memberi kunci API tanpa biaya. Silakan buat akun di situsnya, salin kuncinya, lalu tempel di bawah. Kunci disimpan terenkripsi di komputer ini dan hanya dipakai untuk mencari dan mengunduh.
+            {t('{name} memberi kunci API tanpa biaya. Silakan buat akun di situsnya, salin kuncinya, lalu tempel di bawah. Kunci disimpan terenkripsi di komputer ini dan hanya dipakai untuk mencari dan mengunduh.', { name: info.label })}
           </span>
         </div>
         <span className="qr-alert__actions">
           <button type="button" className="qr-btn qr-btn--secondary qr-btn--sm" onClick={() => openLink(info.keyUrl)}>
             <Icon name="external-link" size="sm" />
-            Buka halaman kunci {info.label}
+            {t('Buka halaman kunci {name}', { name: info.label })}
           </button>
         </span>
       </div>
       <div className="qr-fieldset">
         <label className="qr-label" htmlFor={inputId}>
-          Kunci API {info.label}
+          {t('Kunci API {name}', { name: info.label })}
         </label>
         <div className="bp-key__row">
           <div className="qr-field">
-            <input id={inputId} type="password" autoComplete="off" spellCheck={false} placeholder="Tempel kunci di sini" value={key} onChange={(e) => setKey(e.target.value)} />
+            <input id={inputId} type="password" autoComplete="off" spellCheck={false} placeholder={t('Tempel kunci di sini')} value={key} onChange={(e) => setKey(e.target.value)} />
           </div>
           <button type="submit" className="qr-btn qr-btn--primary" disabled={busy || !key.trim()}>
-            {busy ? 'Menyimpan…' : 'Simpan'}
+            {busy ? t('Menyimpan…') : t('Simpan')}
           </button>
         </div>
         <span className="qr-help">{info.creditNote}</span>
@@ -93,14 +94,14 @@ function ResultCard({ item, busy, disabled, onUse }: { item: StockItem; busy: bo
       </div>
       <div className="bp-card__body">
         {item.authorUrl ? (
-          <button type="button" className="bp-link" title="Buka profil di situs penyedia" onClick={() => openLink(item.authorUrl)}>
+          <button type="button" className="bp-link" title={t('Buka profil di situs penyedia')} onClick={() => openLink(item.authorUrl)}>
             {credit}
           </button>
         ) : (
           <span className="bp-credit">{credit}</span>
         )}
-        <button type="button" className="qr-btn qr-btn--secondary qr-btn--sm" disabled={disabled} aria-label={`Gunakan ${credit} sebagai latar`} onClick={onUse}>
-          {busy ? 'Mengunduh…' : 'Gunakan sebagai latar'}
+        <button type="button" className="qr-btn qr-btn--secondary qr-btn--sm" disabled={disabled} aria-label={t('Gunakan {name} sebagai latar', { name: credit })} onClick={onUse}>
+          {busy ? t('Mengunduh…') : t('Gunakan sebagai latar')}
         </button>
       </div>
     </li>
@@ -201,9 +202,9 @@ export function StockTab({ onUse }: { onUse: (asset: Asset) => void }) {
 
   const removeKey = async () => {
     const ok = await confirmDialog({
-      title: `Hapus kunci ${info.label}?`,
-      body: 'Kunci dihapus dari komputer ini. Latar yang sudah diunduh tetap ada di proyek. Anda bisa memasukkan kunci lagi kapan saja.',
-      confirmLabel: 'Hapus kunci',
+      title: t('Hapus kunci {name}?', { name: info.label }),
+      body: t('Kunci dihapus dari komputer ini. Latar yang sudah diunduh tetap ada di proyek. Anda bisa memasukkan kunci lagi kapan saja.'),
+      confirmLabel: t('Hapus kunci'),
       danger: true
     })
     if (!ok) return
@@ -214,7 +215,7 @@ export function StockTab({ onUse }: { onUse: (asset: Asset) => void }) {
       setItems([])
       setSearched('')
       setLoading(false)
-      toast('success', `Kunci ${info.label} dihapus.`)
+      toast('success', t('Kunci {name} dihapus.', { name: info.label }))
     } catch (e) {
       toast('error', errorText(e))
     }
@@ -224,26 +225,26 @@ export function StockTab({ onUse }: { onUse: (asset: Asset) => void }) {
     <div className="bp-pane">
       <div className="bp-bar">
         <Segmented<StockProvider>
-          ariaLabel="Penyedia foto"
+          ariaLabel={t('Penyedia foto')}
           value={provider}
           onChange={pickProvider}
           options={STOCK_PROVIDERS.map((p) => ({
             value: p.id,
             label: p.label,
             disabled: !p.kinds.includes(kind),
-            title: p.kinds.includes(kind) ? undefined : `${p.label} hanya menyediakan foto`
+            title: p.kinds.includes(kind) ? undefined : t('{name} hanya menyediakan foto', { name: p.label })
           }))}
         />
         <Segmented<StockKind>
-          ariaLabel="Foto atau video"
+          ariaLabel={t('Foto atau video')}
           value={kind}
           onChange={setKind}
           options={[
-            { value: 'photo', label: 'Foto' },
-            { value: 'video', label: 'Video', disabled: !info.kinds.includes('video'), title: info.kinds.includes('video') ? undefined : `${info.label} hanya menyediakan foto` }
+            { value: 'photo', label: t('Foto') },
+            { value: 'video', label: t('Video'), disabled: !info.kinds.includes('video'), title: info.kinds.includes('video') ? undefined : t('{name} hanya menyediakan foto', { name: info.label }) }
           ]}
         />
-        <Segmented<StockOrientation> ariaLabel="Orientasi" value={orientation} onChange={setOrientation} options={ORIENTATIONS} />
+        <Segmented<StockOrientation> ariaLabel={t('Orientasi')} value={orientation} onChange={setOrientation} options={ORIENTATIONS.map((o) => ({ ...o, label: t(o.label) }))} />
       </div>
 
       {hasKey === false && <KeyForm provider={provider} onSaved={keySaved} />}
@@ -259,31 +260,31 @@ export function StockTab({ onUse }: { onUse: (asset: Asset) => void }) {
             }}
           >
             <label className="sr-only" htmlFor={searchId}>
-              Kata kunci
+              {t('Kata kunci')}
             </label>
             <div className="qr-field">
               <Icon name="search" size="sm" />
-              <input id={searchId} type="search" placeholder="Cari, misalnya: langit malam" value={text} onChange={(e) => setText(e.target.value)} />
+              <input id={searchId} type="search" placeholder={t('Cari, misalnya: langit malam')} value={text} onChange={(e) => setText(e.target.value)} />
             </div>
             <button type="submit" className="qr-btn qr-btn--primary" disabled={loading || !text.trim()}>
-              Cari
+              {t('Cari')}
             </button>
           </form>
-          <div className="bp-chips" role="group" aria-label="Saran kata kunci">
+          <div className="bp-chips" role="group" aria-label={t('Saran kata kunci')}>
             {SUGGESTIONS.map((s) => (
-              <button key={s} type="button" className="qr-btn qr-btn--ghost qr-btn--sm" onClick={() => submit(s)}>
-                {s}
+              <button key={s} type="button" className="qr-btn qr-btn--ghost qr-btn--sm" onClick={() => submit(t(s))}>
+                {t(s)}
               </button>
             ))}
           </div>
 
-          {error && <ErrorAlert title="Pencarian belum berhasil" message={error} onClose={() => setError(null)} />}
+          {error && <ErrorAlert title={t('Pencarian belum berhasil')} message={error} onClose={() => setError(null)} />}
 
-          {!searched && !error && <p className="qr-help">Silakan ketik kata kunci atau pilih salah satu saran di atas. Kata Indonesia seperti “masjid” atau “senja” ikut dicari dalam bahasa Inggris.</p>}
-          {searched && !loading && !error && items.length === 0 && <p className="qr-help">Belum ada hasil untuk “{searched}”. Silakan coba kata lain, atau ganti orientasi.</p>}
+          {!searched && !error && <p className="qr-help">{t('Silakan ketik kata kunci atau pilih salah satu saran di atas. Kata Indonesia seperti “masjid” atau “senja” ikut dicari dalam bahasa Inggris.')}</p>}
+          {searched && !loading && !error && items.length === 0 && <p className="qr-help">{t('Belum ada hasil untuk “{query}”. Silakan coba kata lain, atau ganti orientasi.', { query: searched })}</p>}
 
           {items.length > 0 && (
-            <ul className="bp-grid" aria-label="Hasil pencarian">
+            <ul className="bp-grid" aria-label={t('Hasil pencarian')}>
               {items.map((item) => (
                 <ResultCard key={`${item.provider}:${item.id}`} item={item} busy={busyId === item.id} disabled={busyId !== null} onUse={() => void use(item)} />
               ))}
@@ -291,13 +292,13 @@ export function StockTab({ onUse }: { onUse: (asset: Asset) => void }) {
           )}
           {loading && (
             <p className="qr-help" role="status">
-              Mencari…
+              {t('Mencari…')}
             </p>
           )}
           {hasMore && !loading && (
             <div>
               <button type="button" className="qr-btn qr-btn--secondary" onClick={() => void run(searched, page + 1, provider, kind, orientation)}>
-                Muat lebih banyak
+                {t('Muat lebih banyak')}
               </button>
             </div>
           )}
@@ -305,7 +306,7 @@ export function StockTab({ onUse }: { onUse: (asset: Asset) => void }) {
           <p className="bp-foot qr-help">
             {info.creditNote}
             <button type="button" className="bp-link" onClick={() => void removeKey()}>
-              Hapus kunci {info.label}
+              {t('Hapus kunci {name}', { name: info.label })}
             </button>
           </p>
         </>

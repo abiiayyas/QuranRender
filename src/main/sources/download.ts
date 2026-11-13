@@ -1,3 +1,4 @@
+import { t } from '@shared/i18n'
 import { randomUUID } from 'node:crypto'
 import { rm } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -15,28 +16,28 @@ import { qdcChapter, qdcReciters } from './qdc'
 
 export function startDownload(projectId: string, reciterId: string): Job {
   const project = getProject(projectId)
-  if (!project.surah) throw new Error('Silakan pilih surah terlebih dahulu.')
+  if (!project.surah) throw new Error(t('Silakan pilih surah terlebih dahulu.'))
   const [provider, rid] = reciterId.split(':')
-  if ((provider !== 'mp3quran' && provider !== 'qdc') || !rid) throw new Error('Qari tidak dikenal.')
+  if ((provider !== 'mp3quran' && provider !== 'qdc') || !rid) throw new Error(t('Qari tidak dikenal.'))
 
   return startJob(projectId, 'download', 'net', async (ctx) => {
     const p = getProject(projectId)
-    if (!p.surah) throw new Error('Silakan pilih surah terlebih dahulu.')
+    if (!p.surah) throw new Error(t('Silakan pilih surah terlebih dahulu.'))
     const surah = surahInfo(p.surah)
-    ctx.progress(0.02, 'Menyiapkan unduhan…')
+    ctx.progress(0.02, t('Menyiapkan unduhan…'))
 
     let url: string
     let timing: ProviderTiming | null = null
     let name: string
     if (provider === 'qdc') {
       const r = (await qdcReciters()).find((x) => x.id === reciterId)
-      if (!r) throw new Error('Qari tidak ditemukan di Quran.com.')
+      if (!r) throw new Error(t('Qari tidak ditemukan di Quran.com.'))
       name = r.name
       ;({ url, timing } = await qdcChapter(Number(rid), surah.id, ctx.signal))
     } else {
       const r = (await mp3quranReciters()).find((x) => x.id === reciterId)
-      if (!r) throw new Error('Qari tidak ditemukan di MP3Quran.')
-      if (!r.surahs.includes(surah.id)) throw new Error(`Qari ini belum memiliki rekaman ${surah.nameLatin}.`)
+      if (!r) throw new Error(t('Qari tidak ditemukan di MP3Quran.'))
+      if (!r.surahs.includes(surah.id)) throw new Error(t('Qari ini belum memiliki rekaman {surah}.', { surah: surah.nameLatin }))
       name = r.name
       url = mp3quranAudioUrl(r, surah.id)
       if (r.timed) timing = await mp3quranTiming(r, surah.id, ctx.signal)
@@ -59,11 +60,11 @@ export function startDownload(projectId: string, reciterId: string): Job {
     const tmp = join(tmpDir(), `${randomUUID()}.mp3`)
     const cutFile = join(tmpDir(), `${randomUUID()}.m4a`)
     try {
-      ctx.progress(0.05, 'Mengunduh tilawah…')
+      ctx.progress(0.05, t('Mengunduh tilawah…'))
       await downloadFile(url, tmp, { signal: ctx.signal, onProgress: (f) => ctx.progress(0.05 + f * 0.75) })
       let file = tmp
       if (cut && (cut.startMs > 0 || cut.endMs != null)) {
-        ctx.progress(0.8, 'Memotong sesuai rentang ayat…')
+        ctx.progress(0.8, t('Memotong sesuai rentang ayat…'))
         // Input seeking with re-encoding is sample-accurate, so segment times stay exact.
         const range = ['-ss', String(cut.startMs / 1000), ...(cut.endMs != null ? ['-to', String(cut.endMs / 1000)] : [])]
         await ffmpeg([...range, '-i', tmp, '-vn', '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', cutFile], {
@@ -73,7 +74,7 @@ export function startDownload(projectId: string, reciterId: string): Job {
         })
         file = cutFile
       }
-      ctx.progress(0.96, 'Menyimpan ke proyek…')
+      ctx.progress(0.96, t('Menyimpan ke proyek…'))
       const asset = await importSource(projectId, file, {
         source: provider,
         name: `${name} – ${surah.nameLatin}`,
@@ -88,10 +89,10 @@ export function startDownload(projectId: string, reciterId: string): Job {
         status: advanceStatus(cur.status, cut ? 'synced' : 'source'),
         ...(cur.reciter.trim() ? {} : { reciter: name })
       })
-      if (cut) return 'Tilawah terunduh dan ayat sudah tersinkron.'
+      if (cut) return t('Tilawah terunduh dan ayat sudah tersinkron.')
       return from > 1 || to < surah.ayahCount
-        ? 'Tilawah terunduh satu surah penuh. Silakan potong bagian yang dibutuhkan.'
-        : 'Tilawah terunduh.'
+        ? t('Tilawah terunduh satu surah penuh. Silakan potong bagian yang dibutuhkan.')
+        : t('Tilawah terunduh.')
     } finally {
       await Promise.all([rm(tmp, { force: true }), rm(cutFile, { force: true })])
     }

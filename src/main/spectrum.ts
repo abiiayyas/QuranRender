@@ -1,3 +1,4 @@
+import { t } from '@shared/i18n'
 import { existsSync } from 'node:fs'
 import { mkdir, rename, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
@@ -21,9 +22,9 @@ export function ensureSpectrum(projectId: string, assetId: string): Promise<stri
   if (!p) {
     p = (async () => {
       const asset = getAsset(assetId)
-      if (asset.projectId !== projectId) throw new Error('Berkas ini bukan milik proyek.')
+      if (asset.projectId !== projectId) throw new Error(t('Berkas ini bukan milik proyek.'))
       const src = assetAbsPath(projectId, asset.path)
-      if (!existsSync(src)) throw new Error('Berkas audio sudah tidak ada di folder proyek.')
+      if (!existsSync(src)) throw new Error(t('Berkas audio sudah tidak ada di folder proyek.'))
       const pcm = await ffmpeg(['-i', src, '-vn', '-ac', '1', '-ar', String(SPECTRUM_RATE), '-f', 's16le', '-'])
       const table = computeSpectrum(new Int16Array(pcm.buffer, pcm.byteOffset, Math.floor(pcm.byteLength / 2)))
       const abs = join(projectDir(projectId), rel)

@@ -5,7 +5,7 @@ import { closeDb, getDb } from './db'
 import { registerIpc } from './ipc'
 import { handleStudioProtocol, registerSchemes } from './protocol'
 import { failInterruptedJobs } from './repo'
-import { getSettings } from './settings'
+import { applyLanguage, getSettings } from './settings'
 
 if (!app.isPackaged && process.env.QR_USER_DATA) app.setPath('userData', process.env.QR_USER_DATA)
 
@@ -53,6 +53,7 @@ if (!app.requestSingleInstanceLock()) {
     getDb()
     failInterruptedJobs()
     nativeTheme.themeSource = getSettings().theme
+    applyLanguage()
     handleStudioProtocol()
     registerIpc()
     createWindow()

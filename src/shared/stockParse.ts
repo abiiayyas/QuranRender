@@ -1,5 +1,6 @@
 import type { StockItem, StockOrientation, StockPage, StockProvider, StockQuery } from './stock'
 import { STOCK_PROVIDERS } from './stock'
+import { t } from './i18n'
 
 // Pure request builders and response parsers for the three stock providers. The field names are the ones in each
 // provider's official docs (see the notes above every parser); anything optional is read defensively, because a
@@ -127,12 +128,12 @@ export function stockRequest(q: StockQuery, key: string): StockRequest {
 export function stockHttpError(provider: StockProvider, status: number, body = ''): string {
   const name = providerLabel(provider)
   const limited = status === 429 || (status === 403 && /rate limit/i.test(body))
-  if (limited) return `Batas permintaan ${name} tercapai. Silakan coba lagi nanti.`
+  if (limited) return t('Batas permintaan {name} tercapai. Silakan coba lagi nanti.', { name })
   if (status === 401 || status === 403 || (provider === 'pixabay' && status === 400 && /key/i.test(body))) {
-    return `Kunci ${name} tidak valid. Silakan periksa atau masukkan ulang kuncinya.`
+    return t('Kunci {name} tidak valid. Silakan periksa atau masukkan ulang kuncinya.', { name })
   }
-  if (status >= 500) return `${name} sedang bermasalah. Silakan coba lagi sebentar lagi.`
-  return `${name} menolak permintaan ini (kode ${status}).`
+  if (status >= 500) return t('{name} sedang bermasalah. Silakan coba lagi sebentar lagi.', { name })
+  return t('{name} menolak permintaan ini (kode {status}).', { name, status })
 }
 
 // --- Orientation helper -------------------------------------------------------------------------------------------
@@ -153,9 +154,9 @@ function matchFirst(items: StockItem[], orientation: StockOrientation): StockIte
 
 /** The line for Publikasi and the picker: "Foto oleh Ana di Pexels". */
 export function stockCredit(item: Pick<StockItem, 'provider' | 'kind' | 'author'>): string {
-  const what = item.kind === 'video' ? 'Video' : 'Foto'
   const name = providerLabel(item.provider)
-  return item.author ? `${what} oleh ${item.author} di ${name}` : `${what} dari ${name}`
+  if (item.kind === 'video') return item.author ? t('Video oleh {author} di {name}', { author: item.author, name }) : t('Video dari {name}', { name })
+  return item.author ? t('Foto oleh {author} di {name}', { author: item.author, name }) : t('Foto dari {name}', { name })
 }
 
 // --- Pexels -------------------------------------------------------------------------------------------------------

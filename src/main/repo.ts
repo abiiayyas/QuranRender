@@ -1,3 +1,4 @@
+import { t } from '@shared/i18n'
 import { randomUUID } from 'node:crypto'
 import { cpSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
@@ -27,7 +28,7 @@ export function newProject(init: ProjectInit): Project {
 
 export function getProject(id: string): Project {
   const row = getDb().prepare('SELECT data_json FROM projects WHERE id = ?').get(id) as { data_json: string } | undefined
-  if (!row) throw new Error('Proyek tidak ditemukan. Mungkin sudah dihapus.')
+  if (!row) throw new Error(t('Proyek tidak ditemukan. Mungkin sudah dihapus.'))
   return JSON.parse(row.data_json) as Project
 }
 
@@ -57,6 +58,19 @@ export function patchProject(id: string, patch: Partial<Project>): Project {
   return p
 }
 
+/**
+ * The surah and verses a project really covers. The fields chosen when it was created can be stale: AI sync recognizes
+ * what was recited, and a recording can run across surahs. Falls back to those fields while there are no verse segments.
+ */
+function coverage(p: Project): Pick<ProjectSummary, 'surah' | 'ayahFrom' | 'ayahTo' | 'surahTo' | 'surahCount'> {
+  const verses = p.segments.filter((s) => s.kind === 'ayah' && s.surah > 0).sort((a, b) => a.startMs - b.startMs)
+  if (verses.length === 0) return { surah: p.surah, ayahFrom: p.ayahFrom, ayahTo: p.ayahTo, surahTo: null, surahCount: 0 }
+  const first = verses[0]
+  const last = verses[verses.length - 1]
+  const surahCount = new Set(verses.map((s) => s.surah)).size
+  return { surah: first.surah, ayahFrom: first.ayah, ayahTo: last.ayah, surahTo: last.surah !== first.surah ? last.surah : null, surahCount }
+}
+
 function summary(p: Project): ProjectSummary {
   const src = p.sourceAssetId ? getAssetOrNull(p.sourceAssetId) : null
   return {
@@ -65,9 +79,7 @@ function summary(p: Project): ProjectSummary {
     step: p.step,
     status: p.status,
     aspect: p.aspect,
-    surah: p.surah,
-    ayahFrom: p.ayahFrom,
-    ayahTo: p.ayahTo,
+    ...coverage(p),
     reciter: p.reciter,
     durationMs: src?.durationMs ?? null,
     segmentCount: p.segments.length,
@@ -164,7 +176,7 @@ export function getAssetOrNull(id: string): Asset | null {
 
 export function getAsset(id: string): Asset {
   const a = getAssetOrNull(id)
-  if (!a) throw new Error('Berkas proyek tidak ditemukan.')
+  if (!a) throw new Error(t('Berkas proyek tidak ditemukan.'))
   return a
 }
 
@@ -232,8 +244,8 @@ export function jobsOf(projectId: string): Job[] {
 /** A job cannot survive a restart: whatever was queued or running is marked failed. */
 export function failInterruptedJobs(): void {
   getDb()
-    .prepare(`UPDATE jobs SET status = 'failed', error = 'Terputus karena aplikasi ditutup.', updated_at = ? WHERE status IN ('queued', 'running')`)
-    .run(Date.now())
+    .prepare(`UPDATE jobs SET status = 'failed', error = ?, updated_at = ? WHERE status IN ('queued', 'running')`)
+    .run(t('Terputus karena aplikasi ditutup.'), Date.now())
 }
 
 export function bundle(id: string): ProjectBundle {

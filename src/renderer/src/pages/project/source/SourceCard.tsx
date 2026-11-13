@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
 import type { Asset } from '@shared/types'
+import { msg, t } from '@shared/i18n'
 import { Icon } from '../../../components/ui'
 import { Waveform } from '../../../components/Waveform'
 import { errorText, formatMs } from '../../../lib/format'
@@ -8,14 +9,14 @@ import { confirmDialog, toast } from '../../../store/app'
 import { useProject } from '../../../store/project'
 
 export const SOURCE_LABEL: Record<Asset['source'], string> = {
-  local: 'Berkas di komputer',
+  local: msg('Berkas di komputer'),
   mp3quran: 'MP3Quran',
   qdc: 'Quran.com (QDC)',
   youtube: 'YouTube',
-  trim: 'Hasil potongan',
-  frame: 'Bingkai video',
-  stock: 'Foto/video stok',
-  ai: 'Dibuat dengan AI'
+  trim: msg('Hasil potongan'),
+  frame: msg('Bingkai video'),
+  stock: msg('Foto/video stok'),
+  ai: msg('Dibuat dengan AI')
 }
 
 const PEAKS = 1600
@@ -59,7 +60,7 @@ function TimeInput({ label, value, onCommit }: { label: string; value: number; o
           onKeyDown={(e) => e.key === 'Enter' && commit()}
         />
       </span>
-      {bad && <span className="qr-error">Tulis waktu seperti 1:05,2 atau 65,2.</span>}
+      {bad && <span className="qr-error">{t('Tulis waktu seperti 1:05,2 atau 65,2.')}</span>}
     </div>
   )
 }
@@ -102,7 +103,7 @@ export function SourceCard({ asset, busy }: { asset: Asset; busy: boolean }) {
     return {
       role: 'slider',
       tabIndex: 0,
-      'aria-label': which === 'in' ? 'Titik masuk' : 'Titik keluar',
+      'aria-label': which === 'in' ? t('Titik masuk') : t('Titik keluar'),
       'aria-valuemin': 0,
       'aria-valuemax': Math.round(dur),
       'aria-valuenow': Math.round(value),
@@ -134,12 +135,12 @@ export function SourceCard({ asset, busy }: { asset: Asset; busy: boolean }) {
     const lost = project.segments.filter((s) => s.endMs <= cut.inMs || s.startMs >= cut.outMs).length
     if (project.segments.length > 0) {
       const ok = await confirmDialog({
-        title: 'Potong rekaman?',
+        title: t('Potong rekaman?'),
         body:
           lost > 0
-            ? `Waktu segmen akan digeser mengikuti potongan, dan ${lost} segmen di luar potongan akan dihapus.`
-            : 'Waktu segmen akan digeser mengikuti potongan.',
-        confirmLabel: 'Potong'
+            ? t('Waktu segmen akan digeser mengikuti potongan, dan {n} segmen di luar potongan akan dihapus.', { n: lost })
+            : t('Waktu segmen akan digeser mengikuti potongan.'),
+        confirmLabel: t('Potong')
       })
       if (!ok) return
     }
@@ -160,7 +161,7 @@ export function SourceCard({ asset, busy }: { asset: Asset; busy: boolean }) {
           {asset.name}
         </span>
         <span className="qr-panel__actions muted">
-          {asset.kind === 'video' ? 'Video' : 'Audio'} · {formatMs(dur)} · {SOURCE_LABEL[asset.source]}
+          {asset.kind === 'video' ? t('Video') : t('Audio')} · {formatMs(dur)} · {t(SOURCE_LABEL[asset.source])}
         </span>
       </div>
       <div className="insp-pad">
@@ -168,9 +169,13 @@ export function SourceCard({ asset, busy }: { asset: Asset; busy: boolean }) {
           ref={wave}
           className="src-wave"
           onPointerDown={(e) => dur > 0 && audio.seek(msAt(e.clientX))}
-          title="Klik untuk memindahkan posisi pemutar"
+          title={t('Klik untuk memindahkan posisi pemutar')}
         >
-          {peaks.length > 0 ? <Waveform peaks={peaks} label={`Bentuk gelombang ${asset.name}`} /> : <span className="lane-note">Menyiapkan bentuk gelombang…</span>}
+          {peaks.length > 0 ? (
+            <Waveform peaks={peaks} label={t('Bentuk gelombang {name}', { name: asset.name })} />
+          ) : (
+            <span className="lane-note">{t('Menyiapkan bentuk gelombang…')}</span>
+          )}
           <div className="src-mask" style={{ left: 0, width: pct(cut.inMs) }} />
           <div className="src-mask" style={{ left: pct(cut.outMs), right: 0 }} />
           {dur > 0 && (
@@ -183,10 +188,10 @@ export function SourceCard({ asset, busy }: { asset: Asset; busy: boolean }) {
         </div>
 
         <div className="src-transport">
-          <button type="button" className="qr-btn qr-btn--secondary qr-btn--icon" aria-label={audio.playing ? 'Jeda' : 'Putar'} onClick={audio.toggle}>
+          <button type="button" className="qr-btn qr-btn--secondary qr-btn--icon" aria-label={audio.playing ? t('Jeda') : t('Putar')} onClick={audio.toggle}>
             <Icon name={audio.playing ? 'pause' : 'play'} />
           </button>
-          <button type="button" className="qr-btn qr-btn--ghost qr-btn--icon" aria-label="Kembali ke awal" onClick={() => audio.seek(0)}>
+          <button type="button" className="qr-btn qr-btn--ghost qr-btn--icon" aria-label={t('Kembali ke awal')} onClick={() => audio.seek(0)}>
             <Icon name="skip-back" />
           </button>
           <span className="qr-tc">
@@ -195,30 +200,30 @@ export function SourceCard({ asset, busy }: { asset: Asset; busy: boolean }) {
         </div>
 
         <div className="src-trim">
-          <p className="pn-h">Potong awal dan akhir</p>
+          <p className="pn-h">{t('Potong awal dan akhir')}</p>
           <div className="grid-2">
-            <TimeInput label="Titik masuk" value={cut.inMs} onCommit={setIn} />
-            <TimeInput label="Titik keluar" value={cut.outMs} onCommit={setOut} />
+            <TimeInput label={t('Titik masuk')} value={cut.inMs} onCommit={setIn} />
+            <TimeInput label={t('Titik keluar')} value={cut.outMs} onCommit={setOut} />
             <button type="button" className="qr-btn qr-btn--ghost qr-btn--sm" onClick={() => setIn(audio.t)}>
-              Masuk di posisi pemutar
+              {t('Masuk di posisi pemutar')}
             </button>
             <button type="button" className="qr-btn qr-btn--ghost qr-btn--sm" onClick={() => setOut(audio.t)}>
-              Keluar di posisi pemutar
+              {t('Keluar di posisi pemutar')}
             </button>
           </div>
-          <span className="qr-help">Geser pegangan pada gelombang, atau tulis waktunya. Bagian yang diarsir akan dibuang.</span>
+          <span className="qr-help">{t('Geser pegangan pada gelombang, atau tulis waktunya. Bagian yang diarsir akan dibuang.')}</span>
           <div className="src-actions">
             <button type="button" className="qr-btn qr-btn--secondary" disabled={!trimmed} onClick={() => audio.playRange(cut.inMs, cut.outMs)}>
               <Icon name="play" />
-              Putar potongan
+              {t('Putar potongan')}
             </button>
             <button type="button" className="qr-btn qr-btn--ghost" disabled={!trimmed} onClick={() => setCut({ inMs: 0, outMs: dur })}>
               <Icon name="rotate-ccw" />
-              Atur ulang
+              {t('Atur ulang')}
             </button>
             <button type="button" className="qr-btn qr-btn--primary" disabled={!trimmed || busy} onClick={() => void trim()}>
               <Icon name="scissors" />
-              Potong
+              {t('Potong')}
             </button>
           </div>
         </div>

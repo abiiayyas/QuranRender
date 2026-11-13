@@ -1,28 +1,32 @@
 import { useMemo, type CSSProperties, type ReactNode } from 'react'
 import { AbsoluteFill, Audio, Freeze, Img, Loop, OffthreadVideo, Sequence, spring, useCurrentFrame } from 'remotion'
+import { setLang, t } from '../shared/i18n'
 import { bounceLeg, fadeFrames, fadeLayers } from '../shared/loop'
 import { DEFAULT_MOTION, type LoopMode } from '../shared/motion'
-import { CTA_DEFAULT_TEXT, overlayPhase, readableOn } from '../shared/overlay'
+import { ctaDefaultText, overlayPhase, readableOn } from '../shared/overlay'
 import type { Asset, Overlay } from '../shared/types'
 import type { VideoProps } from '../shared/video'
 import { SAFE_AREA, assetSrc, q, rgba, textShadow } from './common'
 import { FAMILY, fontSpecs, useFonts } from './fonts'
 import { MotionBackground } from './motion'
 import { SegmentText } from './SegmentText'
+import { PromptOverlay } from './Prompt'
 import { VisualizerOverlay } from './Visualizer'
 import { activeSegment } from './timing'
 
 export function QuranVideo(props: VideoProps) {
   const { project, assets, verses, width, height, fps, baseUrl } = props
+  // Text the composition writes itself (lower third, prompts) follows the language the project is exported in.
+  setLang(props.lang)
   const frame = useCurrentFrame()
-  const t = (frame / fps) * 1000
+  const now = (frame / fps) * 1000
   const specs = useMemo(() => fontSpecs(project.script, verses), [project.script, verses])
   const ready = useFonts(baseUrl.font, specs)
   const unit = Math.min(width, height)
   const style = project.style
   const source = project.sourceAssetId ? assets[project.sourceAssetId] : undefined
   const sourceIsBg = project.background.kind === 'source' && source?.kind === 'video'
-  const seg = activeSegment(project.segments, t)
+  const seg = activeSegment(project.segments, now)
 
   return (
     <AbsoluteFill style={{ backgroundColor: project.background.color, overflow: 'hidden' }}>
@@ -77,9 +81,9 @@ export function QuranVideo(props: VideoProps) {
           </span>
         </div>
       )}
-      {seg && <SegmentText key={seg.id} {...props} seg={seg} t={t} unit={unit} ready={ready} />}
+      {seg && <SegmentText key={seg.id} {...props} seg={seg} t={now} unit={unit} ready={ready} />}
       {project.overlays.map((o) => (
-        <OverlayItem key={o.id} o={o} t={t} props={props} />
+        <OverlayItem key={o.id} o={o} t={now} props={props} />
       ))}
     </AbsoluteFill>
   )
@@ -196,6 +200,7 @@ function OverlayItem({ o, t, props }: { o: Overlay; t: number; props: VideoProps
   if (o.kind === 'progress') return <ProgressOverlay o={o} t={t} end={end} props={props} />
   if (o.kind === 'cta') return <CtaOverlay o={o} t={t} end={end} pos={pos} props={props} />
   if (o.kind === 'visualizer') return <VisualizerOverlay o={o} t={t} props={props} />
+  if (o.kind === 'prompt') return <PromptOverlay o={o} t={t} props={props} />
   if (!o.text.trim()) return null
   return (
     <div
@@ -228,11 +233,11 @@ interface TimedOverlay {
 const easeOut = (v: number): number => 1 - (1 - v) ** 3
 
 /** Reciter and surah as a lower third that slides in, holds, and fades before its window ends. */
-function QariOverlay({ o, t, end, pos, props }: TimedOverlay & { pos: CSSProperties }) {
+function QariOverlay({ o, t: now, end, pos, props }: TimedOverlay & { pos: CSSProperties }) {
   const { width, project, surah } = props
   const name = project.reciter.trim()
   if (!name) return null
-  const { enter, exit } = overlayPhase(t, o.startMs, end)
+  const { enter, exit } = overlayPhase(now, o.startMs, end)
   const e = easeOut(enter)
   const font = o.size * width
   return (
@@ -259,7 +264,7 @@ function QariOverlay({ o, t, end, pos, props }: TimedOverlay & { pos: CSSPropert
           {name}
         </div>
         {surah && (
-          <div style={{ fontWeight: 500, fontSize: font * 0.68, lineHeight: 1.35, color: 'rgba(255, 255, 255, 0.78)' }}>{`Surah ${surah.nameLatin}`}</div>
+          <div style={{ fontWeight: 500, fontSize: font * 0.68, lineHeight: 1.35, color: 'rgba(255, 255, 255, 0.78)' }}>{t('Surah {name}', { name: surah.nameLatin })}</div>
         )}
       </div>
     </div>
@@ -321,7 +326,7 @@ function CtaOverlay({ o, t, end, pos, props }: TimedOverlay & { pos: CSSProperti
         lineHeight: 1.3
       }}
     >
-      {o.text.trim() || CTA_DEFAULT_TEXT}
+      {o.text.trim() || ctaDefaultText()}
     </div>
   )
 }

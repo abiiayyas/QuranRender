@@ -1,4 +1,5 @@
 import type { AiProvider, CliImageTool, CliTool, ImageProvider } from './aiTools'
+import type { Lang } from './i18n'
 import type { LoopMode, MotionSpec } from './motion'
 import type { PublishKit } from './publish'
 import type { StyleSettings } from './style'
@@ -86,10 +87,12 @@ export interface Background {
 
 export interface Overlay {
   id: string
-  /** qari: reciter name and surah as an animated lower third; progress: a thin bar over the recitation; cta: a short call to action in `text`; visualizer: audio-reactive bars or wave drawn from the source audio (`variant`). */
-  kind: 'text' | 'image' | 'qari' | 'progress' | 'cta' | 'visualizer'
-  /** visualizer only: 'bars' (default) or 'wave'. */
-  variant?: 'bars' | 'wave'
+  /** qari: reciter name and surah as an animated lower third; progress: a thin bar over the recitation; cta: a short call to action in `text`; visualizer: audio-reactive bars or wave drawn from the source audio (`variant`); prompt: a subscribe or follow button that comes and goes (`variant`, `cycle`). */
+  kind: 'text' | 'image' | 'qari' | 'progress' | 'cta' | 'visualizer' | 'prompt'
+  /** visualizer: 'bars' (default) or 'wave'. prompt: 'subscribe' (default) or 'follow'. */
+  variant?: 'bars' | 'wave' | 'subscribe' | 'follow'
+  /** prompt only: it shows for `showMs` at the overlay's start and again every `everyMs` until the overlay ends. */
+  cycle?: { everyMs: number; showMs: number }
   text: string
   assetId: string | null
   /** Center position as a fraction of the canvas (0..1). */
@@ -139,9 +142,14 @@ export interface ProjectSummary {
   step: Step
   status: ProjectStatus
   aspect: Aspect
+  /** What the recording actually holds (from its verse segments), else what the project was created for. */
   surah: number | null
   ayahFrom: number | null
   ayahTo: number | null
+  /** Set when the segments run through more than one surah: the last one (`surah` is the first). */
+  surahTo: number | null
+  /** How many different surahs the segments cover (0 when there are no verse segments). */
+  surahCount: number
   reciter: string
   durationMs: number | null
   segmentCount: number
@@ -202,6 +210,8 @@ export interface ProjectPatchEvent {
 
 export interface Settings {
   theme: 'system' | 'light' | 'dark'
+  /** Interface language; also the language of messages from the main process and of text drawn into videos. */
+  language: Lang
   /** Default script for new projects. */
   script: ArabicScript
   /** OpenAI-compatible base URL, e.g. https://api.openai.com/v1 */

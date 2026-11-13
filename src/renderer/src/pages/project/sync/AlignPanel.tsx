@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { t } from '@shared/i18n'
 import { ErrorAlert, Icon, JobProgress, Segmented } from '../../../components/ui'
 import { errorText } from '../../../lib/format'
 import { confirmDialog, toast } from '../../../store/app'
@@ -22,9 +23,12 @@ export function AlignPanel() {
     if (!st.project) return
     if (st.project.segments.length > 0) {
       const ok = await confirmDialog({
-        title: 'Ganti segmen yang ada?',
-        body: `Proyek ini sudah punya ${st.project.segments.length} segmen. Sinkron otomatis akan menggantinya dengan hasil baru, termasuk suntingan waktu dan terjemahan per segmen. Anda masih bisa membatalkannya dengan Urungkan.`,
-        confirmLabel: 'Ganti segmen',
+        title: t('Ganti segmen yang ada?'),
+        body: t(
+          'Proyek ini sudah punya {n} segmen. Sinkron otomatis akan menggantinya dengan hasil baru, termasuk suntingan waktu dan terjemahan per segmen. Anda masih bisa membatalkannya dengan Urungkan.',
+          { n: st.project.segments.length }
+        ),
+        confirmLabel: t('Ganti segmen'),
         danger: true
       })
       if (!ok) return
@@ -44,24 +48,26 @@ export function AlignPanel() {
   return (
     <section className="sync-ai stack" aria-labelledby="sync-ai-title">
       <h2 className="pn-h" id="sync-ai-title">
-        Sinkron otomatis (AI)
+        {t('Sinkron otomatis (AI)')}
       </h2>
       <Segmented<Model>
-        ariaLabel="Model penyelaras"
+        ariaLabel={t('Model penyelaras')}
         value={model}
         onChange={setModel}
         options={[
-          { value: 'base', label: 'Base', title: 'Lebih cepat, cukup untuk tilawah yang jelas' },
-          { value: 'large', label: 'Large', title: 'Lebih teliti, lebih lama' }
+          { value: 'base', label: 'Base', title: t('Lebih cepat, cukup untuk tilawah yang jelas') },
+          { value: 'large', label: 'Large', title: t('Lebih teliti, lebih lama') }
         ]}
       />
-      <p className="pn-note">Audio dikirim ke layanan publik Hugging Face Space (Quranic Universal Aligner) untuk dikenali ayat dan waktu katanya.</p>
+      <p className="pn-note">{t('Audio dikirim ke layanan publik Hugging Face Space (Quranic Universal Aligner) untuk dikenali ayat dan waktu katanya.')}</p>
       <button type="button" className="qr-btn qr-btn--primary" disabled={!!active} onClick={() => void start()}>
         <Icon name="audio-waveform" />
-        Mulai sinkron otomatis
+        {t('Mulai sinkron otomatis')}
       </button>
-      <JobProgress job={active} label="Menyinkronkan" />
-      {!active && failed && <ErrorAlert title="Sinkron otomatis gagal" message={failed.error ?? 'Terjadi kesalahan.'} onClose={() => setDismissed(failed.id)} />}
+      <JobProgress job={active} label={t('Menyinkronkan')} />
+      {!active && failed && (
+        <ErrorAlert title={t('Sinkron otomatis gagal')} message={failed.error ?? t('Terjadi kesalahan.')} onClose={() => setDismissed(failed.id)} />
+      )}
       {!active && done && (
         <div className="qr-alert qr-alert--success" role="status">
           <Icon name="circle-check" />
@@ -70,7 +76,7 @@ export function AlignPanel() {
           </div>
           <span className="qr-alert__actions">
             <button type="button" className="qr-btn qr-btn--ghost qr-btn--sm" onClick={() => setDismissed(done.id)}>
-              Tutup
+              {t('Tutup')}
             </button>
           </span>
         </div>

@@ -1,3 +1,4 @@
+import { t } from '@shared/i18n'
 import { confirmDialog } from '../../../store/app'
 import { useProject } from '../../../store/project'
 
@@ -10,9 +11,11 @@ export async function prepareReplace(): Promise<boolean> {
   if (!project) return false
   if (project.sourceAssetId && project.segments.length > 0) {
     const ok = await confirmDialog({
-      title: 'Ganti rekaman?',
-      body: `Proyek ini sudah memiliki ${project.segments.length} segmen. Waktunya mengikuti rekaman lama, jadi segmen akan dihapus dan perlu disinkronkan ulang.`,
-      confirmLabel: 'Ganti rekaman',
+      title: t('Ganti rekaman?'),
+      body: t('Proyek ini sudah memiliki {n} segmen. Waktunya mengikuti rekaman lama, jadi segmen akan dihapus dan perlu disinkronkan ulang.', {
+        n: project.segments.length
+      }),
+      confirmLabel: t('Ganti rekaman'),
       danger: true
     })
     if (!ok) return false

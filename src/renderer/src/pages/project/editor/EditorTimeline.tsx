@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react'
 import type { PlayerRef } from '@remotion/player'
+import { t } from '@shared/i18n'
 import { overlayLabel } from '@shared/overlay'
 import { segmentLabel, snapMs } from '@shared/segments'
 import type { Asset, Overlay, Project, Verse } from '@shared/types'
@@ -94,7 +95,7 @@ export function EditorTimeline({
     return () => ro.disconnect()
   }, [])
 
-  const t = (frame / fps) * 1000
+  const now = (frame / fps) * 1000
   const pct = (ms: number): string => `${(Math.min(Math.max(ms, 0), durationMs) / durationMs) * 100}%`
   const msPerPx = durationMs / Math.max(1, width * zoom)
 
@@ -102,9 +103,9 @@ export function EditorTimeline({
   useEffect(() => {
     const el = outer.current
     if (!el || !playing || zoom === 1) return
-    const x = (t / durationMs) * el.scrollWidth
+    const x = (now / durationMs) * el.scrollWidth
     if (x < el.scrollLeft || x > el.scrollLeft + el.clientWidth - 24) el.scrollLeft = Math.max(0, x - el.clientWidth * 0.1)
-  }, [t, playing, zoom, durationMs])
+  }, [now, playing, zoom, durationMs])
 
   const msAt = (clientX: number): number => {
     const r = inner.current!.getBoundingClientRect()
@@ -115,10 +116,10 @@ export function EditorTimeline({
   // Zoom around the playhead so what the user is looking at does not jump away.
   const zoomTo = (next: number): void => {
     const el = outer.current
-    const keep = el ? (t / durationMs) * el.scrollWidth - el.scrollLeft : 0
+    const keep = el ? (now / durationMs) * el.scrollWidth - el.scrollLeft : 0
     setZoom(next)
     requestAnimationFrame(() => {
-      if (el) el.scrollLeft = Math.max(0, (t / durationMs) * el.scrollWidth - keep)
+      if (el) el.scrollLeft = Math.max(0, (now / durationMs) * el.scrollWidth - keep)
     })
   }
 
@@ -128,7 +129,7 @@ export function EditorTimeline({
   for (let s = 0; s * 1000 <= durationMs && ticks.length < 2000; s += step) ticks.push(s * 1000)
 
   const snapTargets = (exceptId: string): number[] => [
-    t,
+    now,
     ...project.segments.flatMap((s) => [s.startMs, s.endMs]),
     ...project.overlays.filter((o) => o.id !== exceptId).flatMap((o) => [o.startMs, o.endMs ?? durationMs])
   ]
@@ -186,23 +187,23 @@ export function EditorTimeline({
   return (
     <div className="qr-tl ed-tl">
       <div className="ed-tl__bar">
-        <span className="qr-tc">{formatMs(t)}</span>
+        <span className="qr-tc">{formatMs(now)}</span>
         <span className="qr-tc qr-tc--dim">/ {formatMs(durationMs)}</span>
         <span className="spacer" />
-        <button type="button" className="qr-btn qr-btn--ghost qr-btn--icon qr-btn--sm" aria-label="Perkecil linimasa" disabled={zoom === ZOOMS[0]} onClick={() => zoomTo(ZOOMS[Math.max(0, ZOOMS.indexOf(zoom) - 1)])}>
+        <button type="button" className="qr-btn qr-btn--ghost qr-btn--icon qr-btn--sm" aria-label={t('Perkecil linimasa')} disabled={zoom === ZOOMS[0]} onClick={() => zoomTo(ZOOMS[Math.max(0, ZOOMS.indexOf(zoom) - 1)])}>
           <Icon name="zoom-out" size="sm" />
         </button>
         <span className="qr-tc qr-tc--dim ed-tl__zoom">{zoom}×</span>
-        <button type="button" className="qr-btn qr-btn--ghost qr-btn--icon qr-btn--sm" aria-label="Perbesar linimasa" disabled={zoom === ZOOMS[ZOOMS.length - 1]} onClick={() => zoomTo(ZOOMS[Math.min(ZOOMS.length - 1, ZOOMS.indexOf(zoom) + 1)])}>
+        <button type="button" className="qr-btn qr-btn--ghost qr-btn--icon qr-btn--sm" aria-label={t('Perbesar linimasa')} disabled={zoom === ZOOMS[ZOOMS.length - 1]} onClick={() => zoomTo(ZOOMS[Math.min(ZOOMS.length - 1, ZOOMS.indexOf(zoom) + 1)])}>
           <Icon name="zoom-in" size="sm" />
         </button>
       </div>
       <div className="ed-tl__grid">
         <div className="ed-tl__heads" aria-hidden="true">
           <div className="ed-tl__ruler-head" />
-          <div className="ed-tl__head">Segmen</div>
-          {project.overlays.length > 0 && <div className="ed-tl__head">Overlay</div>}
-          <div className="ed-tl__head">Audio</div>
+          <div className="ed-tl__head">{t('Segmen')}</div>
+          {project.overlays.length > 0 && <div className="ed-tl__head">{t('Overlay')}</div>}
+          <div className="ed-tl__head">{t('Audio')}</div>
         </div>
         <div className="ed-tl__scroll" ref={outer}>
           <div
@@ -273,8 +274,8 @@ export function EditorTimeline({
                 </div>
               </div>
             )}
-            <div className="ed-tl__row ed-tl__row--wave">{peaks.length > 0 && <Waveform peaks={peaks} label="Gelombang audio" />}</div>
-            <div className="ed-playhead" style={{ left: pct(t) }} aria-hidden="true" />
+            <div className="ed-tl__row ed-tl__row--wave">{peaks.length > 0 && <Waveform peaks={peaks} label={t('Gelombang audio')} />}</div>
+            <div className="ed-playhead" style={{ left: pct(now) }} aria-hidden="true" />
           </div>
         </div>
       </div>

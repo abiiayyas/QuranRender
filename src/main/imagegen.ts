@@ -1,3 +1,4 @@
+import { t } from '@shared/i18n'
 import { randomInt, randomUUID } from 'node:crypto'
 import { mkdir, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -54,7 +55,7 @@ function sleep(ms: number, signal: AbortSignal): Promise<void> {
   return promise
 }
 
-const abortError = (): Error => Object.assign(new Error('Dibatalkan'), { name: 'AbortError' })
+const abortError = (): Error => Object.assign(new Error(t('Dibatalkan')), { name: 'AbortError' })
 
 /** fetch with the 3-minute limit; the user's cancel stays an AbortError, a timeout becomes a readable error. */
 async function fetchLimited(service: string, url: string, init: RequestInit, signal: AbortSignal): Promise<Response> {
@@ -62,8 +63,8 @@ async function fetchLimited(service: string, url: string, init: RequestInit, sig
     return await fetch(url, { ...init, signal: AbortSignal.any([signal, AbortSignal.timeout(REQUEST_TIMEOUT_MS)]) })
   } catch (e) {
     if (signal.aborted) throw e
-    if ((e as Error).name === 'TimeoutError') throw new Error(`${service} terlalu lama merespons (lebih dari 3 menit). Silakan coba lagi nanti.`)
-    throw new Error(`${service} tidak bisa dihubungi. Periksa koneksi internet, lalu coba lagi.`)
+    if ((e as Error).name === 'TimeoutError') throw new Error(t('{service} terlalu lama merespons (lebih dari 3 menit). Silakan coba lagi nanti.', { service }))
+    throw new Error(t('{service} tidak bisa dihubungi. Periksa koneksi internet, lalu coba lagi.', { service }))
   }
 }
 
@@ -82,8 +83,8 @@ async function errorDetail(res: Response): Promise<string> {
 
 async function readBytes(res: Response, service: string): Promise<Uint8Array> {
   const bytes = new Uint8Array(await res.arrayBuffer())
-  if (bytes.length === 0 || bytes.length > MAX_IMAGE_BYTES) throw new Error(`Berkas gambar dari ${service} tidak wajar (${bytes.length} byte).`)
-  if (!sniffImage(bytes)) throw new Error(`Balasan ${service} bukan gambar. Silakan coba lagi, atau ganti deskripsinya.`)
+  if (bytes.length === 0 || bytes.length > MAX_IMAGE_BYTES) throw new Error(t('Berkas gambar dari {service} tidak wajar ({size} byte).', { service, size: bytes.length }))
+  if (!sniffImage(bytes)) throw new Error(t('Balasan {service} bukan gambar. Silakan coba lagi, atau ganti deskripsinya.', { service }))
   return bytes
 }
 
@@ -100,10 +101,10 @@ async function pollinationsOnce(prompt: string, aspect: Aspect, model: string, c
   for (;;) {
     const wait = pollinationsFreeAt - Date.now()
     if (wait > 0) {
-      ctx.progress(0.05, `Menunggu giliran layanan gratis Pollinations (sekitar ${Math.ceil(wait / 1000)} detik)…`)
+      ctx.progress(0.05, t('Menunggu giliran layanan gratis Pollinations (sekitar {seconds} detik)…', { seconds: Math.ceil(wait / 1000) }))
       await sleep(wait, ctx.signal)
     }
-    ctx.progress(0.15, 'Pollinations sedang menggambar…')
+    ctx.progress(0.15, t('Pollinations sedang menggambar…'))
     pollinationsFreeAt = Date.now() + POLLINATIONS_GAP_MS
     const res = await fetchLimited(service, pollinationsUrl(prompt, aspect, model, randomInt(1, 2 ** 31)), {}, ctx.signal)
     if (res.ok) return readBytes(res, service)
@@ -112,21 +113,21 @@ async function pollinationsOnce(prompt: string, aspect: Aspect, model: string, c
       // 402 FREE_LIMIT carries the seconds until the next free slot.
       const after = parseRetryAfterMs(res.headers.get('retry-after')) ?? POLLINATIONS_GAP_MS
       if (after > POLLINATIONS_MAX_WAIT_MS || ++rate > 2) {
-        throw new Error('Batas layanan gratis Pollinations sedang tercapai (satu gambar per 45 detik, dan ini dipakai bersama pengguna lain). Silakan coba lagi beberapa menit lagi, atau pilih pembuat gambar lain di Pengaturan.')
+        throw new Error(t('Batas layanan gratis Pollinations sedang tercapai (satu gambar per 45 detik, dan ini dipakai bersama pengguna lain). Silakan coba lagi beberapa menit lagi, atau pilih pembuat gambar lain di Pengaturan.'))
       }
       pollinationsFreeAt = Date.now() + after + 1000
       continue
     }
     if (res.status >= 500 && ++server === 1) {
-      ctx.progress(0.1, 'Pollinations sedang sibuk. Mencoba sekali lagi…')
+      ctx.progress(0.1, t('Pollinations sedang sibuk. Mencoba sekali lagi…'))
       pollinationsFreeAt = Date.now() + RETRY_DELAY_MS
       continue
     }
     const detail = await errorDetail(res)
     throw new Error(
       res.status >= 500
-        ? `Pollinations sedang bermasalah (${res.status}). Silakan coba lagi nanti, atau pilih pembuat gambar lain di Pengaturan.`
-        : `Pollinations menolak permintaan (${res.status}).${detail ? ` ${detail}` : ''} Silakan ganti deskripsinya, atau coba lagi.`
+        ? t('Pollinations sedang bermasalah ({status}). Silakan coba lagi nanti, atau pilih pembuat gambar lain di Pengaturan.', { status: res.status })
+        : t('Pollinations menolak permintaan ({status}).{detail} Silakan ganti deskripsinya, atau coba lagi.', { status: res.status, detail: detail ? ` ${detail}` : '' })
     )
   }
 }
@@ -142,9 +143,9 @@ async function pollinations(prompt: string, aspect: Aspect, model: string, ctx: 
 async function openaiImage(prompt: string, aspect: Aspect, model: string, ctx: TaskCtx): Promise<Made> {
   const { aiBaseUrl } = getSettings()
   const key = getAiKey()
-  if (!key && !isLocalEndpoint(aiBaseUrl)) throw new Error('Kunci AI belum diatur. Buka Pengaturan untuk menambahkannya.')
+  if (!key && !isLocalEndpoint(aiBaseUrl)) throw new Error(t('Kunci AI belum diatur. Buka Pengaturan untuk menambahkannya.'))
   const name = model || 'gpt-image-1'
-  const service = 'Layanan gambar'
+  const service = t('Layanan gambar')
   const init: RequestInit = {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...(key ? { Authorization: `Bearer ${key}` } : {}) },
@@ -152,29 +153,29 @@ async function openaiImage(prompt: string, aspect: Aspect, model: string, ctx: T
   }
   let retried = false
   for (;;) {
-    ctx.progress(0.15, 'Meminta gambar dari layanan AI…')
+    ctx.progress(0.15, t('Meminta gambar dari layanan AI…'))
     const res = await fetchLimited(service, `${aiBaseUrl.replace(/\/+$/, '')}/images/generations`, init, ctx.signal)
     if (res.ok) {
       const data = (await res.json().catch(() => null)) as { data?: { b64_json?: string; url?: string }[] } | null
       const item = data?.data?.[0]
       if (item?.b64_json) return { bytes: await readBytes(new Response(Buffer.from(item.b64_json, 'base64')), service), provider: 'openai', model: name }
       if (item?.url) {
-        if (!/^https?:\/\//i.test(item.url)) throw new Error('Layanan gambar mengirim alamat gambar yang tidak dikenal.')
+        if (!/^https?:\/\//i.test(item.url)) throw new Error(t('Layanan gambar mengirim alamat gambar yang tidak dikenal.'))
         const img = await fetchLimited(service, item.url, {}, ctx.signal)
-        if (!img.ok) throw new Error(`Gambar dari layanan tidak bisa diunduh (${img.status}).`)
+        if (!img.ok) throw new Error(t('Gambar dari layanan tidak bisa diunduh ({status}).', { status: img.status }))
         return { bytes: await readBytes(img, service), provider: 'openai', model: name }
       }
-      throw new Error('Balasan layanan gambar tidak berisi gambar. Periksa nama modelnya di Pengaturan.')
+      throw new Error(t('Balasan layanan gambar tidak berisi gambar. Periksa nama modelnya di Pengaturan.'))
     }
     if ((res.status >= 500 || res.status === 429) && !retried) {
       retried = true
-      ctx.progress(0.1, 'Layanan gambar sedang sibuk. Mencoba sekali lagi…')
+      ctx.progress(0.1, t('Layanan gambar sedang sibuk. Mencoba sekali lagi…'))
       await sleep(RETRY_DELAY_MS, ctx.signal)
       continue
     }
     const detail = await errorDetail(res)
-    if (res.status === 401 || res.status === 403) throw new Error('Layanan gambar menolak kunci API. Periksa kuncinya di Pengaturan.')
-    throw new Error(`Layanan gambar menolak permintaan (${res.status}).${detail ? ` ${detail}` : ''} Periksa nama model gambar di Pengaturan.`)
+    if (res.status === 401 || res.status === 403) throw new Error(t('Layanan gambar menolak kunci API. Periksa kuncinya di Pengaturan.'))
+    throw new Error(t('Layanan gambar menolak permintaan ({status}).{detail} Periksa nama model gambar di Pengaturan.', { status: res.status, detail: detail ? ` ${detail}` : '' }))
   }
 }
 
@@ -183,7 +184,7 @@ async function openaiImage(prompt: string, aspect: Aspect, model: string, ctx: T
 async function cliMade(prompt: string, aspect: Aspect, ctx: TaskCtx): Promise<Made> {
   const { imageCliTool, imageCliCommand } = getSettings()
   const name = cliImageToolName(imageCliTool)
-  ctx.progress(0.1, `${name} sedang menggambar. Ini bisa memakan waktu sekitar satu menit…`)
+  ctx.progress(0.1, t('{name} sedang menggambar. Ini bisa memakan waktu sekitar satu menit…', { name }))
   const img = await cliImage({ tool: imageCliTool, command: imageCliCommand, prompt, aspect, signal: ctx.signal })
   return { bytes: img.bytes, provider: `cli:${imageCliTool}`, model: null }
 }
@@ -203,9 +204,9 @@ async function cropLogo(bytes: Uint8Array, out: string, signal: AbortSignal): Pr
 }
 
 function label(request: ImageRequest): string {
-  const theme = IMAGE_THEMES.find((t) => t.id === request.themeId)
+  const theme = IMAGE_THEMES.find((x) => x.id === request.themeId)
   const text = request.prompt.replace(/\s+/g, ' ').trim()
-  const base = text && !theme ? text : (theme?.label ?? 'Gambar')
+  const base = text && !theme ? text : (theme ? t(theme.label) : t('Gambar'))
   return `AI: ${base.length > 48 ? `${base.slice(0, 47)}…` : base}`
 }
 
@@ -214,23 +215,23 @@ function clean(raw: ImageRequest): ImageRequest {
   const request: Partial<ImageRequest> = raw ?? {}
   const prompt = typeof request.prompt === 'string' ? request.prompt.trim() : ''
   const word = livingBeingWord(prompt)
-  if (word) throw new Error(`Gambar latar tidak memuat makhluk bernyawa, jadi kata "${word}" tidak bisa dipakai. Silakan ganti deskripsinya.`)
-  const themeId = IMAGE_THEMES.find((t) => t.id === request.themeId)?.id ?? null
+  if (word) throw new Error(t('Gambar latar tidak memuat makhluk bernyawa, jadi kata "{word}" tidak bisa dipakai. Silakan ganti deskripsinya.', { word }))
+  const themeId = IMAGE_THEMES.find((x) => x.id === request.themeId)?.id ?? null
   const aspect = ASPECTS.find((a) => a === request.aspect)
-  if (!aspect) throw new Error('Bentuk gambar tidak dikenal.')
+  if (!aspect) throw new Error(t('Bentuk gambar tidak dikenal.'))
   return { prompt, themeId, aspect }
 }
 
 /** Problems the user can fix in Settings are reported at once, not after a job was queued. */
 async function preflight(): Promise<void> {
   const s = getSettings()
-  if (s.imageProvider === 'openai' && !getAiKey() && !isLocalEndpoint(s.aiBaseUrl)) throw new Error('Kunci AI belum diatur. Buka Pengaturan untuk menambahkannya.')
+  if (s.imageProvider === 'openai' && !getAiKey() && !isLocalEndpoint(s.aiBaseUrl)) throw new Error(t('Kunci AI belum diatur. Buka Pengaturan untuk menambahkannya.'))
   if (s.imageProvider === 'cli') {
     if (s.imageCliTool === 'custom') {
-      if (!s.imageCliCommand.trim()) throw new Error('Perintah gambar belum diisi. Buka Pengaturan untuk menambahkannya.')
+      if (!s.imageCliCommand.trim()) throw new Error(t('Perintah gambar belum diisi. Buka Pengaturan untuk menambahkannya.'))
     } else {
       const missing = await missingBin(s.imageCliTool)
-      if (missing) throw new Error(`CLI ${missing} tidak ditemukan di komputer ini. Pasang dan login dulu, atau pilih pembuat gambar lain di Pengaturan.`)
+      if (missing) throw new Error(t('CLI {missing} tidak ditemukan di komputer ini. Pasang dan login dulu, atau pilih pembuat gambar lain di Pengaturan.', { missing }))
     }
   }
 }
@@ -249,9 +250,9 @@ async function startImageJob(projectId: string, raw: ImageRequest): Promise<Job>
           ? await cliMade(prompt, request.aspect, ctx)
           : await pollinations(prompt, request.aspect, s.imageModel, ctx)
 
-    ctx.progress(0.9, 'Menyimpan gambar…')
+    ctx.progress(0.9, t('Menyimpan gambar…'))
     const kind = sniffImage(made.bytes)
-    if (!kind) throw new Error('Balasan bukan gambar.')
+    if (!kind) throw new Error(t('Balasan bukan gambar.'))
     const crop = made.provider === 'pollinations'
     const rel = `media/${randomUUID()}.${crop ? 'jpg' : kind.ext}`
     const out = join(projectDir(projectId), rel)

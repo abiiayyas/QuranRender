@@ -1,3 +1,4 @@
+import { t } from './i18n'
 import type { Segment, WordTiming } from './types'
 
 /** One ayah as the provider timed it. `words` keeps recitation order, so a repeated stretch shows up again. */
@@ -80,7 +81,7 @@ export interface TimedCut {
  * (the reciter repeats a stretch) becomes one segment per run, each with its own word range.
  */
 export function buildTimedSegments(
-  t: ProviderTiming,
+  timing: ProviderTiming,
   o: {
     surah: number
     from: number
@@ -91,9 +92,9 @@ export function buildTimedSegments(
     newId: () => string
   }
 ): TimedCut {
-  const picked = t.ayahs.filter((a) => a.ayah >= o.from && a.ayah <= o.to).map((a) => ({ ...a, words: a.words.slice() }))
+  const picked = timing.ayahs.filter((a) => a.ayah >= o.from && a.ayah <= o.to).map((a) => ({ ...a, words: a.words.slice() }))
   if (picked.length === 0 || picked[0].ayah !== o.from || picked[picked.length - 1].ayah !== o.to) {
-    throw new Error('Waktu ayat dari penyedia tidak lengkap untuk rentang ini.')
+    throw new Error(t('Waktu ayat dari penyedia tidak lengkap untuk rentang ini.'))
   }
   const segments: Segment[] = []
   const base = { confidence: 1, source: o.source, translations: [] }
@@ -101,7 +102,7 @@ export function buildTimedSegments(
   if (o.from === 1 && o.surah !== 1 && o.surah !== 9) {
     const first = picked[0]
     const lead = first.words[0]?.startMs ?? first.startMs
-    const intro = t.intro ?? (lead >= INTRO_MIN_MS ? { startMs: 0, endMs: lead } : null)
+    const intro = timing.intro ?? (lead >= INTRO_MIN_MS ? { startMs: 0, endMs: lead } : null)
     if (intro) {
       segments.push({ ...base, id: o.newId(), kind: 'basmalah', surah: 0, ayah: 0, wordFrom: 0, wordTo: 0, ...intro, words: [] })
       first.startMs = Math.max(first.startMs, intro.endMs)
@@ -141,7 +142,7 @@ export function buildTimedSegments(
   }
 
   const startMs = o.from === 1 ? 0 : picked[0].startMs
-  const endMs = t.ayahs.some((a) => a.ayah > o.to) ? picked[picked.length - 1].endMs : null
+  const endMs = timing.ayahs.some((a) => a.ayah > o.to) ? picked[picked.length - 1].endMs : null
   return { startMs, endMs, segments: shiftSegments(segments, startMs, endMs ?? Infinity) }
 }
 

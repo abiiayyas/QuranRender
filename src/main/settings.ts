@@ -1,4 +1,5 @@
-import { nativeTheme, safeStorage } from 'electron'
+import { isLang, msg, setLang, t } from '@shared/i18n'
+import { app, nativeTheme, safeStorage } from 'electron'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { CLI_IMAGE_TOOLS, CLI_TOOLS } from '@shared/aiTools'
@@ -7,6 +8,7 @@ import { getDb } from './db'
 
 const DEFAULTS: Settings = {
   theme: 'system',
+  language: 'id',
   script: 'kemenag',
   aiBaseUrl: 'https://api.openai.com/v1',
   aiModel: 'gpt-4o-mini',
@@ -25,18 +27,33 @@ const DEFAULTS: Settings = {
 export function getSettings(): Settings {
   const rows = getDb().prepare('SELECT key, value FROM settings').all() as { key: string; value: string }[]
   const saved = Object.fromEntries(rows.map((r) => [r.key, JSON.parse(r.value) as unknown]))
-  return { ...DEFAULTS, ...saved }
+  return { ...DEFAULTS, language: defaultLanguage(), ...saved }
+}
+
+/**
+ * Before the user picks one: Indonesian for anyone who already has projects (the app was Indonesian-only until now), else
+ * the system's language, English unless it is Indonesian.
+ */
+function defaultLanguage(): Settings['language'] {
+  const hasProjects = getDb().prepare('SELECT 1 FROM projects LIMIT 1').get() !== undefined
+  return hasProjects || app.getLocale().toLowerCase().startsWith('id') ? 'id' : 'en'
+}
+
+/** Messages built in the main process follow the chosen language. */
+export function applyLanguage(): void {
+  setLang(getSettings().language)
 }
 
 /** The renderer is not trusted to send a value the main process has no code for. */
 function checkChoices(patch: Partial<Settings>): void {
   const bad = (label: string): never => {
-    throw new Error(`Pilihan ${label} tidak dikenal.`)
+    throw new Error(t('Pilihan {label} tidak dikenal.', { label: t(label) }))
   }
-  if (patch.aiProvider !== undefined && !['api', 'cli'].includes(patch.aiProvider)) bad('penyedia AI')
-  if (patch.cliTool !== undefined && !CLI_TOOLS.some((t) => t.id === patch.cliTool)) bad('CLI')
-  if (patch.imageProvider !== undefined && !['pollinations', 'openai', 'cli'].includes(patch.imageProvider)) bad('pembuat gambar')
-  if (patch.imageCliTool !== undefined && !CLI_IMAGE_TOOLS.some((t) => t.id === patch.imageCliTool)) bad('CLI gambar')
+  if (patch.language !== undefined && !isLang(patch.language)) bad(msg('bahasa'))
+  if (patch.aiProvider !== undefined && !['api', 'cli'].includes(patch.aiProvider)) bad(msg('penyedia AI'))
+  if (patch.cliTool !== undefined && !CLI_TOOLS.some((t) => t.id === patch.cliTool)) bad(msg('CLI'))
+  if (patch.imageProvider !== undefined && !['pollinations', 'openai', 'cli'].includes(patch.imageProvider)) bad(msg('pembuat gambar'))
+  if (patch.imageCliTool !== undefined && !CLI_IMAGE_TOOLS.some((t) => t.id === patch.imageCliTool)) bad(msg('CLI gambar'))
 }
 
 export function setSettings(patch: Partial<Settings>): Settings {
@@ -45,6 +62,7 @@ export function setSettings(patch: Partial<Settings>): Settings {
   for (const [k, v] of Object.entries(patch)) if (k in DEFAULTS && v !== undefined) stmt.run(k, JSON.stringify(v))
   const s = getSettings()
   if (patch.theme) nativeTheme.themeSource = s.theme
+  if (patch.language) setLang(s.language)
   return s
 }
 
@@ -58,7 +76,7 @@ export function getAiKey(): string | null {
   try {
     return encryptable() ? safeStorage.decryptString(row.value) : row.value.toString('utf8')
   } catch {
-    throw new Error('Kunci AI tersimpan tapi tidak bisa dibuka lagi. Masukkan ulang kuncinya di Pengaturan.')
+    throw new Error(t('Kunci AI tersimpan tapi tidak bisa dibuka lagi. Masukkan ulang kuncinya di Pengaturan.'))
   }
 }
 
@@ -76,7 +94,7 @@ export function aiKeyStatus(): KeyStatus {
   try {
     key = getAiKey()
   } catch {
-    return { configured: true, preview: 'tidak terbaca' }
+    return { configured: true, preview: t('tidak terbaca') }
   }
   return { configured: !!key, preview: key ? `${key.slice(0, 6)}••••${key.slice(-4)}` : null }
 }

@@ -1,8 +1,16 @@
 import { memo } from 'react'
+import { msg, t } from '@shared/i18n'
 import { STATUS_LABEL } from '@shared/translation'
 import type { Segment, TranslationStatus } from '@shared/types'
 import { Icon } from '../../../components/ui'
 import { formatMs } from '../../../lib/format'
+
+// Marks the labels of STATUS_LABEL (shared, Indonesian) so they are translated where shown.
+msg('Utuh')
+msg('Dipotong otomatis')
+msg('Dipotong AI')
+msg('Diedit')
+msg('Perlu dicek')
 
 const BADGE: Record<TranslationStatus, string> = {
   full: 'qr-badge qr-badge--plain',
@@ -13,8 +21,8 @@ const BADGE: Record<TranslationStatus, string> = {
 }
 
 function StatusBadge({ status }: { status: TranslationStatus | null }) {
-  if (!status) return <span className="qr-badge qr-badge--danger">Belum ada</span>
-  return <span className={BADGE[status]}>{STATUS_LABEL[status]}</span>
+  if (!status) return <span className="qr-badge qr-badge--danger">{t('Belum ada')}</span>
+  return <span className={BADGE[status]}>{t(STATUS_LABEL[status])}</span>
 }
 
 export interface SegmentRowProps {
@@ -40,7 +48,7 @@ export interface SegmentRowProps {
 
 export const SegmentRow = memo(function SegmentRow(p: SegmentRowProps) {
   const { seg } = p
-  const entry = p.primary ? seg.translations.find((t) => t.edition === p.primary) : undefined
+  const entry = p.primary ? seg.translations.find((x) => x.edition === p.primary) : undefined
   const status = entry?.status ?? null
   return (
     <li className={p.playing ? 'tx-row is-playing' : 'tx-row'}>
@@ -48,7 +56,7 @@ export const SegmentRow = memo(function SegmentRow(p: SegmentRowProps) {
         <button
           type="button"
           className="qr-btn qr-btn--ghost qr-btn--icon qr-btn--sm"
-          aria-label={p.playing ? `Jeda ${p.label}` : `Putar ${p.label}`}
+          aria-label={p.playing ? t('Jeda {label}', { label: p.label }) : t('Putar {label}', { label: p.label })}
           onClick={() => p.onPlay(seg)}
         >
           <Icon name={p.playing ? 'pause' : 'play'} size="sm" />
@@ -60,8 +68,8 @@ export const SegmentRow = memo(function SegmentRow(p: SegmentRowProps) {
           </small>
         </span>
         {p.tooLong && (
-          <span className="qr-badge qr-badge--warning" title="Tulisan akan terlalu kecil atau menutupi bagian lain. Silakan belah segmen ini.">
-            Terlalu panjang untuk satu layar
+          <span className="qr-badge qr-badge--warning" title={t('Tulisan akan terlalu kecil atau menutupi bagian lain. Silakan belah segmen ini.')}>
+            {t('Terlalu panjang untuk satu layar')}
           </span>
         )}
         {p.primary && <StatusBadge status={status} />}
@@ -73,15 +81,15 @@ export const SegmentRow = memo(function SegmentRow(p: SegmentRowProps) {
       )}
       {p.partial && p.whole && (
         <p className="tr-whole">
-          <span className="tx-row__k">Terjemahan ayat utuh:</span> {p.whole}
+          <span className="tx-row__k">{t('Terjemahan ayat utuh:')}</span> {p.whole}
         </p>
       )}
       {p.primary && (
         <textarea
           className="tr-edit"
           rows={2}
-          aria-label={`Terjemahan ${p.label}`}
-          placeholder="Terjemahan belum diisi."
+          aria-label={t('Terjemahan {label}', { label: p.label })}
+          placeholder={t('Terjemahan belum diisi.')}
           value={entry?.text ?? ''}
           onChange={(e) => p.onEdit(seg.id, e.target.value)}
         />
@@ -91,30 +99,30 @@ export const SegmentRow = memo(function SegmentRow(p: SegmentRowProps) {
           {status === 'review' && entry?.text && (
             <button type="button" className="qr-btn qr-btn--secondary qr-btn--sm" onClick={() => p.onAccept(seg.id)}>
               <Icon name="check" size="sm" />
-              Sudah benar
+              {t('Sudah benar')}
             </button>
           )}
           {p.tooLong && seg.kind === 'ayah' && (
             <button type="button" className="qr-btn qr-btn--secondary qr-btn--sm" disabled={p.splitBusy} onClick={() => p.onSplit(seg.id)}>
               <Icon name="scissors" size="sm" />
-              Belah otomatis
+              {t('Belah otomatis')}
             </button>
           )}
           {p.primary && p.partial && (
             <button type="button" className="qr-btn qr-btn--ghost qr-btn--sm" disabled={p.aiBusy} onClick={() => p.onAi(seg.id)}>
               <Icon name="scissors" size="sm" />
-              Potong dengan AI
+              {t('Potong dengan AI')}
             </button>
           )}
         </div>
       )}
       {p.secondaries.map((ed) => {
-        const t = seg.translations.find((x) => x.edition === ed.id)
+        const tr = seg.translations.find((x) => x.edition === ed.id)
         return (
           <p key={ed.id} className="tx-sec">
             <span className="tx-row__k">{ed.name}</span>
-            {t?.text || <span className="muted">Belum diisi.</span>}
-            {t?.status === 'review' && <span className="qr-badge qr-badge--warning">{STATUS_LABEL.review}</span>}
+            {tr?.text || <span className="muted">{t('Belum diisi.')}</span>}
+            {tr?.status === 'review' && <span className="qr-badge qr-badge--warning">{t(STATUS_LABEL.review)}</span>}
           </p>
         )
       })}
