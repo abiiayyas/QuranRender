@@ -1,5 +1,10 @@
 # Changelog
 
+## Belum dirilis
+
+- Dokumentasi: `docs/product/ROADMAP.md` mencatat rencana distribusi (halaman unduh, CI rilis, tanda tangan, analitik opt-in, pembaruan), keputusan yang
+  menunggu pemilik produk, hal yang belum diuji, dan utang dokumentasi. Tanpa perubahan pada aplikasi.
+
 ## 0.7.0
 
 - **English:** the whole interface, messages from the app, the text drawn into videos (lower third, Subscribe/Follow) and the Publish

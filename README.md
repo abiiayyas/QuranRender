@@ -61,6 +61,8 @@ design/       token, komponen CSS, merek
 docs/         dokumentasi produk, desain, dan teknik
 ```
 
+Rencana berikutnya dan keputusan yang menunggu: [docs/product/ROADMAP.md](docs/product/ROADMAP.md).
+
 Dokumentasi teknis: [docs/engineering/01_TECHNICAL_HANDOFF.md](docs/engineering/01_TECHNICAL_HANDOFF.md). Panduan untuk
 agen AI dan kontributor: [AGENTS.md](AGENTS.md).
 
