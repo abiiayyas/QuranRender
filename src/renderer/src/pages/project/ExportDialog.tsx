@@ -1,5 +1,6 @@
 import { useEffect, useId, useState } from 'react'
 import { t } from '@shared/i18n'
+import { formatTime, rangeLengthMs, resolveRangeInput } from '@shared/exportRange'
 import { estimateRenderMs, useChunks, type AfterExport, type RenderMode } from '@shared/renderPlan'
 import type { ExportOptions, PolicyIssue } from '@shared/types'
 import { canvasSize } from '@shared/video'
@@ -8,6 +9,7 @@ import { computeFitReport } from '../../lib/fit'
 import { errorText, formatDuration } from '../../lib/format'
 import { toast } from '../../store/app'
 import { useProject } from '../../store/project'
+import { ExportRangeFields, type RangeInput } from './ExportRangeFields'
 
 type Height = ExportOptions['height']
 type Fps = ExportOptions['fps']
@@ -43,22 +45,32 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
   const [starting, setStarting] = useState(false)
   const job = useProject((s) => (jobId ? (s.jobs[jobId] ?? null) : null))
   const ids = { res: useId(), fps: useId(), mode: useId(), after: useId(), folder: useId(), issues: useId() }
-  const durationMs = source?.durationMs ?? 0
+  const sourceMs = source?.durationMs ?? 0
+  const [rangeInput, setRangeInput] = useState<RangeInput>({ scope: 'all', fromText: '0:00', toText: '' })
+  // The end field starts at the end of the recording once its length is known.
+  const toText = rangeInput.toText || formatTime(sourceMs)
+  const resolved = rangeInput.scope === 'range' ? resolveRangeInput(rangeInput.fromText, toText, sourceMs) : { range: null, problem: null }
+  const range = resolved.range
+  const rangeKey = range ? `${range.fromMs}-${range.toMs}` : ''
+  // The length of the video being made: what the time estimate, the render mode and the sizes follow.
+  const durationMs = range ? rangeLengthMs(range, sourceMs, fps) : sourceMs
   const size = canvasSize(project.aspect, height)
   const chunked = useChunks(mode, durationMs)
   const estimateMs = durationMs > 0 ? estimateRenderMs({ durationMs, fps, width: size.width, height: size.height, motion: project.background.kind === 'motion', msPerMpFrame: speed }) : null
 
   const runCheck = async (): Promise<void> => {
+    // A range that is wrong cannot be checked; the field says what is wrong with it.
+    if (rangeInput.scope === 'range' && !range) return
     setCheckError(null)
     try {
       await useProject.getState().flush()
-      setIssues(await window.api.exporter.check(projectId))
+      setIssues(await window.api.exporter.check(projectId, range))
       const p = useProject.getState().project
       if (p) {
         const report = await computeFitReport(p).catch(() => ({}) as Awaited<ReturnType<typeof computeFitReport>>)
         setTooLong(
           p.segments
-            .filter((seg) => report[seg.id]?.overflow)
+            .filter((seg) => (!range || (seg.endMs > range.fromMs && seg.startMs < range.toMs)) && report[seg.id]?.overflow)
             .map((seg) => ({
               segmentId: seg.id,
               severity: 'warning' as const,
@@ -75,11 +87,14 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
   }
 
   useEffect(() => {
-    void runCheck()
     window.api.exporter.defaultFolder().then(setFolder, (e) => toast('error', errorText(e)))
     window.api.settings.get().then((st) => setSpeed(st.renderMsPerMpFrame), () => undefined)
-    // Checked once on open; "Periksa ulang" repeats it.
   }, [projectId])
+
+  // Checked on open and whenever the stretch changes (only its own segments can hold the export back); "Periksa ulang" repeats it.
+  useEffect(() => {
+    void runCheck()
+  }, [projectId, rangeInput.scope, rangeKey])
 
   // Pieces from an interrupted run of these same settings: offered for resuming instead of starting over.
   useEffect(() => {
@@ -89,7 +104,7 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
       return
     }
     let live = true
-    window.api.exporter.partial({ projectId, height, fps, mode, after, fresh: false, folder, srt, vtt, chapters }).then(
+    window.api.exporter.partial({ projectId, height, fps, mode, after, fresh: false, range, folder, srt, vtt, chapters }).then(
       (r) => live && setPartial(r),
       () => live && setPartial(null)
     )
@@ -97,7 +112,7 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
       live = false
     }
     // The pieces depend on the video's settings only, not on the files chosen to go with it.
-  }, [projectId, height, fps, mode, chunked])
+  }, [projectId, height, fps, mode, chunked, rangeKey])
 
   const pickFolder = async (): Promise<void> => {
     try {
@@ -112,7 +127,7 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
     setStarting(true)
     try {
       await useProject.getState().flush()
-      const j = await window.api.exporter.start({ projectId, height, fps, mode, after, fresh, folder, srt, vtt, chapters })
+      const j = await window.api.exporter.start({ projectId, height, fps, mode, after, fresh, range, folder, srt, vtt, chapters })
       useProject.getState().upsertJob(j)
       setJobId(j.id)
     } catch (e) {
@@ -134,7 +149,8 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
   const running = job?.status === 'queued' || job?.status === 'running'
   const done = job?.status === 'done' && job.message ? job.message : null
   const busy = running || starting
-  const canStart = issues !== null && errors === 0 && !!folder && !busy
+  const rangeOk = rangeInput.scope === 'all' || range !== null
+  const canStart = issues !== null && errors === 0 && !!folder && !busy && rangeOk
 
   return (
     <Sheet
@@ -161,6 +177,17 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
       }
     >
       <div className="stack exp-dialog">
+        <ExportRangeFields
+          value={{ ...rangeInput, toText }}
+          onChange={setRangeInput}
+          range={range}
+          problem={resolved.problem}
+          durationMs={sourceMs}
+          fps={fps}
+          segments={project.segments}
+          overlays={project.overlays}
+          disabled={busy}
+        />
         <div className="qr-fieldset">
           <span className="qr-label" id={ids.res}>
             {t('Resolusi')}

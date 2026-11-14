@@ -112,6 +112,14 @@ tidak valid, rentang kata di luar ayat, atau terjemahan utama yang belum ada. Pe
 keyakinan rendah) tidak menghalangi. Waktu render sekitar 1,5 kali durasi video pada 1080p di satu mesin uji; hasilnya
 bergantung mesinmu.
 
+**Ekspor sebagian (untuk memotong video panjang jadi short).** Di dialog Ekspor, pilih **Hanya sebagian**, lalu tulis **Mulai** dan **Sampai** sebagai waktu di
+rekaman (`10:00`, `1:23.5`, atau `83` untuk detik). Proyek tidak diubah dan sumbernya tidak dipotong, jadi kamu bisa mengekspor sebanyak apa pun potongan dari
+proyek yang sama. Dialog menyebut panjang hasilnya dan ayat yang masuk, serta memperingatkan bila rentang memotong sebuah ayat di tengah; **Rapikan ke batas ayat**
+menggeser kedua ujung ke tepi segmen. Waktu di video, subtitle (SRT, VTT), dan bab YouTube dimulai lagi dari nol. Overlay mengikuti linimasa proyek: yang diatur
+sampai akhir video ikut sejak awal hasil (bilah kemajuan terisi sepanjang hasil, tombol Subscribe muncul dari awal), sedangkan yang waktunya jatuh di luar rentang
+tidak tampil (dialog memberi tahu). Suara latar memudar masuk dan keluar di awal dan akhir hasil. Hanya segmen di dalam rentang yang diperiksa sebelum ekspor.
+Nama berkasnya memuat rentangnya.
+
 **Cara render.** *Otomatis* merender sekali jalan untuk video pendek dan **per potongan** (sekitar 10 menit) untuk video lebih dari 15 menit; *Langsung* dan
 *Per potongan* memaksa salah satunya. Potongan dirender berurutan tanpa suara, suaranya dirender sekali, lalu semuanya digabung tanpa encode ulang,
 jadi tidak ada penurunan mutu atau klik di sambungan. Total waktu hampir sama dengan render langsung. Keuntungannya: kalau ekspor terputus

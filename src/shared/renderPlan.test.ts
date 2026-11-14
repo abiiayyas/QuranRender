@@ -20,6 +20,13 @@ describe('planChunks', () => {
     expect(chunks.map((c) => c.to - c.from + 1)).toEqual([600, 600, 600, 300])
   })
 
+  it('starts at the offset for an export of part of the video, still without gaps', () => {
+    const chunks = planChunks(2100, 30, 20, 9000)
+    expect(chunks[0].from).toBe(9000)
+    expect(chunks[chunks.length - 1].to).toBe(9000 + 2100 - 1)
+    chunks.forEach((c, i) => i > 0 && expect(c.from).toBe(chunks[i - 1].to + 1))
+  })
+
   it('is one piece for a video shorter than a piece, and never empty', () => {
     expect(planChunks(100, 30)).toEqual([{ index: 0, from: 0, to: 99 }])
     expect(planChunks(0, 30)).toHaveLength(1)

@@ -8,7 +8,10 @@ import type { VideoProps } from '../shared/video'
  * measured gap between the reciter and the file.
  */
 export function AmbientTrack({ props }: { props: VideoProps }) {
-  const { project, baseUrl, fps, durationMs, ambientOffsetDb } = props
+  const { project, baseUrl, fps, durationMs, ambientOffsetDb, rangeMs } = props
+  // The fades belong to the video being made: its start and end, which for a short are the range's.
+  const from = rangeMs?.fromMs ?? 0
+  const length = rangeMs ? rangeMs.toMs - rangeMs.fromMs : durationMs
   const a = project.ambient
   if (!a || ambientOffsetDb == null) return null
   // The file is measured as 0 dB; `ambientGain` gets the voice at the offset above it.
@@ -20,7 +23,7 @@ export function AmbientTrack({ props }: { props: VideoProps }) {
       loop
       // Without this the frame given to `volume` starts again at every loop, and the fade-in would repeat every 2 minutes.
       loopVolumeCurveBehavior="extend"
-      volume={(frame) => base * ambientFade((frame / fps) * 1000, durationMs, a.fadeMs)}
+      volume={(frame) => base * ambientFade((frame / fps) * 1000 - from, length, a.fadeMs)}
     />
   )
 }

@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.11.0
+
+- **Ekspor sebagian:** dialog Ekspor punya **Hanya sebagian** dengan kolom Mulai dan Sampai (`10:00`, `1:23.5`, atau detik), untuk memotong rekaman panjang jadi short tanpa
+  memotong sumber dan tanpa mengubah proyek. Hanya bingkai dan suara di rentang yang dirender (Remotion `frameRange`), baik langsung maupun per potongan; waktu di
+  gambar tetap waktu proyek, jadi teks, sorotan kata, dan visualizer tidak bergeser. Dialog menyebut panjang hasil dan ayat yang masuk, memperingatkan rentang yang
+  memotong ayat di tengah, dan **Rapikan ke batas ayat** menggeser ujungnya ke tepi segmen (tepat sampai milidetik). Subtitle SRT dan VTT serta bab YouTube dimulai
+  lagi dari nol. Overlay dipotong ke rentang (bilah kemajuan dan Subscribe mulai dan berakhir bersama hasil), suara latar memudar di ujung hasil, dan hanya segmen di
+  rentang yang diperiksa sebelum ekspor. Potongan render yang bisa dilanjutkan hanya dipakai untuk rentang yang sama. Nama berkas memuat rentang.
+  Diuji pada rekaman asli 118 menit, rentang 15:00 sampai 16:00: durasi 60,000 dtk, suara sejajar 0 ms dengan sumber, mode per potongan identik dengan langsung
+  (900 bingkai, PSNR minimum 46 dB).
+
 ## 0.10.0
 
 - **Suara latar:** tab **Audio** baru di editor dengan sembilan suara alam yang ikut terpasang di aplikasi (hujan, hujan di jendela, hujan dan petir, aliran sungai,

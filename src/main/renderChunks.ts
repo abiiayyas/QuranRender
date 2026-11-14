@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readdirSync, renameSync, rmdirSync, rmSync, stat
 import { join } from 'node:path'
 import { app } from 'electron'
 import { t } from '@shared/i18n'
+import { rangeFrames } from '@shared/exportRange'
 import { CHUNK_SECONDS, planChunks } from '@shared/renderPlan'
 import type { VideoProps } from '@shared/video'
 import { ffmpeg, probe } from './media'
@@ -59,7 +60,8 @@ export interface Partial {
 
 /** How much of this render is already on disk from an interrupted run, or null when nothing is. */
 export function partialOf(props: VideoProps): Partial | null {
-  const total = planChunks(Math.max(1, Math.ceil((props.durationMs / 1000) * props.fps)), props.fps, chunkSeconds()).length
+  const r = rangeFrames(props.rangeMs ?? null, props.durationMs, props.fps)
+  const total = planChunks(r.count, props.fps, chunkSeconds(), r.from).length
   const done = finishedPieces(partsPath(props.project.id, fingerprint(props))).filter((i) => i < total).length
   return done > 0 ? { done, total } : null
 }
@@ -95,8 +97,10 @@ export async function renderChunked(o: {
   onProgress: (p: number, message: string) => void
 }): Promise<ChunkedResult> {
   const { props } = o
-  const totalFrames = Math.max(1, Math.ceil((props.durationMs / 1000) * props.fps))
-  const chunks = planChunks(totalFrames, props.fps, chunkSeconds())
+  // Frames of the video being made: all of them, or those of the chosen stretch.
+  const range = rangeFrames(props.rangeMs ?? null, props.durationMs, props.fps)
+  const totalFrames = range.count
+  const chunks = planChunks(totalFrames, props.fps, chunkSeconds(), range.from)
   const dir = partsPath(props.project.id, fingerprint(props))
   if (o.fresh) rmSync(dir, { recursive: true, force: true })
   mkdirSync(dir, { recursive: true })
@@ -134,7 +138,7 @@ export async function renderChunked(o: {
     o.onProgress(0.98, t('Menyiapkan suara…'))
     prep ??= await prepareVideo(props)
     const audioPart = join(dir, 'audio.part.wav')
-    await renderPiece(prep, { kind: 'audio', outPath: audioPart, signal: o.signal })
+    await renderPiece(prep, { kind: 'audio', outPath: audioPart, frameRange: props.rangeMs ? [range.from, range.to] : undefined, signal: o.signal })
     renameSync(audioPart, audio)
   }
 

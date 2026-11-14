@@ -114,6 +114,14 @@ Before rendering, the app checks the text and completeness: export is refused wh
 outside its verse, or no main translation. Warnings (translation to check, low confidence) do not block. Rendering takes about 1.5
 times the video's duration at 1080p on one test machine; yours may differ.
 
+**Exporting part of it (to cut a long video into shorts).** In the Export dialog choose **Only part of it**, then write **Start** and **End** as times in the
+recording (`10:00`, `1:23.5`, or `83` for seconds). The project is not changed and the source is not trimmed, so you can export as many cuts as you like from
+one project. The dialog tells you how long the result is and which verses it holds, and warns when the range cuts through a verse; **Snap to whole verses**
+moves both ends to segment edges. Times in the video, the subtitles (SRT, VTT) and the YouTube chapters start again at zero. Overlays follow the project's
+timeline: those set to run until the end of the video run from the start of the result (the progress bar fills across the result, the Subscribe button shows
+from its start), while those whose time falls outside the range do not show (the dialog tells you). The background sound fades in and out at the start and end of
+the result. Only the segments inside the range are checked before export. The file name carries the range.
+
 **Render method.** *Automatic* renders in one go for short videos and **in pieces** (about 10 minutes each) for videos longer than 15 minutes; *Direct* and
 *In pieces* force one or the other. The pieces are rendered one after another without sound, the sound is rendered once, and everything is joined without
 re-encoding, so there is no quality loss and no click at the joins. The total time is about the same as a direct render. The gain: if an export is

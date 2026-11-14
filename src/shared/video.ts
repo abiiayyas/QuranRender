@@ -1,3 +1,4 @@
+import type { ExportRange } from './exportRange'
 import type { Lang } from './i18n'
 import type { Aspect, Asset, Project, SurahInfo, Verse } from './types'
 
@@ -22,6 +23,8 @@ export interface VideoProps {
   /** Language of the text the composition writes itself (lower third, subscribe prompt, ...); the same in preview and export. */
   lang: Lang
   /** Full URL of the source's loudness table (see src/shared/spectrum.ts); set only when the project has a visualizer overlay. */
+  /** The stretch of the timeline being exported; time stays the project's own, only these frames are drawn. Absent = all. */
+  rangeMs?: ExportRange | null
   spectrumUrl?: string | null
   /** Voice level minus the ambient file's level, dB: what the composition needs to put the sound `ambient.levelDb` under the voice. Set only with an ambient sound. */
   ambientOffsetDb?: number | null

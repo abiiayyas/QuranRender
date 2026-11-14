@@ -4,6 +4,7 @@ import type { Lang } from './i18n'
 import type { Edge } from './placement'
 import type { LoopMode, MotionSpec } from './motion'
 import type { PublishKit } from './publish'
+import type { ExportRange } from './exportRange'
 import type { AfterExport, RenderMode } from './renderPlan'
 import type { StyleSettings } from './style'
 import type { ThumbnailSpec } from './thumbnail'
@@ -286,6 +287,8 @@ export interface ExportOptions {
   mode: RenderMode
   /** Done only when the export succeeds. */
   after: AfterExport
+  /** Only this stretch of the timeline is drawn (null or absent = the whole video). Validated again in main. */
+  range?: ExportRange | null
   /** Chunked renders reuse pieces left by an earlier, interrupted run of the same project; true discards them first. */
   fresh?: boolean
   folder: string

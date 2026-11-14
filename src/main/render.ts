@@ -5,6 +5,7 @@ import { createServer, type AddressInfo } from 'node:net'
 import { join } from 'node:path'
 import type * as Renderer from '@remotion/renderer'
 import { app } from 'electron'
+import { rangeFrames } from '@shared/exportRange'
 import { THUMBNAIL_COMPOSITION_ID, THUMBNAIL_MAX_BYTES, type ThumbnailProps } from '@shared/thumbnail'
 import { COMPOSITION_ID, type VideoProps } from '@shared/video'
 
@@ -185,7 +186,9 @@ export async function renderVideo(o: {
   onProgress: (p: number, renderedFrames: number, totalFrames: number) => void
 }): Promise<void> {
   const prep = await prepareVideo(o.props)
-  await renderPiece(prep, { kind: 'full', outPath: o.outPath, signal: o.signal, onFrames: (frames, progress) => o.onProgress(progress, frames, prep.totalFrames) })
+  // Only the chosen stretch is drawn (and heard); the composition's own clock keeps the project's time.
+  const range = rangeFrames(o.props.rangeMs ?? null, o.props.durationMs, o.props.fps)
+  await renderPiece(prep, { kind: 'full', outPath: o.outPath, frameRange: o.props.rangeMs ? [range.from, range.to] : undefined, signal: o.signal, onFrames: (frames, progress) => o.onProgress(progress, frames, range.count) })
 }
 
 /** One JPG of the thumbnail composition. Quality steps down until the file fits what Shorts, Reels and TikTok accept. */

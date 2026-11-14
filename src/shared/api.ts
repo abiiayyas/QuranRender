@@ -1,4 +1,5 @@
 import type { CliStatus } from './aiTools'
+import type { ExportRange } from './exportRange'
 import type { ImageRequest } from './imagegen'
 import type { PlatformId, PublishFacts, PublishKit } from './publish'
 import type { CacheId, StorageProject, StorageUsage } from './storage'
@@ -73,7 +74,8 @@ export interface StudioApi {
     aiTrim(projectId: string, editionId: string, segmentIds?: string[]): Promise<Job>
   }
   exporter: {
-    check(projectId: string): Promise<PolicyIssue[]>
+    /** Problems that block an export; with `range`, only those of the segments inside it. */
+    check(projectId: string, range?: ExportRange | null): Promise<PolicyIssue[]>
     start(options: ExportOptions): Promise<Job>
     /** Pieces an interrupted chunked render of the same project and settings left on disk (null when none or when this export would not be chunked). */
     partial(options: ExportOptions): Promise<{ done: number; total: number } | null>

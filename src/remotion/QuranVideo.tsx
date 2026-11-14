@@ -4,6 +4,7 @@ import { setLang, t } from '../shared/i18n'
 import { bounceLeg, fadeFrames, fadeLayers } from '../shared/loop'
 import { DEFAULT_MOTION, type LoopMode } from '../shared/motion'
 import { ctaDefaultText, overlayPhase, readableOn } from '../shared/overlay'
+import { overlayWindow } from '../shared/exportRange'
 import { anchorOf, anchorTranslate, roomFor } from '../shared/placement'
 import type { Asset, Overlay } from '../shared/types'
 import type { VideoProps } from '../shared/video'
@@ -189,9 +190,13 @@ function FrameLines({ color, unit }: { color: string; unit: number }) {
   )
 }
 
-function OverlayItem({ o, t, props }: { o: Overlay; t: number; props: VideoProps }) {
-  const end = o.endMs ?? props.durationMs
-  if (t < o.startMs || t >= end) return null
+function OverlayItem({ o: placed, t, props }: { o: Overlay; t: number; props: VideoProps }) {
+  // In an export of one stretch the overlay lives in its window cut to that stretch, so animations and its progress bar start
+  // and end with the short; without a range this is just its own window.
+  const win = overlayWindow(placed, props.durationMs, props.rangeMs ?? null)
+  if (!win || t < win.startMs || t >= win.endMs) return null
+  const o: Overlay = { ...placed, startMs: win.startMs, endMs: win.endMs }
+  const end = win.endMs
   const { width, height, project, assets, baseUrl } = props
   const a = anchorOf(o)
   // The transform origin sits on the anchor, so a pop or pulse grows away from the pinned edge instead of off the canvas.

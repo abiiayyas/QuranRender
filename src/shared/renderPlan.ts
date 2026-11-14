@@ -15,12 +15,15 @@ export interface Chunk {
   to: number
 }
 
-/** Splits `totalFrames` into pieces of about `chunkSeconds`; every frame is in exactly one piece. */
-export function planChunks(totalFrames: number, fps: number, chunkSeconds = CHUNK_SECONDS): Chunk[] {
+/**
+ * Splits `totalFrames` into pieces of about `chunkSeconds`; every frame is in exactly one piece. `offset` is the frame the
+ * first piece starts at, for an export of part of the video.
+ */
+export function planChunks(totalFrames: number, fps: number, chunkSeconds = CHUNK_SECONDS, offset = 0): Chunk[] {
   const size = Math.max(1, Math.round(chunkSeconds * fps))
   const out: Chunk[] = []
-  for (let from = 0; from < totalFrames; from += size) out.push({ index: out.length, from, to: Math.min(totalFrames, from + size) - 1 })
-  return out.length > 0 ? out : [{ index: 0, from: 0, to: 0 }]
+  for (let from = 0; from < totalFrames; from += size) out.push({ index: out.length, from: offset + from, to: offset + Math.min(totalFrames, from + size) - 1 })
+  return out.length > 0 ? out : [{ index: 0, from: offset, to: offset }]
 }
 
 export const useChunks = (mode: RenderMode, durationMs: number): boolean => mode === 'chunked' || (mode === 'auto' && durationMs >= AUTO_CHUNK_AFTER_MS)

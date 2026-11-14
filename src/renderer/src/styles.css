@@ -602,3 +602,10 @@ button.word-chip { font: inherit; }
 .st-proj { display: grid; gap: var(--sp-2); }
 .st-proj__head { display: flex; justify-content: space-between; gap: var(--sp-3); align-items: baseline; }
 .st-note { padding: var(--sp-2) var(--sp-3); border: 1px solid var(--border); border-radius: var(--r-ctl); background: var(--bg-sunken); }
+
+/* Export range: two time fields side by side, and what they hold. */
+.exp-range { display: grid; grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr); gap: var(--sp-2); align-items: center; }
+.exp-range .qr-label { margin: 0; }
+.exp-range__bad { color: var(--danger); }
+.exp-range__warn { display: flex; align-items: center; gap: var(--sp-1); color: var(--text-2); }
+.exp-range__warn .qr-ic { color: var(--accent); flex: none; }

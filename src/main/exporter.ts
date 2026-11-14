@@ -2,9 +2,11 @@ import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { basename, join } from 'node:path'
 import { BrowserWindow, dialog, powerSaveBlocker, shell } from 'electron'
 import { getLang, t } from '@shared/i18n'
+import { clampRange, formatTime, rangeFrames, rangeProblem, type ExportRange } from '@shared/exportRange'
 import { checkExport } from '@shared/policy'
 import { blendSpeed, measuredMsPerMpFrame, useChunks } from '@shared/renderPlan'
 import { toSrt, toVtt, youtubeChapters, type SubtitleMode } from '@shared/subtitles'
+import { shiftSegments } from '@shared/timedSegments'
 import { advanceStatus, type ArabicScript, type Asset, type ExportOptions, type Job, type PolicyIssue, type Project, type Verse } from '@shared/types'
 import { canvasSize, verseKey, type VideoProps } from '@shared/video'
 import { runAfterExport } from './afterExport'
@@ -46,7 +48,7 @@ function referencedAssets(project: Project): Record<string, Asset> {
   return out
 }
 
-export async function buildVideoProps(project: Project, height: number, fps: number, baseUrl: VideoProps['baseUrl']): Promise<VideoProps> {
+export async function buildVideoProps(project: Project, height: number, fps: number, baseUrl: VideoProps['baseUrl'], range: ExportRange | null = null): Promise<VideoProps> {
   const assets = referencedAssets(project)
   const source = project.sourceAssetId ? assets[project.sourceAssetId] : undefined
   if (!source) throw new Error(t('Proyek belum memiliki sumber audio.'))
@@ -63,18 +65,34 @@ export async function buildVideoProps(project: Project, height: number, fps: num
     fps,
     durationMs: source.durationMs ?? lastEnd,
     lang: getLang(),
+    rangeMs: range,
     spectrumUrl,
     ambientOffsetDb: project.ambient ? await ambientOffsetDb(project.id, source.id, project.ambient.id) : null,
     baseUrl
   }
 }
 
-async function check(project: Project): Promise<PolicyIssue[]> {
+/** The range the renderer asked for, checked again here (it is not trusted): null for the whole video, an error for a bad one. */
+function resolveRange(project: Project, range: ExportRange | null | undefined): ExportRange | null {
+  if (!range) return null
+  const source = project.sourceAssetId ? getAssetOrNull(project.sourceAssetId) : null
+  const durationMs = source?.durationMs ?? Math.max(0, ...project.segments.map((s) => s.endMs))
+  if (!Number.isFinite(range.fromMs) || !Number.isFinite(range.toMs)) throw new Error(t('Rentang waktu ekspor tidak valid.'))
+  const problem = rangeProblem(range, durationMs)
+  if (problem === 'beyond') throw new Error(t('Awal rentang ada di luar rekaman.'))
+  if (problem === 'order') throw new Error(t('Akhir rentang harus setelah awalnya.'))
+  if (problem === 'short') throw new Error(t('Rentang ekspor paling pendek 1 detik.'))
+  return clampRange(range, durationMs)
+}
+
+async function check(project: Project, range: ExportRange | null = null): Promise<PolicyIssue[]> {
   const src = project.sourceAssetId ? getAssetOrNull(project.sourceAssetId) : null
   const sourceOk = !!src && existsSync(assetAbsPath(src.projectId, src.path))
   // Word counts are the same in every script; offline with an uncached script, the range check is skipped.
   const verses = await versesOf(project, project.script).catch(() => versesOf(project, 'kemenag')).catch(() => ({}))
-  return checkExport(project, { sourceOk, verses })
+  // For a short, only the segments it holds can hold it back: a bad segment somewhere else in a long recording does not matter.
+  const inRange = range ? { ...project, segments: project.segments.filter((s) => s.endMs > range.fromMs && s.startMs < range.toMs) } : project
+  return checkExport(inRange, { sourceOk, verses })
 }
 
 /** File-name-safe title (macOS and the exFAT drives videos often go to). */
@@ -96,11 +114,13 @@ export function ensureFolder(folder: string): string {
 
 async function start(o: ExportOptions): Promise<Job> {
   const project = getProject(o.projectId)
-  if ((await check(project)).some((i) => i.severity === 'error')) {
+  const range = resolveRange(project, o.range)
+  if ((await check(project, range)).some((i) => i.severity === 'error')) {
     throw new Error(t('Masih ada masalah yang perlu diperbaiki sebelum ekspor. Silakan periksa daftar di dialog Ekspor.'))
   }
   const folder = ensureFolder(o.folder)
-  const name = `${safeName(project.title)} ${stamp()}`
+  // A short says which stretch it is in its name, so several cuts of one recording do not look alike.
+  const name = `${safeName(project.title)}${range ? ` ${formatTime(range.fromMs).replace(/:/g, '.')}-${formatTime(range.toMs).replace(/:/g, '.')}` : ''} ${stamp()}`
   const outPath = join(folder, `${name}.mp4`)
 
   return startJob(project.id, 'export', 'cpu', async (ctx) => {
@@ -111,10 +131,10 @@ async function start(o: ExportOptions): Promise<Job> {
     const p = getProject(project.id)
     const server = await startFileServer()
     try {
-      const props = await buildVideoProps(p, o.height, o.fps, { asset: `${server.origin}asset/`, font: `${server.origin}fonts/` })
+      const props = await buildVideoProps(p, o.height, o.fps, { asset: `${server.origin}asset/`, font: `${server.origin}fonts/` }, range)
       const started = Date.now()
-      let frames = Math.max(1, Math.ceil((props.durationMs / 1000) * props.fps))
-      if (useChunks(o.mode, props.durationMs)) {
+      let frames = rangeFrames(range, props.durationMs, props.fps).count
+      if (useChunks(o.mode, range ? range.toMs - range.fromMs : props.durationMs)) {
         const r = await renderChunked({ props, outPath, signal: ctx.signal, fresh: !!o.fresh, onProgress: (progress, message) => ctx.progress(0.02 + progress * 0.96, message) })
         frames = r.framesRendered
       } else {
@@ -134,10 +154,12 @@ async function start(o: ExportOptions): Promise<Job> {
         // QPC words are page-font glyph codes, unreadable as plain text: subtitles use Uthmani text instead.
         const verses = p.script === 'qpc' ? await versesOf(p, 'uthmani') : props.verses
         const mode: SubtitleMode = p.editions.length > 0 ? 'both' : 'arabic'
-        if (o.srt) writeFileSync(join(folder, `${name}.srt`), toSrt(p, verses, mode))
-        if (o.vtt) writeFileSync(join(folder, `${name}.vtt`), toVtt(p, verses, mode))
+        // For a short the times start again at zero, like the video, and only what falls inside is kept.
+        const cut = range ? { ...p, segments: shiftSegments(p.segments, range.fromMs, range.toMs) } : p
+        if (o.srt) writeFileSync(join(folder, `${name}.srt`), toSrt(cut, verses, mode))
+        if (o.vtt) writeFileSync(join(folder, `${name}.vtt`), toVtt(cut, verses, mode))
         if (o.chapters) {
-          const lines = youtubeChapters(p, props.surah?.nameLatin ?? '', props.durationMs)
+          const lines = youtubeChapters(cut, props.surah?.nameLatin ?? '', range ? range.toMs - range.fromMs : props.durationMs)
           writeFileSync(join(folder, `${name} - chapters.txt`), `${lines.join('\n')}\n`)
         }
       }
@@ -157,14 +179,18 @@ async function start(o: ExportOptions): Promise<Job> {
 }
 
 export function registerExportIpc(): void {
-  handle('exporter', 'check', (projectId) => check(getProject(projectId)))
+  handle('exporter', 'check', (projectId, range) => {
+    const project = getProject(projectId)
+    return check(project, resolveRange(project, range))
+  })
   handle('exporter', 'start', (options) => start(options))
   handle('exporter', 'partial', async (options) => {
     const project = getProject(options.projectId)
     const source = project.sourceAssetId ? getAssetOrNull(project.sourceAssetId) : null
-    if (!source || !useChunks(options.mode, source.durationMs ?? 0)) return null
+    const range = resolveRange(project, options.range)
+    if (!source || !useChunks(options.mode, range ? range.toMs - range.fromMs : (source.durationMs ?? 0))) return null
     // Only the fingerprint is needed, so the file server's address does not matter.
-    return partialOf(await buildVideoProps(project, options.height, options.fps, { asset: 'asset/', font: 'fonts/' }))
+    return partialOf(await buildVideoProps(project, options.height, options.fps, { asset: 'asset/', font: 'fonts/' }, range))
   })
   handle('exporter', 'defaultFolder', () => ensureFolder(getSettings().exportFolder))
   handle('exporter', 'pickFolder', async () => {
