@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.10.0
+
+- **Suara latar:** tab **Audio** baru di editor dengan sembilan suara alam yang ikut terpasang di aplikasi (hujan, hujan di jendela, hujan dan petir, aliran sungai,
+  api unggun, jangkrik malam, angin pelan, ombak tenang, dengung malam), loop mulus 2 menit, tanpa musik. Tingkatnya **relatif terhadap suara qari**: kenyaringan
+  rekaman diukur sekali (bagian aktif, tanpa jeda dan napas) lalu dihitung ke dB di bawahnya; bawaan 24 dB di bawah, geser sampai 12 dB, dengan peringatan di atas
+  18 dB. Pudar masuk dan keluar. Dimainkan komposisi Remotion yang sama untuk pratinjau dan ekspor; di render per potongan ikut dirender di tahap suara. Asal tiap
+  berkas dan lisensinya ada di `assets/ambient/SOURCES.md`.
+- **Perbaikan (sudah ada di 0.9.0): render per potongan menunda suara 43 ms** terhadap gambar. Suara AAC mentah dari Remotion membawa jeda encoder tanpa daftar potong, dan
+  disalin begitu saja ke MP4 hingga terputar terlambat; render langsung tidak terkena. Kini suara dirender sebagai WAV lalu di-encode ke AAC sekali saat penggabungan
+  (selisih terhadap rekaman sumber 0 ms, diukur dengan korelasi silang). Konsekuensi: butuh ruang sementara tambahan sekitar 11 MB per menit video. Ekspor per potongan
+  dari 0.9.0 sebaiknya diulang bila sinkron bibir-suara (sorotan kata) penting.
+- Perbaikan saat menguji suara latar: fade `loop` Remotion mengulang di tiap putaran (`loopVolumeCurveBehavior="extend"`); sambungan loop di render nyata kini mulus
+  (langkah level terbesar 2,85 dB di seluruh berkas, 2,3 dB di dekat titik loop).
+- Sidebar editor: label "Background" tidak lagi terpotong (rel diperlebar, label panjang dipotong dengan …).
+- Dokumentasi: rancangan mode **Hafalan** (ulang ayat N kali, jeda, ekspor audio saja) dicatat di `docs/product/ROADMAP.md` §5.2; belum dikerjakan.
+
 ## 0.9.0
 
 - **Render per potongan:** video panjang (lebih dari 15 menit, atau dipaksa lewat Cara render) dirender dalam potongan sekitar 10 menit tanpa suara, suaranya

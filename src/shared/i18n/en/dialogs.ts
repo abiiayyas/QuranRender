@@ -131,7 +131,7 @@ export const dialogs: Dict = {
   Otomatis: 'Automatic',
   Langsung: 'Direct',
   'Per potongan': 'In pieces',
-  'Dirender per potongan sekitar 10 menit, lalu digabung. Kalau terputus, render bisa dilanjutkan dari potongan yang sudah jadi. Butuh ruang disk sementara kira-kira seukuran videonya.': 'Rendered in pieces of about 10 minutes, then joined. If it is interrupted, the render can continue from the finished pieces. Needs temporary disk space about the size of the video.',
+  'Dirender per potongan sekitar 10 menit, lalu digabung. Kalau terputus, render bisa dilanjutkan dari potongan yang sudah jadi. Butuh ruang disk sementara: potongan sebesar videonya, ditambah suara sekitar 11 MB per menit.': 'Rendered in pieces of about 10 minutes, then joined. If it is interrupted, the render can continue from the finished pieces. Needs temporary disk space: the pieces take about the size of the video, plus the sound at about 11 MB per minute.',
   'Dirender sekali jalan. Video yang lebih dari 15 menit otomatis dirender per potongan.': 'Rendered in one go. Videos longer than 15 minutes are rendered in pieces automatically.',
   'Mulai dari awal; potongan sebelumnya dibuang': 'Start over; the earlier pieces are discarded',
   'Melanjutkan: {done} dari {total} potongan sudah jadi. Centang untuk mulai dari awal.': 'Continuing: {done} of {total} pieces are already done. Tick to start over.',

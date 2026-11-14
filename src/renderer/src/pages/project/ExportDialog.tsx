@@ -200,7 +200,7 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
           />
           <span className="qr-help">
             {chunked
-              ? t('Dirender per potongan sekitar 10 menit, lalu digabung. Kalau terputus, render bisa dilanjutkan dari potongan yang sudah jadi. Butuh ruang disk sementara kira-kira seukuran videonya.')
+              ? t('Dirender per potongan sekitar 10 menit, lalu digabung. Kalau terputus, render bisa dilanjutkan dari potongan yang sudah jadi. Butuh ruang disk sementara: potongan sebesar videonya, ditambah suara sekitar 11 MB per menit.')
               : t('Dirender sekali jalan. Video yang lebih dari 15 menit otomatis dirender per potongan.')}
           </span>
           {partial && !busy && (

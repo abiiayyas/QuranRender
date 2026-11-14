@@ -23,6 +23,8 @@ export interface VideoProps {
   lang: Lang
   /** Full URL of the source's loudness table (see src/shared/spectrum.ts); set only when the project has a visualizer overlay. */
   spectrumUrl?: string | null
+  /** Voice level minus the ambient file's level, dB: what the composition needs to put the sound `ambient.levelDb` under the voice. Set only with an ambient sound. */
+  ambientOffsetDb?: number | null
   baseUrl: {
     /** Prefix for `${projectId}/${asset.path}`. */
     asset: string

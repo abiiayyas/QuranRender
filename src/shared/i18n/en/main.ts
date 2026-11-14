@@ -95,4 +95,7 @@ export const main: Dict = {
   'Klik Batalkan bila kamu masih ingin memakainya.': 'Click Cancel if you still want to use it.',
   Batalkan: 'Cancel',
   'Lakukan sekarang': 'Do it now',
+  'Tidak ada suara yang bisa diukur di berkas ini.': 'There is no audible sound to measure in this file.',
+  'Suara latar tidak dikenal.': 'Unknown background sound.',
+  'Berkas suara latar tidak ikut terpasang di aplikasi ini. Silakan pasang ulang dari installer terbaru.': 'The background sound file is not part of this installation. Please reinstall from the latest installer.'
 }

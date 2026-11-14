@@ -284,7 +284,7 @@ Prioritas: **P0** wajib untuk v1.0, **P1** target v1.x, **P2** setelahnya.
 | EXP-6 | P0 | Validasi pra-export: aset hilang, font hilang, durasi nol, stream input tidak valid (menjawab #137), dan seluruh aturan kebijakan konten §7.15. Setiap pesan bisa ditindaklanjuti. | Tidak ada export yang gagal di tengah karena masalah yang bisa dideteksi sebelumnya. |
 | EXP-7 | P0 | Export dapat dijeda, dibatalkan, dan dilanjutkan. Log diagnostik bisa disalin. | — |
 | EXP-8 | P1 | Thumbnail otomatis dari template + frame terpilih. | — |
-| EXP-9 | P1 | Export audio saja (mp3/m4a) dan audio hafalan (pengulangan ayat N kali). | — |
+| EXP-9 | P1 | Export audio saja (mp3/m4a) dan audio hafalan (pengulangan ayat N kali). | Belum dikerjakan; rancangan di [`ROADMAP.md`](ROADMAP.md) §5.2. |
 
 ### 7.10 Batch / produksi massal
 

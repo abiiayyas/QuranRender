@@ -139,7 +139,7 @@ export async function prepareVideo(props: VideoProps): Promise<VideoRender> {
 
 /**
  * Draws part of a prepared video. `video` frames without sound (a piece of a long export), `audio` only the sound track
- * of the whole composition as AAC (rendered once, so pieces never meet at an audio seam), or `full` both in one file.
+ * of the whole composition as WAV (rendered once, so pieces never meet at an audio seam), or `full` both in one file.
  * `frameRange` is inclusive, as in Remotion.
  */
 export async function renderPiece(
@@ -156,7 +156,9 @@ export async function renderPiece(
       port: await freePort(),
       composition: prep.composition,
       serveUrl,
-      codec: o.kind === 'audio' ? 'aac' : 'h264',
+      // The sound track of a chunked export is drawn as WAV: raw AAC carries encoder delay (about 43 ms) with no edit list to
+      // say so, and copied into the MP4 it would play late. The join step encodes it to AAC once, where the muxer handles it.
+      codec: o.kind === 'audio' ? 'wav' : 'h264',
       // Remotion refuses video options (crf) for an audio-only codec.
       ...(o.kind === 'audio' ? {} : { crf: 18, audioCodec: 'aac' as const }),
       muted: o.kind === 'video',

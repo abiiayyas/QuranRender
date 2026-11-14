@@ -84,7 +84,7 @@ export interface ChunkedResult {
 
 /**
  * Draws the video in pieces of about ten minutes, without sound, then the whole sound track once, and joins them with
- * ffmpeg without re-encoding. An interrupted run leaves its finished pieces in `partsPath`, and the next run with the
+ * ffmpeg without re-encoding the picture (the sound is encoded to AAC once). An interrupted run leaves its finished pieces in `partsPath`, and the next run with the
  * same fingerprint picks up from there; a successful one removes them.
  */
 export async function renderChunked(o: {
@@ -129,11 +129,11 @@ export async function renderChunked(o: {
     framesRendered += frames
   }
 
-  const audio = join(dir, 'audio.aac')
+  const audio = join(dir, 'audio.wav')
   if (!existsSync(audio)) {
     o.onProgress(0.98, t('Menyiapkan suara…'))
     prep ??= await prepareVideo(props)
-    const audioPart = join(dir, 'audio.part.aac')
+    const audioPart = join(dir, 'audio.part.wav')
     await renderPiece(prep, { kind: 'audio', outPath: audioPart, signal: o.signal })
     renameSync(audioPart, audio)
   }
@@ -141,7 +141,7 @@ export async function renderChunked(o: {
   o.onProgress(0.99, t('Menggabungkan potongan…'))
   const list = join(dir, 'list.txt')
   writeFileSync(list, chunks.map((c) => `file ${quote(join(dir, chunkName(c.index)))}`).join('\n') + '\n')
-  await ffmpeg(['-f', 'concat', '-safe', '0', '-i', list, '-i', audio, '-map', '0:v:0', '-map', '1:a:0', '-c', 'copy', '-movflags', '+faststart', o.outPath], { signal: o.signal })
+  await ffmpeg(['-f', 'concat', '-safe', '0', '-i', list, '-i', audio, '-map', '0:v:0', '-map', '1:a:0', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', o.outPath], { signal: o.signal })
 
   // The joined file must be as long as the video: a missing piece would otherwise only show when someone watches it.
   const out = await probe(o.outPath)

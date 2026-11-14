@@ -8,6 +8,7 @@ import { toSrt, toVtt, youtubeChapters, type SubtitleMode } from '@shared/subtit
 import { advanceStatus, type ArabicScript, type Asset, type ExportOptions, type Job, type PolicyIssue, type Project, type Verse } from '@shared/types'
 import { canvasSize, verseKey, type VideoProps } from '@shared/video'
 import { runAfterExport } from './afterExport'
+import { ambientOffsetDb } from './ambient'
 import { handle } from './ipc'
 import { activeJobs, startJob } from './jobs'
 import { assetAbsPath } from './paths'
@@ -63,6 +64,7 @@ export async function buildVideoProps(project: Project, height: number, fps: num
     durationMs: source.durationMs ?? lastEnd,
     lang: getLang(),
     spectrumUrl,
+    ambientOffsetDb: project.ambient ? await ambientOffsetDb(project.id, source.id, project.ambient.id) : null,
     baseUrl
   }
 }

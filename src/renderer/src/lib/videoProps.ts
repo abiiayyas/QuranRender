@@ -44,6 +44,22 @@ export function useVideoProps(project: Project, assets: Record<string, Asset>, f
       live = false
     }
   }, [wantsSpectrum, project.id, project.sourceAssetId])
+  // How loud the reciter is compared with the chosen sound is measured once in main; the slider then only changes a number here.
+  const ambientId = project.ambient?.id ?? null
+  const [ambientOffset, setAmbientOffset] = useState<{ key: string; db: number } | null>(null)
+  const ambientKey = ambientId && project.sourceAssetId ? `${project.sourceAssetId}:${ambientId}` : null
+  useEffect(() => {
+    if (!ambientId || !ambientKey) return
+    let live = true
+    void window.api.sources.ambientOffset(project.id, ambientId).then(
+      (db) => live && setAmbientOffset({ key: ambientKey, db }),
+      () => undefined
+    )
+    return () => {
+      live = false
+    }
+  }, [ambientId, ambientKey, project.id])
+  const ambientOffsetDb = ambientKey && ambientOffset?.key === ambientKey ? ambientOffset.db : null
   const spectrumUrl =
     wantsSpectrum && spectrumPath?.source === project.sourceAssetId
       ? `studio://asset/${encodeURIComponent(project.id)}/${spectrumPath.path.split('/').map(encodeURIComponent).join('/')}`
@@ -61,8 +77,9 @@ export function useVideoProps(project: Project, assets: Record<string, Asset>, f
       durationMs,
       lang,
       spectrumUrl,
+      ambientOffsetDb,
       baseUrl: { asset: 'studio://asset/', font: 'studio://fonts/' }
     }),
-    [project, used, verses, surah, width, height, fps, durationMs, lang, spectrumUrl]
+    [project, used, verses, surah, width, height, fps, durationMs, lang, spectrumUrl, ambientOffsetDb]
   )
 }

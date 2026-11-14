@@ -1,4 +1,5 @@
 import type { AiProvider, CliImageTool, CliTool, ImageProvider } from './aiTools'
+import type { AmbientSettings } from './ambient'
 import type { Lang } from './i18n'
 import type { Edge } from './placement'
 import type { LoopMode, MotionSpec } from './motion'
@@ -131,6 +132,8 @@ export interface Project {
   style: StyleSettings
   background: Background
   overlays: Overlay[]
+  /** Nature sound under the recitation; absent or null = none. */
+  ambient?: AmbientSettings | null
   /** Cover image for Shorts, Reels and TikTok; absent until the Thumbnail dialog is first edited. */
   thumbnail?: ThumbnailSpec
   /** Upload copy the user edited, per platform; platforms without an entry show a fresh draft. */

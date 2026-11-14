@@ -2,7 +2,7 @@ import { createReadStream, statSync } from 'node:fs'
 import { extname, join, normalize, sep } from 'node:path'
 import { Readable } from 'node:stream'
 import { protocol } from 'electron'
-import { fontsDir, projectsRoot, qpcFontsDir, uiFontPath } from './paths'
+import { ambientDir, fontsDir, projectsRoot, qpcFontsDir, uiFontPath } from './paths'
 
 export const MIME: Record<string, string> = {
   '.png': 'image/png',
@@ -31,14 +31,14 @@ export function registerSchemes(): void {
 }
 
 /**
- * Resolves `asset/<project>/<path>` and `fonts/<file>` (QPC pages under `fonts/qpc/`) to a file on disk, refusing paths
+ * Resolves `asset/<project>/<path>`, `ambient/<id>.m4a` and `fonts/<file>` (QPC pages under `fonts/qpc/`) to a file on disk, refusing paths
  * that climb out of their root. Shared by the studio:// protocol and the http server the export render reads from.
  */
 export function resolveFile(host: string, pathname: string): string | null {
   const rel = decodeURIComponent(pathname).replace(/^\/+/, '')
   if (host === 'fonts' && rel === 'Inter-Variable.ttf') return uiFontPath()
   const [root, sub] =
-    host === 'asset' ? [projectsRoot(), rel] : host === 'fonts' && rel.startsWith('qpc/') ? [qpcFontsDir(), rel.slice(4)] : host === 'fonts' ? [fontsDir(), rel] : [null, '']
+    host === 'asset' ? [projectsRoot(), rel] : host === 'ambient' ? [ambientDir(), rel] : host === 'fonts' && rel.startsWith('qpc/') ? [qpcFontsDir(), rel.slice(4)] : host === 'fonts' ? [fontsDir(), rel] : [null, '']
   if (!root) return null
   const abs = normalize(join(root, sub))
   return abs.startsWith(normalize(root) + sep) ? abs : null

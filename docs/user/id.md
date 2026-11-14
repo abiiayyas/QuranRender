@@ -83,6 +83,9 @@ Pratinjau memakai mesin yang sama dengan ekspor, jadi hasilnya sama dengan video
   lalu hilang dan muncul lagi sesuai jeda, misalnya tiap 60 detik selama 6 detik; nama akun boleh dicantumkan), dengan
   waktu tampil dan **letak**: pilih salah satu dari sembilan tempat di area aman (grid 3×3), atur **jarak dari tepi aman**, lalu geser halus dengan penggeser Mendatar dan Menegak. Teks di tepi kanan rata kanan, di tepi kiri rata kiri. Tombol Subscribe dan Follow di video selalu berbahasa Inggris. Geser overlay di linimasa untuk memindahkannya, geser tepinya untuk mengubah panjangnya.
   Linimasa bisa diperbesar (sampai 64×) dan di-scroll untuk rekaman panjang.
+- **Audio:** **suara latar** alam yang mengiringi bacaan: hujan, hujan di jendela, hujan dan petir, aliran sungai, api unggun, jangkrik malam, angin pelan, ombak tenang, dan dengung malam. Berkasnya
+  sudah ikut di aplikasi. Tingkat suaranya **relatif terhadap suara qari**: aplikasi mengukur kenyaringan rekamanmu, lalu menaruh suara latar sekian dB di bawahnya (bawaan 24 dB; makin ke kanan makin
+  keras, dan di atas 18 dB di bawah suara qari muncul peringatan karena mulai bersaing dengan bacaan). Ada pudar masuk dan keluar. Tanpa musik, sengaja.
 - **Format:** ganti 9:16, 16:9, 1:1, dan tampilkan garis area aman. Garisnya tidak ikut diekspor.
 
 Urungkan dan Ulangi tersedia di atas pratinjau (Cmd+Z, Cmd+Shift+Z).
@@ -113,8 +116,8 @@ bergantung mesinmu.
 *Per potongan* memaksa salah satunya. Potongan dirender berurutan tanpa suara, suaranya dirender sekali, lalu semuanya digabung tanpa encode ulang,
 jadi tidak ada penurunan mutu atau klik di sambungan. Total waktu hampir sama dengan render langsung. Keuntungannya: kalau ekspor terputus
 (aplikasi ditutup, gagal, dibatalkan), potongan yang sudah jadi disimpan dan dialog Ekspor menawarkan melanjutkan dari sana; centang
-*mulai dari awal* untuk membuangnya. Potongan hanya dipakai lagi bila proyek dan pengaturannya sama persis. Butuh ruang disk sementara kira-kira
-seukuran videonya sampai penggabungan selesai.
+*mulai dari awal* untuk membuangnya. Potongan hanya dipakai lagi bila proyek dan pengaturannya sama persis. Butuh ruang disk sementara sampai penggabungan
+selesai: potongan sebesar videonya, ditambah suara sekitar 11 MB per menit (video 2 jam kira-kira 1,4 GB).
 
 **Perkiraan waktu** ditampilkan di dialog. Awalnya perkiraan kasar dari pengukuran di satu komputer uji; setelah tiap ekspor, angkanya menyesuaikan
 dengan kecepatan komputermu. Latar **Gerak** kira-kira 1,7 kali lebih lama dirender daripada latar polos.

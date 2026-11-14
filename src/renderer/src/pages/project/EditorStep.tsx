@@ -6,6 +6,7 @@ import { QuranVideo } from '@video/QuranVideo'
 import { Icon } from '../../components/ui'
 import { useVideoProps } from '../../lib/videoProps'
 import { useProject } from '../../store/project'
+import { AudioPanel } from './editor/AudioPanel'
 import { BackgroundPanel } from './editor/BackgroundPanel'
 import { EditorTimeline } from './editor/EditorTimeline'
 import { FormatPanel } from './editor/FormatPanel'
@@ -13,11 +14,12 @@ import { OverlayPanel } from './editor/OverlayPanel'
 import { StylePanel } from './editor/StylePanel'
 
 const FPS = 30
-type Tab = 'gaya' | 'latar' | 'overlay' | 'format'
+type Tab = 'gaya' | 'latar' | 'overlay' | 'audio' | 'format'
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'gaya', label: msg('Gaya'), icon: 'type' },
   { id: 'latar', label: msg('Latar'), icon: 'image' },
   { id: 'overlay', label: msg('Overlay'), icon: 'layers' },
+  { id: 'audio', label: msg('Audio'), icon: 'volume-2' },
   { id: 'format', label: msg('Format'), icon: 'frame' }
 ]
 
@@ -51,6 +53,7 @@ export function EditorStep() {
         {tab === 'gaya' && <StylePanel />}
         {tab === 'latar' && <BackgroundPanel />}
         {tab === 'overlay' && <OverlayPanel selectedId={overlayId} onSelect={setOverlayId} durationMs={props.durationMs} />}
+        {tab === 'audio' && <AudioPanel />}
         {tab === 'format' && <FormatPanel guides={guides} onGuides={setGuides} />}
       </aside>
       <main className="ed-stage" aria-label={t('Pratinjau')}>

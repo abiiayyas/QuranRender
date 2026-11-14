@@ -87,6 +87,9 @@ The preview uses the same engine as the export, so it matches the video.
   (a button that appears at the overlay's Start time, gets tapped, then disappears and comes back at an interval, for example every
   60 seconds for 6 seconds; an account name can be added), each with a display time and a **place**: pick one of nine spots in the safe area (a 3×3 grid), set the **distance from the safe edge**, then fine-tune with the Horizontal and Vertical sliders. Text pinned to the right edge is right-aligned, to the left edge left-aligned. The Subscribe and Follow buttons in the video are always in English. Drag an overlay on the
   timeline to move it and drag its edges to resize it. The timeline zooms (up to 64×) and scrolls for long recordings.
+- **Audio:** a **background sound** from nature under the recitation: rain, rain on a window, rain and thunder, flowing stream, campfire, night crickets, soft wind, calm waves and night hum. The files
+  come with the app. The level is **relative to the reciter's voice**: the app measures how loud your recording is and puts the sound that many dB under it (default 24 dB; further right is
+  louder, and past 18 dB under the voice a warning appears because it starts to compete with the recitation). There is a fade in and out. No music, on purpose.
 - **Format:** switch between 9:16, 16:9 and 1:1 and show the safe-area guide. The guide is not exported.
 
 Undo and Redo sit above the preview (Cmd+Z, Cmd+Shift+Z).
@@ -115,8 +118,8 @@ times the video's duration at 1080p on one test machine; yours may differ.
 *In pieces* force one or the other. The pieces are rendered one after another without sound, the sound is rendered once, and everything is joined without
 re-encoding, so there is no quality loss and no click at the joins. The total time is about the same as a direct render. The gain: if an export is
 interrupted (the app is closed, it fails, it is canceled), the finished pieces are kept and the Export dialog offers to continue from there; tick
-*start over* to discard them. Pieces are reused only when the project and settings are exactly the same. It needs temporary disk space about the size of the
-video until the join is done.
+*start over* to discard them. Pieces are reused only when the project and settings are exactly the same. It needs temporary disk space until the join is done:
+the pieces take about the size of the video, plus the sound at about 11 MB per minute (a 2-hour video: about 1.4 GB).
 
 **Estimated time** is shown in the dialog. At first it is a rough figure from measurements on one test computer; after every export it adjusts to your
 computer's speed. A **Motion** background takes about 1.7 times as long to render as a plain one.

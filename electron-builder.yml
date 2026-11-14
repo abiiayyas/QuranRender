@@ -13,6 +13,11 @@ extraResources:
     to: quran.db
   - from: assets/fonts/quran
     to: fonts
+  # Nature-sound loops only: the source clips beside them stay out of the installer.
+  - from: assets/ambient
+    to: ambient
+    filter:
+      - '*.m4a'
   # The export render loads Inter from the same fonts folder (paths.uiFontPath).
   - from: assets/fonts/ui/Inter-Variable.ttf
     to: fonts/Inter-Variable.ttf

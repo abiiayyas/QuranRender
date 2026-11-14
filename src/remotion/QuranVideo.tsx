@@ -11,6 +11,7 @@ import { SAFE_AREA, assetSrc, q, rgba, textShadow } from './common'
 import { FAMILY, fontSpecs, useFonts } from './fonts'
 import { MotionBackground } from './motion'
 import { SegmentText } from './SegmentText'
+import { AmbientTrack } from './Ambient'
 import { PromptOverlay } from './Prompt'
 import { VisualizerOverlay } from './Visualizer'
 import { activeSegment } from './timing'
@@ -33,6 +34,7 @@ export function QuranVideo(props: VideoProps) {
     <AbsoluteFill style={{ backgroundColor: project.background.color, overflow: 'hidden' }}>
       <BackgroundLayer {...props} unit={unit} source={source} sourceIsBg={sourceIsBg} />
       {source && !sourceIsBg && <Audio src={assetSrc(baseUrl.asset, project.id, source)} />}
+      <AmbientTrack props={props} />
       {style.frame && <FrameLines color={style.frameColor} unit={unit} />}
       {style.showSurahName && props.surah && (
         <div

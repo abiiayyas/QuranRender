@@ -77,18 +77,43 @@ Usulan, dengan alasan:
 - **Brand kit per channel**: logo, warna, qari bawaan, dan ajakan yang tersimpan dan dipakai proyek baru.
 - **Antrean ekspor batch.**
 - Basmalah yang terlalu panjang belum bisa dibelah (batas yang diketahui).
+- **Mode Hafalan**: rancangannya di §5.2; ditunda.
 - **Terjemahan kedua di video** sengaja tidak dibuat: hanya terjemahan paling atas yang tampil (keputusan pemilik produk).
 
 ### 5.1 Sudah dikerjakan di 0.9.0
 Render per potongan yang bisa dilanjutkan, pilihan fps, perkiraan waktu, tahan tidur, aksi setelah selesai, dan bagian Penyimpanan (lihat
 `CHANGELOG.md`). Belum diukur: render nyata pada rekaman 118 menit, jadi perkiraan untuk video sangat panjang masih ekstrapolasi dari klip 40 detik.
 
+### 5.2 Rancangan: mode Hafalan (belum dikerjakan; ditunda atas keputusan pemilik produk)
+Dasarnya PRD EXP-9 (P1): "Export audio saja dan audio hafalan (pengulangan ayat N kali)". Detail di bawah adalah rancangan, bukan keputusan akhir.
+
+**Arti:** tiap ayat diputar beberapa kali, dengan jeda kosong supaya pelajar bisa menirukan sendiri.
+
+**Pengaturan** (panel "Hafalan" di editor, disimpan di proyek):
+- rentang ayat yang dipakai (semua, atau dari ayat X ke Y);
+- jumlah ulangan per ayat, 1 sampai 10;
+- jeda setelah tiap putaran: tanpa jeda, atau selama ayat itu (waktu menirukan);
+- label "Ulangan 2 dari 3" di video;
+- opsional: terjemahan hanya tampil di putaran pertama.
+
+**Cara kerja.** Satu fungsi murni `playlist(segments, settings)` mengubah segmen menjadi daftar potongan `(awal sumber, akhir sumber, awal keluaran)`.
+- Teks dan sorotan kata memakai *waktu sumber*, yaitu waktu keluaran yang dipetakan lewat playlist; komponen teks nyaris tak berubah.
+- Suara dimainkan potongan demi potongan (`startFrom` dan `endBefore` di Remotion), jadi suara bisa melompat balik.
+- Durasi video menjadi jumlah potongan dan jeda, bukan durasi rekaman. Suara latar (0.10.0) berulang di bawah seluruh playlist.
+- Fungsi itu harus diuji: jumlah bingkai, tanpa celah, dan ayat yang tepinya pas.
+
+**Dampak ke bagian lain** (inilah yang membuatnya lebih dari satu panel): data spektrum visualizer diindeks ulang lewat playlist; SRT, VTT, dan bab YouTube dihitung dari playlist; render per potongan dan perkiraan waktu memakai durasi baru; pemeriksaan sebelum ekspor memberi peringatan bila segmen terlalu mepet dengan ayat berikutnya (usulan: penahan 150 ms di ujung tiap potongan).
+
+**Ekspor audio saja** (mp3 atau m4a): ffmpeg langsung dari playlist yang sama, tanpa Remotion, jadi cepat.
+
+**Batas yang diketahui:** ayat yang terpotong oleh sinkron AI atau yang berbagi suara dengan ayat sebelumnya bisa terdengar terpotong saat diulang. Itu soal ketepatan waktu segmen, bukan hafalan; perlu uji dengan rekaman nyata.
+
 ## 6. Yang belum pernah diuji
 
 - Foto dan video stok dengan kunci nyata (Pexels, Unsplash, Pixabay).
 - AI CLI Claude Code dan OpenCode (belum pernah membalas); Codex diuji.
 - DMG hasil build belum pernah dibuka.
-- Gaya Gelombang pada visualizer; tombol donasi; ekspor dalam mode English; tata letak daftar proyek di jendela sempit; pesan
+- Suara latar didengarkan telinga manusia (saya hanya memeriksa angka dan spektrum; jangkrik dari rekaman CC0 mengandung bunyi yang tak teridentifikasi di luar jangkrik); gaya Gelombang pada visualizer; tombol donasi; ekspor dalam mode English; tata letak daftar proyek di jendela sempit; pesan
   galat dari proses utama dalam English.
 - Uji otomatis hanya mencakup `src/shared`; tidak ada uji ujung ke ujung. Belum terbukti bahwa CI hijau di GitHub.
 

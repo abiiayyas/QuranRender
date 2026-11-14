@@ -34,6 +34,8 @@ const resource = (name: string): string =>
 
 /** Bundled Quran dataset (read-only). */
 export const quranDbPath = (): string => (app.isPackaged ? resource('quran.db') : resource('resources/quran.db'))
+/** Bundled nature-sound loops (<id>.m4a). */
+export const ambientDir = (): string => (app.isPackaged ? resource('ambient') : resource('assets/ambient'))
 /** Bundled Arabic fonts (LPMQ, Amiri). Uthmani and QPC page fonts are downloaded into `qpcFontsDir()`. */
 export const fontsDir = (): string => (app.isPackaged ? resource('fonts') : resource('assets/fonts/quran'))
 export const uiFontPath = (): string =>
