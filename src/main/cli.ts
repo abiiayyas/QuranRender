@@ -4,10 +4,6 @@ import { accessSync, constants, mkdtempSync, readdirSync, readFileSync, rmSync, 
 import { homedir, tmpdir } from 'node:os'
 import { delimiter, join } from 'node:path'
 import {
-  AGY_STREAM_ARGS,
-  agyImagePath,
-  agyInput,
-  agyReply,
   checkModel,
   CLI_TOOLS,
   cliImageShape,
@@ -233,10 +229,6 @@ export async function askCli(o: AskOptions): Promise<string> {
     if (o.tool === 'custom') return await run({ command: fillCommand(o.command, o.model), args: [], shell: true, cwd: w.cwd, env: w.env }, o.prompt, name, timeout, o.signal)
 
     const bin = locate(w, o.tool)
-    if (o.tool === 'agy') {
-      const args = [...AGY_STREAM_ARGS, ...(o.model ? ['--model', o.model] : [])]
-      return agyReply(await run(program(w, bin, args), agyInput(o.prompt), name, timeout, o.signal))
-    }
     if (o.tool === 'opencode') {
       // `run` talks to a shared background service that ignores this process's environment and would run its bash and edit
       // tools on its own. --standalone starts a private server, which reads the deny-all rule, so it behaves as a text model.
@@ -319,8 +311,8 @@ function checkNotBlocked(tool: CliImageTool, name: string): void {
 }
 
 /**
- * The image tools are agents that write the tool call themselves; without this line they summarize a long description and
- * drop the style or the "no people" clause.
+ * The image tool is an agent that writes the tool call itself; without this line it summarizes a long description and
+ * drops the style or the "no people" clause.
  */
 const VERBATIM = 'Keep the image description word for word: do not summarize, shorten, reorder, translate or add to it, and keep every line.'
 
@@ -383,7 +375,7 @@ export interface ImageCliOptions {
   signal?: AbortSignal
 }
 
-/** One picture from an image-capable CLI. Antigravity and Codex are driven non-interactively with their own image tools. */
+/** One picture from an image-capable CLI. Codex is driven non-interactively with its own image tool. */
 export async function cliImage(o: ImageCliOptions): Promise<CliImage> {
   const name = cliImageToolName(o.tool)
   const timeout = o.timeoutMs ?? CLI_TEXT_TIMEOUT_MS
@@ -401,24 +393,7 @@ export async function cliImage(o: ImageCliOptions): Promise<CliImage> {
 
     const bin = locate(w, o.tool)
     const shape = cliImageShape(o.aspect)
-    if (o.tool === 'codex') {
-      const img = await codexImage(w, bin, name, o.prompt, shape, timeout, o.signal)
-      imageBlocked.delete(o.tool)
-      return img
-    }
-    // The main agent has no image tool of its own; it can only hand the job to its image-generator subagent, which then
-    // writes the real tool call. Both hops have to be told to keep the text.
-    const instruction =
-      `Create ONE image, ${shape}, with no text or watermark in it. Your image tool is the image-generator subagent (do not write code and do not run commands): give it the image description below as its task and tell it to pass the text unchanged as the Prompt of generate_image. ` +
-      `${VERBATIM}\n\nImage description:\n\n${o.prompt}\n\nWhen the image is ready, reply with its absolute file path inside <path></path> tags.`
-    const reply = agyReply(await run(program(w, bin, AGY_STREAM_ARGS), agyInput(instruction), name, timeout, o.signal))
-    const path = agyImagePath(reply)
-    if (!path) {
-      // Antigravity answers in prose when it cannot draw (quota, refusal); show that instead of a vague complaint.
-      noteQuota(o.tool, name, reply)
-      throw new Error(t('{name} tidak menyebut lokasi gambar yang dibuatnya{detail}', { name, detail: reply.trim() ? `: ${reply.trim().slice(0, 240)}` : '.' }))
-    }
-    const img = readImage(path, name)
+    const img = await codexImage(w, bin, name, o.prompt, shape, timeout, o.signal)
     imageBlocked.delete(o.tool)
     return img
   } finally {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { agyImagePath, agyInput, agyReply, buildCliPrompt, checkModel, extractJson, fillCommand, openaiImageSize, parseRetryAfterMs, pollinationsSize, pollinationsUrl, resetDelayMs, sniffImage } from './aiTools'
+import { buildCliPrompt, checkModel, extractJson, fillCommand, openaiImageSize, parseRetryAfterMs, pollinationsSize, pollinationsUrl, resetDelayMs, sniffImage } from './aiTools'
 
 describe('extractJson', () => {
   it('reads plain, fenced and noisy replies', () => {
@@ -38,28 +38,6 @@ describe('buildCliPrompt', () => {
       false
     )
     expect(p).toContain('[assistant]\ntwo')
-  })
-})
-
-describe('Antigravity events', () => {
-  const events = (...e: object[]): string => ['Fetching…', ...e.map((x) => JSON.stringify(x))].join('\n')
-
-  it('takes the last result event', () => {
-    const out = events({ event: 'thinking' }, { event: 'result', result: { status: 'SUCCESS', response: 'OK' } })
-    expect(agyReply(out)).toBe('OK')
-    expect(JSON.parse(agyInput('hi'))).toEqual({ event: 'user', message: { content: 'hi' } })
-  })
-
-  it('reports failures and denied permissions instead of bypassing them', () => {
-    expect(() => agyReply(events({ event: 'result', result: { status: 'ERROR', error: 'boom' } }))).toThrow('boom')
-    expect(() => agyReply(events({ event: 'result', result: { status: 'SUCCESS', response: '', denied_actions: [{ display_name: 'run_command' }] } }))).toThrow('run_command')
-    expect(() => agyReply('nothing useful')).toThrow()
-  })
-
-  it('finds the image path in tags, or loosely', () => {
-    expect(agyImagePath('Done.\n<path>\n/tmp/a b/x.png\n</path>')).toBe('/tmp/a b/x.png')
-    expect(agyImagePath('Saved to /Users/me/pic.jpeg ok')).toBe('/Users/me/pic.jpeg')
-    expect(agyImagePath('no path here')).toBeNull()
   })
 })
 

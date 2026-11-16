@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.11.2
+
+- **Antigravity dihapus:** CLI Antigravity (`agy`) tidak lagi menjadi pilihan AI CLI untuk teks maupun CLI gambar, beserta pembaca event, prompt gambar, dan terjemahan Inggrisnya.
+  Pengaturan lama yang masih menyimpan Antigravity otomatis kembali ke Claude Code (teks) atau Codex (gambar). CLI gambar bawaan kini Codex.
+
 ## 0.11.1
 
 - **Zoom di tab Sumber:** gelombang suara punya tombol perbesar dan perkecil (1× sampai 64×) dan penggaris waktu, sehingga titik masuk dan keluar bisa ditaruh tepat pada rekaman

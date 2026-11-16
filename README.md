@@ -45,7 +45,7 @@ npm run dist:mac     # DMG ke dist/ (arsitektur mesin build)
 | Tampilan | React 19, Zustand, design system CSS di `design/system/` |
 | Data | SQLite (better-sqlite3): `studio.db` milik pengguna, `resources/quran.db` bawaan (read-only) |
 | Video | Remotion (pratinjau dan ekspor memakai komposisi yang sama), FFmpeg (`ffmpeg-static`, `ffprobe-static`) |
-| AI | API kompatibel OpenAI atau AI CLI (Claude Code, Codex, Antigravity, OpenCode) untuk teks; Pollinations, API OpenAI, atau CLI untuk gambar latar |
+| AI | API kompatibel OpenAI atau AI CLI (Claude Code, Codex, OpenCode) untuk teks; Pollinations, API OpenAI, atau CLI untuk gambar latar |
 | Stok | Pexels, Unsplash, Pixabay (kunci gratis milik pengguna) |
 
 ```

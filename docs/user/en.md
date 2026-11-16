@@ -56,7 +56,7 @@ The Kemenag translation is built in. Click **Add translation** to install anothe
 main translation in the video. **Fill translations** fills every segment. For a verse that is only partly recited, **AI trim
 partial verses** cuts the translation to the part that is read. This needs AI set up in **Settings**, with two options: an
 **API** (any OpenAI-compatible service, including local Ollama, with your own key) or an **AI CLI on this computer** (Claude Code,
-Codex CLI, Antigravity, OpenCode, or your own command) that is already installed and signed in, with no API key. A CLI starts
+Codex CLI, OpenCode, or your own command) that is already installed and signed in, with no API key. A CLI starts
 fresh on each call, so one batch can take about a minute; the app sends many segments at once to keep it short. The app never
 asks a CLI for extra permissions. AI never changes the Arabic text.
 

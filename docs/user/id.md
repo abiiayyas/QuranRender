@@ -51,7 +51,7 @@ Terjemahan Kemenag sudah bawaan. Klik **Tambah terjemahan** untuk memasang edisi
 menjadi terjemahan utama di video. **Isi terjemahan** mengisi semua segmen. Untuk ayat yang hanya dibaca sebagian,
 **AI trim ayat terpotong** memotong terjemahan agar sesuai bagian yang dibaca. Ini butuh AI yang diatur di **Pengaturan**,
 dengan dua pilihan: **API** (layanan apa pun yang kompatibel dengan API OpenAI, termasuk Ollama lokal, dengan kunci milikmu)
-atau **AI CLI di komputer** (Claude Code, Codex CLI, Antigravity, OpenCode, atau perintah sendiri) yang sudah terpasang dan
+atau **AI CLI di komputer** (Claude Code, Codex CLI, OpenCode, atau perintah sendiri) yang sudah terpasang dan
 login, tanpa kunci API. CLI memulai sendiri tiap kali dipanggil, jadi satu kelompok bisa memakan sekitar satu menit; aplikasi
 mengirim banyak segmen sekaligus agar tidak terlalu lama. Aplikasi tidak pernah meminta izin tambahan dari CLI. Teks Arab
 tidak pernah diubah oleh AI.

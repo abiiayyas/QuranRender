@@ -2,9 +2,9 @@ import type { Aspect } from './types'
 import { msg, t } from './i18n'
 
 /** AI CLIs that are installed and logged in on this computer (or a command the user wrote). */
-export type CliTool = 'claude' | 'codex' | 'agy' | 'opencode' | 'custom'
+export type CliTool = 'claude' | 'codex' | 'opencode' | 'custom'
 /** CLIs that can draw: Claude Code and OpenCode have no image tool. */
-export type CliImageTool = 'agy' | 'codex' | 'custom'
+export type CliImageTool = 'codex' | 'custom'
 export type AiProvider = 'api' | 'cli'
 export type ImageProvider = 'pollinations' | 'openai' | 'cli'
 /** Which known CLIs were found on PATH (custom has no program to look for). */
@@ -21,13 +21,11 @@ export interface CliToolInfo<T extends string = CliTool> {
 export const CLI_TOOLS: CliToolInfo[] = [
   { id: 'claude', name: 'Claude Code', bin: 'claude', note: msg('Perintah `claude`, memakai login Claude di komputer ini.') },
   { id: 'codex', name: 'Codex CLI', bin: 'codex', note: msg('Perintah `codex exec`, memakai login ChatGPT di komputer ini.') },
-  { id: 'agy', name: 'Antigravity', bin: 'agy', note: msg('Perintah `agy`, memakai login Google Antigravity di komputer ini.') },
   { id: 'opencode', name: 'OpenCode', bin: 'opencode', note: msg('Perintah `opencode run`, memakai penyedia yang sudah diatur di OpenCode. Model ditulis `penyedia/model`.') },
   { id: 'custom', name: msg('Perintah sendiri'), bin: null, note: msg('CLI lain. Prompt dikirim lewat stdin, balasan dibaca dari stdout.') }
 ]
 
 export const CLI_IMAGE_TOOLS: CliToolInfo<CliImageTool>[] = [
-  { id: 'agy', name: 'Antigravity', bin: 'agy', note: msg('Memakai alat gambar bawaan Antigravity. Satu gambar sekitar 1 menit.') },
   { id: 'codex', name: 'Codex (ChatGPT)', bin: 'codex', note: msg('Memakai alat gambar bawaan Codex dan memakai kuota paket ChatGPT-mu.') },
   { id: 'custom', name: msg('Perintah sendiri'), bin: null, note: msg('Prompt masuk lewat stdin; perintah harus menulis satu file gambar ke {output}.') }
 ]
@@ -95,53 +93,6 @@ export function extractJson(text: string): unknown {
     }
   }
   throw new Error(t('Balasan bukan JSON.'))
-}
-
-// ---------- Antigravity (agy) ----------
-
-interface AgyResult {
-  status?: string
-  response?: string
-  error?: string
-  denied_actions?: { action?: string; display_name?: string }[]
-}
-
-export const AGY_STREAM_ARGS = ['--input-format', 'stream-json', '--output-format', 'stream-json']
-
-/** Antigravity takes one `user` event on stdin. */
-export const agyInput = (prompt: string): string => `${JSON.stringify({ event: 'user', message: { content: prompt } })}\n`
-
-/** Antigravity answers with NDJSON events; the last `result` event holds the reply. */
-export function agyReply(stdout: string): string {
-  let result: AgyResult | null = null
-  for (const line of stdout.split('\n')) {
-    if (!line.startsWith('{')) continue
-    try {
-      const e = JSON.parse(line) as { event?: string; result?: AgyResult }
-      if (e.event === 'result' && e.result) result = e.result
-    } catch {
-      // not an event line
-    }
-  }
-  if (!result) throw new Error(t('Antigravity selesai tanpa mengirim hasil. Coba lagi.'))
-  if (result.status !== 'SUCCESS') throw new Error(t('Antigravity gagal: {reason}', { reason: result.error || result.status || '' }))
-  const denied = (result.denied_actions ?? []).map((d) => d.display_name || d.action).filter(Boolean)
-  if (denied.length > 0 && !(result.response ?? '').trim()) {
-    throw new Error(
-      t(
-        'Antigravity menolak menjalankan {actions} karena butuh izin yang tidak bisa ditanyakan dari aplikasi. Aplikasi sengaja tidak memakai --dangerously-skip-permissions. Beri izin sempit di pengaturan Antigravity, atau pilih CLI lain.',
-        { actions: denied.join(', ') }
-      )
-    )
-  }
-  return result.response ?? ''
-}
-
-/** Antigravity ends its image reply with the file path in <path> tags, after some progress lines. */
-export function agyImagePath(reply: string): string | null {
-  const tagged = [...reply.matchAll(/<path>\s*([\s\S]*?)\s*<\/path>/gi)].at(-1)?.[1]
-  const loose = [...reply.matchAll(/(\/[^\s"'`<>|*?]+\.(?:png|jpe?g|webp))/gi)].at(-1)?.[1]
-  return tagged || loose || null
 }
 
 // ---------- quota messages of image CLIs ----------

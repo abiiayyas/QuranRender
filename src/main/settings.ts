@@ -20,7 +20,7 @@ const DEFAULTS: Settings = {
   // Free and keyless, so a first-time user can make a background without any account.
   imageProvider: 'pollinations',
   imageModel: '',
-  imageCliTool: 'agy',
+  imageCliTool: 'codex',
   imageCliCommand: '',
   renderMsPerMpFrame: null
 }
@@ -28,7 +28,11 @@ const DEFAULTS: Settings = {
 export function getSettings(): Settings {
   const rows = getDb().prepare('SELECT key, value FROM settings').all() as { key: string; value: string }[]
   const saved = Object.fromEntries(rows.map((r) => [r.key, JSON.parse(r.value) as unknown]))
-  return { ...DEFAULTS, language: defaultLanguage(), ...saved }
+  const s: Settings = { ...DEFAULTS, language: defaultLanguage(), ...saved }
+  // A CLI that was removed from the app (Antigravity, 'agy') may still be saved: fall back instead of failing at its first use.
+  if (!CLI_TOOLS.some((x) => x.id === s.cliTool)) s.cliTool = DEFAULTS.cliTool
+  if (!CLI_IMAGE_TOOLS.some((x) => x.id === s.imageCliTool)) s.imageCliTool = DEFAULTS.imageCliTool
+  return s
 }
 
 /**
