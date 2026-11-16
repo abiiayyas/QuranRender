@@ -9,7 +9,7 @@ import { toSrt, toVtt, youtubeChapters, type SubtitleMode } from '@shared/subtit
 import { shiftSegments } from '@shared/timedSegments'
 import { advanceStatus, type ArabicScript, type Asset, type ExportOptions, type Job, type PolicyIssue, type Project, type Verse } from '@shared/types'
 import { canvasSize, verseKey, type VideoProps } from '@shared/video'
-import { runAfterExport } from './afterExport'
+import { notifyExportDone, runAfterExport } from './afterExport'
 import { ambientOffsetDb } from './ambient'
 import { handle } from './ipc'
 import { activeJobs, startJob } from './jobs'
@@ -171,6 +171,7 @@ async function start(o: ExportOptions): Promise<Job> {
       await server.close()
     }
     patchProject(p.id, { status: advanceStatus(getProject(p.id).status, 'exported') })
+    notifyExportDone(outPath)
     // Only when nothing else is running or queued: putting the Mac to sleep must not cut off another job. This job is
     // still counted until it returns, hence 1. Delayed so the finished state reaches the window first.
     if (o.after !== 'none' && activeJobs() <= 1) setTimeout(() => void runAfterExport(o.after), 1500)

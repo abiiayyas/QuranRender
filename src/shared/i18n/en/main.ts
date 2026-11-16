@@ -90,6 +90,7 @@ export const main: Dict = {
   'Menggabungkan potongan…': 'Joining the pieces…',
   'Video hasil gabungan tidak sepanjang yang seharusnya. Silakan ulangi ekspor.': 'The joined video is not as long as it should be. Please export again.',
   'Ekspor selesai': 'Export finished',
+  '{name} sudah jadi. Klik untuk membuka folder.': '{name} is ready. Click to show it in its folder.',
   'Video sudah selesai. Mac akan tidur dalam 1 menit.': 'The video is done. Your Mac will sleep in 1 minute.',
   'Video sudah selesai. Aplikasi akan ditutup dalam 1 menit.': 'The video is done. The app will close in 1 minute.',
   'Klik Batalkan bila kamu masih ingin memakainya.': 'Click Cancel if you still want to use it.',

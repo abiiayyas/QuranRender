@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
 import type { Asset } from '@shared/types'
 import { msg, t } from '@shared/i18n'
 import { Icon } from '../../../components/ui'
@@ -19,8 +19,11 @@ export const SOURCE_LABEL: Record<Asset['source'], string> = {
   ai: msg('Dibuat dengan AI')
 }
 
-const PEAKS = 1600
+const MIN_PEAKS = 1600
+const MAX_PEAKS = 20_000
 const MIN_CUT_MS = 500
+const ZOOMS = [1, 2, 4, 8, 16, 32, 64]
+const TICK_STEPS = [1, 2, 5, 10, 15, 30, 60, 120, 300, 600]
 
 /** "1:02,5", "62.5" or "1:01:02" → ms; null when unreadable. */
 function parseTime(text: string): number | null {
@@ -73,20 +76,35 @@ export function SourceCard({ asset, busy }: { asset: Asset; busy: boolean }) {
   const [peaks, setPeaks] = useState<number[]>([])
   const [cut, setCut] = useState({ inMs: 0, outMs: dur })
   const wave = useRef<HTMLDivElement>(null)
+  const scroll = useRef<HTMLDivElement>(null)
+  const keepCenter = useRef<number | null>(null)
+  const [zoom, setZoom] = useState(1)
+  const [width, setWidth] = useState(0)
+
+  // Enough detail to place a cut by eye even at full zoom: about 8 peaks per second, within what the main process allows.
+  const peakCount = Math.min(MAX_PEAKS, Math.max(MIN_PEAKS, Math.round((dur / 1000) * 8)))
 
   useEffect(() => {
     let live = true
     setPeaks([])
-    window.api.sources.waveform(projectId, asset.id, PEAKS).then(
+    window.api.sources.waveform(projectId, asset.id, peakCount).then(
       (p) => live && setPeaks(p),
       () => live && setPeaks([])
     )
     return () => {
       live = false
     }
-  }, [projectId, asset.id])
+  }, [projectId, asset.id, peakCount])
 
   useEffect(() => setCut({ inMs: 0, outMs: dur }), [asset.id, dur])
+
+  useLayoutEffect(() => {
+    const el = scroll.current
+    if (!el) return
+    const ro = new ResizeObserver(() => setWidth(el.clientWidth))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   const pct = (ms: number) => `${dur > 0 ? (Math.min(Math.max(ms, 0), dur) / dur) * 100 : 0}%`
   const msAt = (clientX: number) => {
@@ -96,6 +114,32 @@ export function SourceCard({ asset, busy }: { asset: Asset; busy: boolean }) {
   const setIn = (ms: number) => setCut((c) => ({ ...c, inMs: Math.min(Math.max(0, ms), c.outMs - MIN_CUT_MS) }))
   const setOut = (ms: number) => setCut((c) => ({ ...c, outMs: Math.max(Math.min(dur, ms), c.inMs + MIN_CUT_MS) }))
   const trimmed = cut.inMs > 0 || cut.outMs < dur
+
+  // Zoom keeps the middle of the view where it was, so the spot being trimmed does not jump away.
+  const zoomTo = (next: number) => {
+    const el = scroll.current
+    if (el && dur > 0) keepCenter.current = ((el.scrollLeft + el.clientWidth / 2) / el.scrollWidth) * dur
+    setZoom(next)
+  }
+  useLayoutEffect(() => {
+    const el = scroll.current
+    if (!el || keepCenter.current === null || dur <= 0) return
+    el.scrollLeft = (keepCenter.current / dur) * el.scrollWidth - el.clientWidth / 2
+    keepCenter.current = null
+  }, [zoom, dur])
+
+  // While playing on a zoomed strip, scroll so the playhead stays in view.
+  useEffect(() => {
+    const el = scroll.current
+    if (!el || !audio.playing || zoom === 1 || dur <= 0) return
+    const x = (audio.t / dur) * el.scrollWidth
+    if (x < el.scrollLeft || x > el.scrollLeft + el.clientWidth - 24) el.scrollLeft = Math.max(0, x - el.clientWidth * 0.1)
+  }, [audio.t, audio.playing, zoom, dur])
+
+  const pxPerSec = (width * zoom) / Math.max(1, dur / 1000)
+  const tickStep = TICK_STEPS.find((s) => s * pxPerSec >= 72) ?? TICK_STEPS[TICK_STEPS.length - 1]
+  const ticks: number[] = []
+  for (let s = 0; s * 1000 <= dur && ticks.length < 2000; s += tickStep) ticks.push(s * 1000)
 
   const handle = (which: 'in' | 'out') => {
     const set = which === 'in' ? setIn : setOut
@@ -165,26 +209,54 @@ export function SourceCard({ asset, busy }: { asset: Asset; busy: boolean }) {
         </span>
       </div>
       <div className="insp-pad">
-        <div
-          ref={wave}
-          className="src-wave"
-          onPointerDown={(e) => dur > 0 && audio.seek(msAt(e.clientX))}
-          title={t('Klik untuk memindahkan posisi pemutar')}
-        >
-          {peaks.length > 0 ? (
-            <Waveform peaks={peaks} label={t('Bentuk gelombang {name}', { name: asset.name })} />
-          ) : (
-            <span className="lane-note">{t('Menyiapkan bentuk gelombang…')}</span>
-          )}
-          <div className="src-mask" style={{ left: 0, width: pct(cut.inMs) }} />
-          <div className="src-mask" style={{ left: pct(cut.outMs), right: 0 }} />
-          {dur > 0 && (
-            <>
-              <div {...handle('in')} />
-              <div {...handle('out')} />
-              <div className="qr-playhead" style={{ left: pct(audio.t) }} />
-            </>
-          )}
+        <div className="src-zoom">
+          <span className="qr-tc qr-tc--dim" aria-live="polite">
+            {zoom}×
+          </span>
+          <button type="button" className="qr-btn qr-btn--ghost qr-btn--icon qr-btn--sm" aria-label={t('Perkecil tampilan')} disabled={zoom === ZOOMS[0]} onClick={() => zoomTo(ZOOMS[Math.max(0, ZOOMS.indexOf(zoom) - 1)])}>
+            <Icon name="zoom-out" size="sm" />
+          </button>
+          <button
+            type="button"
+            className="qr-btn qr-btn--ghost qr-btn--icon qr-btn--sm"
+            aria-label={t('Perbesar tampilan')}
+            disabled={zoom === ZOOMS[ZOOMS.length - 1]}
+            onClick={() => zoomTo(ZOOMS[Math.min(ZOOMS.length - 1, ZOOMS.indexOf(zoom) + 1)])}
+          >
+            <Icon name="zoom-in" size="sm" />
+          </button>
+        </div>
+        <div className="src-scroll" ref={scroll}>
+          <div className="src-track" style={{ width: `${zoom * 100}%` }}>
+            <div className="src-ruler" aria-hidden="true">
+              {ticks.map((ms) => (
+                <span key={ms} style={{ left: pct(ms) }}>
+                  {formatMs(ms).replace(/[,.]\d$/, '')}
+                </span>
+              ))}
+            </div>
+            <div
+              ref={wave}
+              className="src-wave"
+              onPointerDown={(e) => dur > 0 && audio.seek(msAt(e.clientX))}
+              title={t('Klik untuk memindahkan posisi pemutar')}
+            >
+              {peaks.length > 0 ? (
+                <Waveform peaks={peaks} label={t('Bentuk gelombang {name}', { name: asset.name })} />
+              ) : (
+                <span className="lane-note">{t('Menyiapkan bentuk gelombang…')}</span>
+              )}
+              <div className="src-mask" style={{ left: 0, width: pct(cut.inMs) }} />
+              <div className="src-mask" style={{ left: pct(cut.outMs), right: 0 }} />
+              {dur > 0 && (
+                <>
+                  <div {...handle('in')} />
+                  <div {...handle('out')} />
+                  <div className="qr-playhead" style={{ left: pct(audio.t) }} />
+                </>
+              )}
+            </div>
+          </div>
         </div>
 
         <div className="src-transport">

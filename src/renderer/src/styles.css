@@ -285,6 +285,11 @@ button.word-chip { font: inherit; }
 .src-main { overflow: auto; padding: var(--sp-4) var(--sp-6); display: grid; gap: var(--sp-4); align-content: start; }
 .src-foot { display: flex; align-items: center; justify-content: flex-end; gap: var(--sp-3); padding: 10px var(--sp-6); border-top: 1px solid var(--border); background: var(--bg-panel); font-size: var(--fs-13); }
 .src-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
+.src-zoom { display: flex; align-items: center; justify-content: flex-end; gap: var(--sp-2); margin-bottom: var(--sp-1); }
+.src-scroll { overflow-x: auto; overflow-y: hidden; padding-bottom: var(--sp-2); }
+.src-track { position: relative; min-width: 100%; }
+.src-ruler { position: relative; height: 18px; font-size: var(--fs-11); color: var(--text-3); font-variant-numeric: tabular-nums; }
+.src-ruler span { position: absolute; top: 2px; padding-left: 3px; border-left: 1px solid var(--border-strong); white-space: nowrap; }
 .src-wave { position: relative; height: 120px; background: var(--bg-sunken); border: 1px solid var(--border); border-radius: var(--r-ctl); cursor: pointer; touch-action: none; }
 .src-wave > .wave-svg { position: absolute; inset: 0; }
 .src-mask { position: absolute; top: 0; bottom: 0; background: var(--scrim); pointer-events: none; }

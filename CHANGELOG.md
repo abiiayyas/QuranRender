@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.11.1
+
+- **Zoom di tab Sumber:** gelombang suara punya tombol perbesar dan perkecil (1× sampai 64×) dan penggaris waktu, sehingga titik masuk dan keluar bisa ditaruh tepat pada rekaman
+  panjang. Gelombang digulir ke samping, tengah tampilan tidak bergeser saat zoom, dan tampilan mengikuti pemutar saat diputar. Detail gelombang kini sekitar 8 titik
+  per detik (sampai 20.000 titik) supaya tetap tajam saat diperbesar.
+- **Notifikasi ekspor selesai:** saat ekspor berhasil, macOS menampilkan notifikasi "Ekspor selesai"; mengkliknya menunjukkan berkas di Finder.
+
 ## 0.11.0
 
 - **Ekspor sebagian:** dialog Ekspor punya **Hanya sebagian** dengan kolom Mulai dan Sampai (`10:00`, `1:23.5`, atau detik), untuk memotong rekaman panjang jadi short tanpa

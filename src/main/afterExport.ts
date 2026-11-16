@@ -1,5 +1,6 @@
 import { execFile } from 'node:child_process'
-import { app, BrowserWindow, dialog } from 'electron'
+import { basename } from 'node:path'
+import { app, BrowserWindow, dialog, Notification, shell } from 'electron'
 import { t } from '@shared/i18n'
 import type { AfterExport } from '@shared/renderPlan'
 
@@ -12,6 +13,14 @@ function perform(action: Exclude<AfterExport, 'none'>): void {
   }
   // pmset needs no permission, unlike telling System Events to shut down.
   if (process.platform === 'darwin') execFile('pmset', ['sleepnow'], (e) => e && console.warn('[after export] sleep failed', e.message))
+}
+
+/** A system notification, so someone who left the app during a long render still hears that the video is ready. Clicking it shows the file. */
+export function notifyExportDone(outPath: string): void {
+  if (!Notification.isSupported()) return
+  const n = new Notification({ title: t('Ekspor selesai'), body: t('{name} sudah jadi. Klik untuk membuka folder.', { name: basename(outPath) }) })
+  n.on('click', () => shell.showItemInFolder(outPath))
+  n.show()
 }
 
 /**
