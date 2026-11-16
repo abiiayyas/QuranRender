@@ -39,4 +39,8 @@ mac:
   category: public.app-category.video
   identity: null
   artifactName: QuranRender-${version}-mac-${arch}.${ext}
+win:
+  target:
+    - target: nsis
+  artifactName: QuranRender-${version}-win-${arch}.${ext}
 npmRebuild: true

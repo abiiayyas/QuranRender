@@ -17,6 +17,7 @@
     "postinstall": "electron-builder install-app-deps",
     "prepare:remotion": "node scripts/prepare-remotion.mjs",
     "dist:mac": "npm run prepare:remotion && npm run build && electron-builder --mac --publish never",
+    "dist:win": "npm run prepare:remotion && npm run build && electron-builder --win --publish never",
     "test": "vitest run",
     "lint:design": "node scripts/check-design-classes.mjs",
     "lint:a11y": "node scripts/check-a11y.mjs"
