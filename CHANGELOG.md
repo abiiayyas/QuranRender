@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.11.3
+
+- **Lisensi kode diubah ke MIT** (dari GPL-3.0-or-later) untuk menghilangkan konflik copyleft dengan lisensi Remotion (ROADMAP K1). Berkas `LICENSE` kini MIT, dan `THIRD_PARTY_NOTICES.md` merangkum sumber serta lisensi teks, audio, font, gambar, FFmpeg, dan Remotion.
+- Repositori disiapkan untuk publik: `SECURITY.md`, `CONTRIBUTING.md`, templat issue (laporan bug dan permintaan fitur), dan `.commandcode/` ditambahkan ke `.gitignore`.
+
 ## 0.11.2
 
 - **Antigravity dihapus:** CLI Antigravity (`agy`) tidak lagi menjadi pilihan AI CLI untuk teks maupun CLI gambar, beserta pembaca event, prompt gambar, dan terjemahan Inggrisnya.

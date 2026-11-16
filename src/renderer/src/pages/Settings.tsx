@@ -455,7 +455,7 @@ export function Settings() {
             </Section>
 
             <Section id="about" title={t('Tentang')}>
-              <span>{t('Quran Render {version}. Lisensi GPL-3.0.', { version })}</span>
+              <span>{t('Quran Render {version}. Lisensi MIT.', { version })}</span>
               <span className="qr-help">
                 {t(
                   "Teks dan terjemahan Kemenag dari Lajnah Pentashihan Mushaf Al-Qur'an. Uthmani, QPC, dan terjemahan lain dari Quran.com. Ekspor video memakai Remotion (gratis untuk individu dan organisasi sampai 3 karyawan) dan FFmpeg."

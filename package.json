@@ -1,11 +1,11 @@
 {
   "name": "quranrender",
   "productName": "Quran Render",
-  "version": "0.11.2",
+  "version": "0.11.3",
   "description": "Ubah rekaman tilawah jadi video berteks: ayat, terjemahan, dan sorotan per kata yang sinkron dengan suara qari.",
   "main": "./out/main/index.js",
   "author": "QuranRender contributors",
-  "license": "GPL-3.0-or-later",
+  "license": "MIT",
   "private": true,
   "scripts": {
     "dev": "electron-vite dev",

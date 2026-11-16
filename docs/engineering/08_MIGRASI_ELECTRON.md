@@ -11,7 +11,7 @@
 | # | Keputusan |
 |---|---|
 | D1 | **Electron saja.** Semua crate Rust, `apps/desktop/src-tauri`, Cargo, dan CI Rust dihapus |
-| D2 | **Fitur setara Quran Caption, tetapi clean-room.** Kode, aset, string UI, dan desain Quran Caption (CC BY-NC 4.0) tidak disalin. Lisensi QuranRender tetap GPL-3.0. API publik yang juga dipakai Quran Caption (MP3Quran, Quran.com, HF aligner) boleh dipakai, karena yang dipakai adalah layanannya, bukan kodenya |
+| D2 | **Fitur setara Quran Caption, tetapi clean-room.** Kode, aset, string UI, dan desain Quran Caption (CC BY-NC 4.0) tidak disalin. Lisensi QuranRender tetap MIT. API publik yang juga dipakai Quran Caption (MP3Quran, Quran.com, HF aligner) boleh dipakai, karena yang dipakai adalah layanannya, bukan kodenya |
 | D3 | **Alur Storyset:** Beranda → stepper 4 langkah yang bisa diklik bebas → dialog Ekspor. Proyek disimpan otomatis |
 | D4 | **Render dengan Remotion.** Komposisi React yang sama dipakai untuk pratinjau (`@remotion/player`) dan ekspor (`@remotion/renderer`) |
 | D5 | **Hanya macOS** dulu, DMG x64 + arm64, tanpa tanda tangan (seperti Storyset) |

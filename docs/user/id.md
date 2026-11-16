@@ -169,7 +169,7 @@ pakai rekaman sebelum mengunggah.
 - Teks dan terjemahan Kemenag: Lajnah Pentashihan Mushaf Al-Qur'an, Kementerian Agama RI.
 - Teks Uthmani, QPC, dan terjemahan lain: Quran.com. Font KFGQPC tidak dibundel; diunduh dari CDN Quran.com.
 - Tilawah: MP3Quran dan Quran.com. Periksa hak pakai rekaman sebelum mengunggah.
-- Kode: GPL-3.0. Remotion gratis untuk individu dan organisasi sampai 3 karyawan.
+- Kode: MIT. Remotion gratis untuk individu dan organisasi sampai 3 karyawan.
 
 ## 10. Bantuan
 

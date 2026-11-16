@@ -68,7 +68,7 @@ agen AI dan kontributor: [AGENTS.md](AGENTS.md).
 
 ## Lisensi dan sumber
 
-Quran Render berlisensi GPL-3.0-or-later. Teks Arab dan terjemahan Kemenag dari Lajnah Pentashihan Mushaf Al-Qur'an
+Quran Render berlisensi MIT. Teks Arab dan terjemahan Kemenag dari Lajnah Pentashihan Mushaf Al-Qur'an
 (Kementerian Agama RI). Teks Uthmani, QPC, dan terjemahan lain dari Quran.com. Tilawah dari MP3Quran dan QDC.
 
 | Komponen | Lisensi |

@@ -170,7 +170,7 @@ use the recording before uploading.
 - Kemenag text and translation: Lajnah Pentashihan Mushaf Al-Qur'an, Indonesian Ministry of Religious Affairs.
 - Uthmani, QPC and other translations: Quran.com. KFGQPC fonts are not bundled; they download from Quran.com's CDN.
 - Recitations: MP3Quran and Quran.com. Check the right to use a recording before uploading.
-- Code: GPL-3.0. Remotion is free for individuals and organizations of up to 3 employees.
+- Code: MIT. Remotion is free for individuals and organizations of up to 3 employees.
 
 ## 10. Help
 

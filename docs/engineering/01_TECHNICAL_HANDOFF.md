@@ -17,7 +17,7 @@
    frame: tanpa `Date`, tanpa acak.
 4. **Tanpa Python di runtime.** Sinkron AI berjalan di HF Space publik; sinkron manual selalu tersedia.
 5. **Tanpa rahasia milik tim di aplikasi.** Kunci AI milik pengguna, dienkripsi dengan `safeStorage` (Keychain).
-6. **GPL-3.0.** Dependensi harus kompatibel. Font dengan lisensi non-komersial tidak dibundel.
+6. **MIT.** Dependensi harus kompatibel. Font dengan lisensi non-komersial tidak dibundel.
 
 ## 2. Proses
 

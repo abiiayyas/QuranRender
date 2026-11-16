@@ -12,7 +12,7 @@ batas layanan pihak ketiga ditulis dari ingatan dan **harus dicek ke dokumentasi
 ## 1. Keadaan saat ini (0.7.0)
 
 - Repositori `abiiayyas/QuranRender` masih **privat**, tanpa topik atau homepage.
-- Tidak ada berkas `LICENSE`; GPL-3.0 hanya tertulis di `package.json`.
+- Berkas `LICENSE` kini ada dan memakai MIT (sebelumnya hanya GPL-3.0 di `package.json`).
 - Rilis hanya **macOS x64**, DMG sekitar 377 MB, **tanpa tanda tangan** (`identity: null` di `electron-builder.yml`). Mac Apple Silicon
   memakainya lewat Rosetta. Tidak ada Windows atau Linux.
 - CI (`.github/workflows/ci.yml`) hanya memeriksa typecheck, tes, lint, dan build. Belum membuat rilis.
@@ -22,7 +22,7 @@ batas layanan pihak ketiga ditulis dari ingatan dan **harus dicek ke dokumentasi
 
 | ID | Keputusan | Mengapa penting |
 |---|---|---|
-| K1 | Apakah lisensi Remotion cocok dengan GPL-3.0? Remotion berlisensi sendiri (gratis untuk individu dan organisasi sampai 3 karyawan), sedangkan GPL melarang pembatasan tambahan. **Tebakan, bukan kesimpulan hukum**; perlu pendapat ahli lisensi | Menentukan boleh tidaknya repositori dan rilis dibuka sebagai GPL |
+| K1 | ~~Apakah lisensi Remotion cocok dengan GPL-3.0?~~ **Diputuskan (2026-11-16): lisensi kode diubah ke MIT** agar tidak ada konflik copyleft dengan lisensi Remotion. Remotion tetap gratis untuk individu dan organisasi sampai 3 karyawan; organisasi for-profit lebih besar tetap perlu Company License. | — |
 | K2 | Q5, Q8, Q9 di PRD §15.2 (anomali codepoint, sumber dan lisensi font, izin Saheeh International). PRD menyebut ketiganya wajib selesai sebelum beta publik | Gerbang beta publik |
 | K3 | Membeli Apple Developer Program (sekitar US$99 per tahun) untuk tanda tangan dan notarisasi | Tanpa itu pengguna baru melihat peringatan Gatekeeper dan pembaruan otomatis penuh tidak bisa dibuat |
 | K4 | Apakah Windows jadi prioritas untuk pengguna luar | Mayoritas calon pengguna luar memakai Windows; kode belum pernah dicoba di sana |

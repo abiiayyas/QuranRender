@@ -66,6 +66,6 @@ export const settings: Dict = {
   'Quran Render gratis dan terbuka. Kalau aplikasi ini membantumu, donasi membantu menjaga dan mengembangkannya.': 'Quran Render is free and open. If it helps you, a donation helps keep it maintained and growing.',
   'Donasi via {name}': 'Donate via {name}',
   'Donasi bersifat sukarela dan tidak membuka fitur apa pun. Semua fitur tetap bisa dipakai tanpa donasi.': 'Donations are voluntary and unlock nothing. Every feature stays available without one.',
-  'Quran Render {version}. Lisensi GPL-3.0.': 'Quran Render {version}. GPL-3.0 license.',
+  'Quran Render {version}. Lisensi MIT.': 'Quran Render {version}. MIT license.',
   "Teks dan terjemahan Kemenag dari Lajnah Pentashihan Mushaf Al-Qur'an. Uthmani, QPC, dan terjemahan lain dari Quran.com. Ekspor video memakai Remotion (gratis untuk individu dan organisasi sampai 3 karyawan) dan FFmpeg.": 'Kemenag text and translation from the Lajnah Pentashihan Mushaf Al-Qur’an. Uthmani, QPC and other translations from Quran.com. Video export uses Remotion (free for individuals and organizations of up to 3 employees) and FFmpeg.'
 }

@@ -17,3 +17,6 @@ Thumbs.db
 # Impeccable review artifacts (heavy images)
 .impeccable/review/stage4/*.png
 
+# Command Code session data
+.commandcode/
+

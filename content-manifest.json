@@ -1347,7 +1347,7 @@
       "sha256": "7afd7eb14117a3862d5d619579ec11552d6240b6640a6b5ef24d5a708e7a1a98",
       "kind": "registry",
       "source": "Registri konfigurasi build QuranRender",
-      "license": "GPL-3.0-or-later",
+      "license": "MIT",
       "attribution": "QuranRender",
       "redistribution": "bundled"
     },
@@ -1356,7 +1356,7 @@
       "sha256": "85b1af178649f99288c0e0c7a7472f73c2973cb02af33e7ea349dfb54cd0a0ee",
       "kind": "registry",
       "source": "Registri konfigurasi build QuranRender",
-      "license": "GPL-3.0-or-later",
+      "license": "MIT",
       "attribution": "QuranRender",
       "redistribution": "bundled"
     }

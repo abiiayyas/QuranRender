@@ -6,7 +6,7 @@
 | Tanggal | 2026-10-22 |
 | Pertanyaan tertunda | Q5, Q8, Q9 (§15.2) ditunda atas keputusan pemilik produk. Pertanyaan ini tidak memblokir fase 0–1, tetapi wajib selesai sebelum beta publik. |
 | Pemilik | Product Owner QuranRender |
-| Lisensi produk | GPL-3.0 (kode). Konten pihak ketiga mengikuti lisensinya masing-masing (§11) |
+| Lisensi produk | MIT (kode). Konten pihak ketiga mengikuti lisensinya masing-masing (§11) |
 | Kerangka UI | React (di dalam Tauri 2) |
 | Platform rilis 1 | Desktop: macOS (Apple Silicon & Intel), Windows 10+, Linux (x86_64) |
 | Platform berikutnya | Android & iOS (fase 3) |
