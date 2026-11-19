@@ -14,9 +14,39 @@ Thumbs.db
 *.swp
 *.swo
 
-# Impeccable review artifacts (heavy images)
-.impeccable/review/stage4/*.png
-
-# Command Code session data
+# Local AI & design harness artifacts
+.impeccable/
 .commandcode/
+AGENTS.md
 
+# Raw dataset inputs & legacy Rust dataset builder configs (compiled into resources/quran.db)
+data/
+content-manifest.json
+data-anomalies.toml
+fonts.toml
+assets/ambient/source/
+
+# Legacy Tauri icons, static HTML prototypes, and design build tools
+design/brand/icons/tauri/
+design/brand/icons/src/
+design/brand/brand-board.*
+design/brand/media/
+design/prototype/
+design/system/gallery.*
+design/tools/
+
+# Internal product notes & archived Tauri/Rust engineering docs
+docs/product/
+docs/design/
+docs/engineering/03_DATASET_PIPELINE.md
+docs/engineering/04_IMPLEMENTATION_PLAN.md
+docs/engineering/05_AUDIT_FASE_0_2.md
+docs/engineering/06_V1_HARDENING.md
+docs/engineering/08_MIGRASI_ELECTRON.md
+docs/engineering/adr/0001-*.md
+docs/engineering/adr/0002-*.md
+docs/engineering/adr/0003-*.md
+docs/engineering/adr/0004-*.md
+docs/engineering/adr/0005-*.md
+docs/engineering/adr/0006-*.md
+docs/engineering/adr/template.md

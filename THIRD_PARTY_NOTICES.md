@@ -5,10 +5,9 @@ Quran Render's own source code is licensed under
 own licences.
 
 This document lists what the application bundles (ships inside the installer)
-and what it fetches at runtime (downloads on the user's machine). The
-machine-readable record for `data/` and `assets/fonts/quran/` lives in
-[`content-manifest.json`](content-manifest.json); the ambient loops have their
-own provenance file at [`assets/ambient/SOURCES.md`](assets/ambient/SOURCES.md).
+and what it fetches at runtime (downloads on the user's machine). The ambient
+loops have their own provenance file at
+[`assets/ambient/SOURCES.md`](assets/ambient/SOURCES.md).
 
 ## Bundled content
 
@@ -16,14 +15,13 @@ own provenance file at [`assets/ambient/SOURCES.md`](assets/ambient/SOURCES.md).
 
 | | |
 | --- | --- |
-| Paths | `data/surah/*.json`, `data/juz/*.json` (compiled into the read-only `resources/quran.db`) |
+| Paths | Read-only SQLite dataset `resources/quran.db` |
 | Source | Lajnah Pentashihan Mushaf Al-Qur'an, Kementerian Agama RI (Kemenag), in the format of the `quran.kemenag.go.id` API, supplied by the product owner |
-| Licence | Bundling permission confirmed by the product owner (PRD D1, D7) |
+| Licence | Bundling permission confirmed by the product owner |
 | Attribution | Lajnah Pentashihan Mushaf Al-Qur'an, Kementerian Agama RI |
 
 The Arabic text is displayed verbatim from this source; the Indonesian
-translation is the Kemenag edition. Each file's SHA-256 is recorded in
-`content-manifest.json`.
+translation is the Kemenag edition.
 
 ### Fonts
 
@@ -86,9 +84,8 @@ licence (already done) and make FFmpeg's corresponding source available.
   organisations. See <https://www.remotion.pro/license> and
   `node_modules/remotion/LICENSE.md`.
 
-Distribution review: resolved by relicensing the project to MIT (see
-`ROADMAP.md` K1). The Remotion License still applies to Remotion's own code: a
-paid Company License remains required for for-profit organisations over
+Distribution review: resolved by relicensing the project to MIT. The Remotion
+License still applies to Remotion's own code: a paid Company License remains required for for-profit organisations over
 3 employees; individuals and organisations up to 3 employees may use it free.
 
 ### Other npm dependencies

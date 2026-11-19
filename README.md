@@ -1,79 +1,121 @@
+<div align="center">
+
+<img src="design/brand/logo/appicon.svg" alt="Logo Quran Render" width="96" />
+
 # Quran Render
 
-Aplikasi desktop untuk mengubah rekaman tilawah menjadi video berteks: ayat Arab, terjemahan, dan sorotan per kata yang
-sinkron dengan suara qari. Hasilnya MP4 (dan SRT/VTT) yang siap diunggah ke YouTube, Shorts, Reels, atau TikTok.
+**Ubah rekaman tilawah menjadi video berteks: ayat Arab, terjemahan, dan sorotan per kata yang sinkron dengan suara qari.**
 
-Antarmuka tersedia dalam Bahasa Indonesia dan English (Pengaturan > Umum > Bahasa). *The app is available in English too.*
+*Turn recitation recordings into captioned videos with Arabic verses, translations, and word-by-word highlighting synced to the reciter's voice.*
 
-Semua proyek dan berkas disimpan di komputermu. Internet hanya dipakai untuk mengunduh tilawah, teks Uthmani/QPC,
-terjemahan, sinkron AI (HF Space publik), dan AI trim (kunci API milikmu).
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Windows-lightgrey.svg)](#unduh--instalasi)
+[![CI](https://github.com/abiiayyas/QuranRender/actions/workflows/ci.yml/badge.svg)](https://github.com/abiiayyas/QuranRender/actions/workflows/ci.yml)
+[![Build](https://github.com/abiiayyas/QuranRender/actions/workflows/build.yml/badge.svg)](https://github.com/abiiayyas/QuranRender/actions/workflows/build.yml)
 
-## Alur
+[Unduh / Download](#unduh--instalasi) · [Fitur](#fitur-utama) · [Panduan (ID)](docs/user/id.md) · [User Guide (EN)](docs/user/en.md) · [Pengembangan](#menjalankan-dari-kode-sumber) · [Changelog](CHANGELOG.md)
 
-Beranda → **1 Sumber** → **2 Sinkron** → **3 Teks** → **4 Editor** → Ekspor. Semua langkah bisa dibuka kapan saja,
-dan proyek tersimpan otomatis.
+</div>
 
-| Langkah | Isi |
-|---|---|
-| Beranda | Buat proyek (surah, rentang ayat, qari, format, jenis teks Arab) atau proyek kosong; daftar proyek dengan nama surah dan langkah berikutnya |
-| 1 Sumber | Impor berkas audio/video, unduh tilawah qari (MP3Quran, QDC), atau unduh dari YouTube; potong awal dan akhir |
-| 2 Sinkron | Sinkron AI (Quranic Universal Aligner) atau timestamp bawaan QDC/MP3Quran; periksa dan rapikan segmen |
-| 3 Teks | Pasang terjemahan (Kemenag bawaan, edisi lain dari Quran.com), isi otomatis, AI trim (API atau AI CLI) untuk ayat yang terpotong, peringatan dan belah otomatis untuk teks yang terlalu panjang |
-| 4 Editor | Preset gaya, latar (warna, gambar, video dengan loop, gerak, foto stok, gambar AI), overlay (teks, gambar, nama qari, kemajuan, ajakan, gelombang suara, Subscribe/Follow berkala), timeline yang bisa dizoom, pratinjau langsung dengan sorotan per kata |
-| Ekspor | MP4 720p/1080p/4K pada 30/60 fps, SRT/VTT, chapter YouTube; diperiksa dulu oleh aturan amanah teks |
-| Thumbnail | Cover JPG di bawah 2 MB dari gambar atau bingkai video proyek, teks digambar aplikasi |
-| Publikasi | Judul, deskripsi, hashtag, dan bab per platform (Shorts, TikTok, Reels, YouTube), draf awal dari data proyek, AI opsional |
+---
 
-## Menjalankan dari kode sumber
+<!-- Tangkapan Layar / Screenshots: letakkan gambar di docs/screenshots/ lalu aktifkan baris di bawah ini -->
+<!-- ![Tampilan Editor Quran Render](docs/screenshots/editor.png) -->
 
-Butuh macOS dan Node.js 22 atau lebih baru.
+## Tentang Quran Render
+
+**Quran Render** adalah aplikasi desktop gratis dan sumber terbuka (*open source*) untuk membuat video tilawah yang siap diunggah ke **YouTube, Shorts, Reels, atau TikTok** (MP4 + subtitle SRT/VTT + bab YouTube).
+
+Antarmuka tersedia dalam **Bahasa Indonesia** dan **English** (*Pengaturan > Umum > Bahasa*). Seluruh proyek dan berkas disimpan secara lokal di komputer Anda. Koneksi internet hanya dipakai saat mengunduh rekaman qari, teks Uthmani/QPC, terjemahan tambahan, sinkron AI (Hugging Face Space publik), serta pemotongan terjemahan atau gambar AI opsional.
+
+---
+
+## Fitur Utama
+
+- **Alur Terpadu & Simpan Otomatis:** **Beranda → 1 Sumber → 2 Sinkron → 3 Teks → 4 Editor → Ekspor**, ditambah pembuat **Thumbnail** (JPG < 2 MB) dan draf teks **Publikasi** per platform.
+- **Sumber Audio Fleksibel:** Impor berkas audio/video lokal, unduh tilawah qari langsung dari **MP3Quran** atau **QDC (Quran.com)**, atau unduh dari **YouTube** (`yt-dlp`), lengkap dengan pemotongan awal/akhir (*trim*) dan pengukur gelombang suara.
+- **Sinkronisasi Per Kata:** Deteksi ayat dan waktu kata otomatis melalui layanan AI *Quranic Universal Aligner* atau timestamp bawaan QDC/MP3Quran, dilengkapi editor linimasa dan segmen manual.
+- **Amanah Teks Al-Qur'an:** Teks Arab ditampilkan verbatim dari sumber terverifikasi — **Kemenag (LPMQ)** bawaan offline, **Uthmani Hafs**, atau **QPC Madinah** — dan tidak pernah diubah oleh AI. Pemeriksaan pra-ekspor menolak ekspor bila ada segmen atau rentang kata yang tidak utuh.
+- **Terjemahan & AI Trim:** Terjemahan Kemenag tersedia bawaan serta dapat ditambah edisi lain dari Quran.com. Mendukung **Belah otomatis** dan **AI trim** (via API kompatibel OpenAI atau AI CLI lokal seperti Claude Code, Codex, OpenCode) untuk ayat yang dibaca sebagian.
+- **Pratinjau = Hasil Ekspor (WYSIWYG):** Pratinjau dan ekspor menggunakan komposisi **Remotion** yang sama: 12 preset gaya, sorotan kata demi kata, pemisah ayat/terjemahan, latar gerak prosedural, video loop (*ulang / bolak-balik / pudar*), stok foto/video (Pexels, Unsplash, Pixabay), gambar latar AI, suara latar alam, visualizer gelombang suara, serta overlay Subscribe/Follow.
+- **Ekspor Fleksibel (720p–4K, 15–60 fps):** Mendukung **Ekspor sebagian** untuk memotong rekaman panjang menjadi klip Shorts/Reels/TikTok, serta **Render per potongan** yang dapat dilanjutkan bila terputus.
+
+---
+
+## Unduh & Instalasi
+
+Unduh installer terbaru untuk **macOS** (`.dmg`) dan **Windows** (`.exe`) melalui halaman **[GitHub Releases](https://github.com/abiiayyas/QuranRender/releases/latest)**.
+
+> [!NOTE]
+> **Membuka aplikasi pertama kali (tanpa sertifikat berbayar):**
+> - **macOS (Gatekeeper):** Klik kanan aplikasi *Quran Render* di folder Applications lalu pilih **Open** → **Open** (atau izinkan lewat *System Settings > Privacy & Security > Open Anyway*).
+> - **Windows (SmartScreen):** Pada jendela *Windows protected your PC*, klik **More info** lalu pilih **Run anyway**.
+
+---
+
+## Menjalankan dari Kode Sumber
+
+Membutuhkan **Node.js 22** atau lebih baru (macOS atau Windows).
 
 ```bash
 npm install
-npm run dev          # aplikasi dengan hot reload
-npm run typecheck    # TypeScript strict (main + renderer)
-npm test             # Vitest untuk src/shared
-npm run build        # build ke out/
-npm run dist:mac     # DMG ke dist/ (arsitektur mesin build)
+npm run dev          # jalankan aplikasi dengan hot reload
+npm run typecheck    # TypeScript strict (main, preload, renderer, remotion)
+npm test             # uji unit Vitest (src/shared)
+npm run lint:design  # verifikasi kelas qr-* dan token CSS
+npm run lint:a11y    # verifikasi aksesibilitas dan kontras token
+npm run build        # build aplikasi ke out/
+npm run dist:mac     # buat installer DMG macOS ke dist/
+npm run dist:win     # buat installer NSIS Windows ke dist/
 ```
 
-## Teknologi
+Untuk memisahkan data uji dari proyek asli saat pengembangan, jalankan:
+
+```bash
+QR_USER_DATA=/tmp/qr-dev npm run dev
+```
+
+Panduan kontribusi dan detail teknis tersedia di [CONTRIBUTING.md](CONTRIBUTING.md), [docs/engineering/01_TECHNICAL_HANDOFF.md](docs/engineering/01_TECHNICAL_HANDOFF.md), dan [docs/engineering/07_BUILD_DAN_TEST.md](docs/engineering/07_BUILD_DAN_TEST.md).
+
+---
+
+## Struktur & Teknologi
+
+```text
+src/
+  main/       proses utama: database, berkas proyek, unduhan, sinkron AI, terjemahan, render
+  preload/    jembatan window.api (dibangun dari CHANNELS di src/shared/api.ts)
+  shared/     tipe, kontrak IPC, dan aturan murni (dipakai main, renderer, dan Remotion)
+  renderer/   antarmuka React
+  remotion/   komposisi video dan thumbnail
+assets/       font Arab/UI dan suara latar alam
+design/       token desain, komponen CSS, logo, dan ikon aplikasi
+resources/    dataset bawaan quran.db (read-only)
+docs/         panduan pengguna (ID/EN) dan dokumentasi teknis
+```
 
 | Bagian | Teknologi |
 |---|---|
 | Aplikasi | Electron, electron-vite, Vite |
-| Tampilan | React 19, Zustand, design system CSS di `design/system/` |
-| Data | SQLite (better-sqlite3): `studio.db` milik pengguna, `resources/quran.db` bawaan (read-only) |
-| Video | Remotion (pratinjau dan ekspor memakai komposisi yang sama), FFmpeg (`ffmpeg-static`, `ffprobe-static`) |
-| AI | API kompatibel OpenAI atau AI CLI (Claude Code, Codex, OpenCode) untuk teks; Pollinations, API OpenAI, atau CLI untuk gambar latar |
-| Stok | Pexels, Unsplash, Pixabay (kunci gratis milik pengguna) |
+| Tampilan | React 19, TypeScript, Zustand, CSS Design System |
+| Basis Data | SQLite (`better-sqlite3`): `studio.db` lokal & `resources/quran.db` bawaan |
+| Video & Media | Remotion, FFmpeg (`ffmpeg-static`, `ffprobe-static`) |
+| AI & Stok Media | API kompatibel OpenAI / AI CLI lokal, Pollinations, Pexels, Unsplash, Pixabay |
 
-```
-src/
-  main/       proses utama: database, berkas proyek, unduhan, sinkron AI, terjemahan, render
-  preload/    jembatan window.api (dibangun dari CHANNELS di src/shared/api.ts)
-  shared/     tipe, kontrak IPC, dan aturan murni yang dipakai main, renderer, dan Remotion
-  renderer/   tampilan React
-  remotion/   komposisi video (pratinjau dan ekspor)
-resources/    quran.db
-assets/fonts  font Arab dan UI
-design/       token, komponen CSS, merek
-docs/         dokumentasi produk, desain, dan teknik
-```
+---
 
-Rencana berikutnya dan keputusan yang menunggu: [docs/product/ROADMAP.md](docs/product/ROADMAP.md).
+## Lisensi & Atribusi
 
-Dokumentasi teknis: [docs/engineering/01_TECHNICAL_HANDOFF.md](docs/engineering/01_TECHNICAL_HANDOFF.md). Panduan untuk
-agen AI dan kontributor: [AGENTS.md](AGENTS.md).
+- **Kode sumber Quran Render:** Lisensi [MIT](LICENSE).
+- **Teks Al-Qur'an & Terjemahan Kemenag:** Lajnah Pentashihan Mushaf Al-Qur'an, Kementerian Agama RI.
+- **Teks Uthmani, QPC & terjemahan tambahan:** Quran.com.
+- **Tilawah:** MP3Quran dan QDC (Quran.com).
 
-## Lisensi dan sumber
-
-Quran Render berlisensi MIT. Teks Arab dan terjemahan Kemenag dari Lajnah Pentashihan Mushaf Al-Qur'an
-(Kementerian Agama RI). Teks Uthmani, QPC, dan terjemahan lain dari Quran.com. Tilawah dari MP3Quran dan QDC.
-
-| Komponen | Lisensi |
+| Komponen Pihak Ketiga | Lisensi |
 |---|---|
-| [Remotion](https://www.remotion.dev/license) | Remotion License: gratis untuk individu, nirlaba, dan perusahaan sampai 3 karyawan |
-| FFmpeg (ffmpeg-static) | GPL v3 |
-| yt-dlp (diunduh saat dipakai) | Unlicense |
-| Font LPMQ, Amiri, Inter | Lihat `assets/fonts/` |
+| [Remotion](https://www.remotion.dev/license) | Remotion License (gratis untuk individu, nirlaba, dan perusahaan hingga 3 karyawan) |
+| FFmpeg (`ffmpeg-static`) | GPL v3 |
+| `yt-dlp` (diunduh saat dipakai) | Unlicense |
+| Font LPMQ, Amiri, Inter & Audio Latar | Lihat [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) dan [assets/ambient/SOURCES.md](assets/ambient/SOURCES.md) |
+
+Pelaporan kerentanan keamanan dapat mengikuti panduan di [SECURITY.md](SECURITY.md).

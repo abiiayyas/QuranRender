@@ -2,9 +2,9 @@
 
 | Item | Nilai |
 |---|---|
-| Status | v0.2.0, arsitektur Electron (keputusan di [`08_MIGRASI_ELECTRON.md`](08_MIGRASI_ELECTRON.md)) |
+| Status | Arsitektur Electron + Remotion (keputusan di [`adr/0007-pindah-ke-electron.md`](adr/0007-pindah-ke-electron.md)) |
 | Audiens | Engineer yang mulai mengerjakan Quran Render |
-| Dokumen terkait | [`../product/PRODUCT.md`](../product/PRODUCT.md), [`02_DATABASE_SPECIFICATION.md`](02_DATABASE_SPECIFICATION.md), [`07_BUILD_DAN_TEST.md`](07_BUILD_DAN_TEST.md), [`../../AGENTS.md`](../../AGENTS.md) |
+| Dokumen terkait | [`02_DATABASE_SPECIFICATION.md`](02_DATABASE_SPECIFICATION.md), [`07_BUILD_DAN_TEST.md`](07_BUILD_DAN_TEST.md), [`adr/0007-pindah-ke-electron.md`](adr/0007-pindah-ke-electron.md) |
 
 ## 1. Aturan yang tidak bisa ditawar
 

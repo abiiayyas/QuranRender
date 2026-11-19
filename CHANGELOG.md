@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.11.4
+
+- **Repositori dirapikan untuk rilis publik:** berkas internal, arsip dokumen Tauri/Rust, dataset mentah, dan artefak prototipe dikeluarkan dari tracking Git lewat `.gitignore` (tetap tersimpan di lokal), folder ikon aplikasi dipindahkan ke `design/brand/icons/`, dan tautan di `CONTRIBUTING.md`, `THIRD_PARTY_NOTICES.md`, serta dokumentasi teknis diperbarui.
+- **`README.md` ditulis ulang** dengan tata letak ringkas untuk pengguna macOS dan Windows (termasuk ruang tangkapan layar, panduan instalasi awal, dan daftar fitur terbaru).
+- **Rilis otomatis di GitHub Actions:** workflow `build.yml` kini melampirkan installer macOS (`.dmg`) dan Windows (`.exe`) langsung ke halaman GitHub Releases saat tag versi (`v*`) di-push.
+
 ## 0.11.3
 
 - **Lisensi kode diubah ke MIT** (dari GPL-3.0-or-later) untuk menghilangkan konflik copyleft dengan lisensi Remotion (ROADMAP K1). Berkas `LICENSE` kini MIT, dan `THIRD_PARTY_NOTICES.md` merangkum sumber serta lisensi teks, audio, font, gambar, FFmpeg, dan Remotion.

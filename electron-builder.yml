@@ -1,7 +1,7 @@
 appId: id.quranrender.app
 productName: Quran Render
 directories:
-  buildResources: design/brand/icons/tauri
+  buildResources: design/brand/icons
   output: dist
 files:
   - out/**

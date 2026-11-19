@@ -72,5 +72,5 @@ meminta izin lewat klik kanan › Open.
 
 `resources/quran.db` adalah hasil build dataset terakhir (Kemenag: 114 surah, 6.236 ayat, terjemahan `id.kemenag`) dan
 di-commit apa adanya. Builder Rust `qr-dataset` dihapus pada versi 0.2.0; skema dan aturannya tetap terdokumentasi di
-[02_DATABASE_SPECIFICATION.md](02_DATABASE_SPECIFICATION.md) §3 dan [03_DATASET_PIPELINE.md](03_DATASET_PIPELINE.md).
+[02_DATABASE_SPECIFICATION.md](02_DATABASE_SPECIFICATION.md) §3.
 Untuk membangun ulang, pakai builder dari riwayat git (commit `c541f04`).
