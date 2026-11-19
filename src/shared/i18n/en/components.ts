@@ -24,5 +24,7 @@ export const components: Dict = {
   '{kind} gagal: {error}': '{kind} failed: {error}',
   'Video selesai diekspor.': 'Video exported.',
   'Thumbnail tersimpan.': 'Thumbnail saved.',
-  'Buka folder': 'Open folder'
+  'Buka folder': 'Open folder',
+  'Dukung Quran Render': 'Support Quran Render',
+  'Nanti saja': 'Maybe later'
 }

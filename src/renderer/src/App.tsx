@@ -1,6 +1,7 @@
 import { msg, t } from '@shared/i18n'
 import { useEffect } from 'react'
 import { ConfirmHost, Toasts } from './components/ui'
+import { SupportDialog } from './components/SupportDialog'
 import { errorText } from './lib/format'
 import { Home } from './pages/Home'
 import { ProjectPage } from './pages/project/ProjectPage'
@@ -33,6 +34,7 @@ export function App() {
         if (job.status === 'done' && (job.kind === 'export' || job.kind === 'thumbnail') && job.message) {
           const path = job.message
           toast('success', job.kind === 'export' ? t('Video selesai diekspor.') : t('Thumbnail tersimpan.'), { label: t('Buka folder'), run: () => void window.api.exporter.reveal(path) })
+          if (job.kind === 'export') useApp.getState().promptSupportAfterExport()
         }
       }),
       window.api.on.project((e) => {
@@ -63,6 +65,7 @@ export function App() {
       {route.name === 'project' && <ProjectPage key={route.id} id={route.id} />}
       <Toasts />
       <ConfirmHost />
+      <SupportDialog />
     </>
   )
 }

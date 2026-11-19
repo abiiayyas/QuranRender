@@ -18,15 +18,22 @@ interface Confirm {
   resolve: (ok: boolean) => void
 }
 
+const SUPPORT_COOLDOWN_MS = 3 * 24 * 60 * 60 * 1000
+const SUPPORT_STORAGE_KEY = 'quranrender.supportPromptAt'
+
 interface AppState {
   /** Mirrors the saved language; changing it remounts the app (see main.tsx) so every screen redraws in it. */
   lang: Lang
   route: Route
   toasts: Toast[]
   confirm: Confirm | null
+  supportOpen: boolean
   go(route: Route): void
   toast(kind: Toast['kind'], text: string, action?: Toast['action']): void
   dismiss(id: number): void
+  openSupport(): void
+  closeSupport(): void
+  promptSupportAfterExport(): void
 }
 
 let nextId = 1
@@ -36,13 +43,28 @@ export const useApp = create<AppState>((set, get) => ({
   route: { name: 'home' },
   toasts: [],
   confirm: null,
+  supportOpen: false,
   go: (route) => set({ route }),
   toast: (kind, text, action) => {
     const id = nextId++
     set({ toasts: [...get().toasts, { id, kind, text, action }].slice(-4) })
     setTimeout(() => get().dismiss(id), kind === 'error' ? 8000 : 4500)
   },
-  dismiss: (id) => set({ toasts: get().toasts.filter((t) => t.id !== id) })
+  dismiss: (id) => set({ toasts: get().toasts.filter((t) => t.id !== id) }),
+  openSupport: () => set({ supportOpen: true }),
+  closeSupport: () => set({ supportOpen: false }),
+  promptSupportAfterExport: () => {
+    const now = Date.now()
+    try {
+      const raw = localStorage.getItem(SUPPORT_STORAGE_KEY)
+      const prev = raw ? Number(raw) : NaN
+      if (Number.isFinite(prev) && now - prev < SUPPORT_COOLDOWN_MS) return
+      localStorage.setItem(SUPPORT_STORAGE_KEY, String(now))
+    } catch {
+      // Storage may be unavailable; avoid breaking export completion.
+    }
+    set({ supportOpen: true })
+  }
 }))
 
 /** Asks in a dialog (ConfirmHost); resolves true when confirmed. */

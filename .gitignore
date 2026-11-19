@@ -18,6 +18,7 @@ Thumbs.db
 .impeccable/
 .commandcode/
 AGENTS.md
+screenshoots/
 
 # Raw dataset inputs & legacy Rust dataset builder configs (compiled into resources/quran.db)
 data/

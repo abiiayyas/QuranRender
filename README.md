@@ -19,14 +19,70 @@
 
 ---
 
-<!-- Tangkapan Layar / Screenshots: letakkan gambar di docs/screenshots/ lalu aktifkan baris di bawah ini -->
-<!-- ![Tampilan Editor Quran Render](docs/screenshots/editor.png) -->
+<div align="center">
+  <img src="docs/screenshots/editor.png" alt="Tampilan Editor Quran Render — pratinjau ayat Arab dengan sorotan per kata, latar video, dan timeline gelombang suara" width="100%" />
+</div>
 
 ## Tentang Quran Render
 
 **Quran Render** adalah aplikasi desktop gratis dan sumber terbuka (*open source*) untuk membuat video tilawah yang siap diunggah ke **YouTube, Shorts, Reels, atau TikTok** (MP4 + subtitle SRT/VTT + bab YouTube).
 
 Antarmuka tersedia dalam **Bahasa Indonesia** dan **English** (*Pengaturan > Umum > Bahasa*). Seluruh proyek dan berkas disimpan secara lokal di komputer Anda. Koneksi internet hanya dipakai saat mengunduh rekaman qari, teks Uthmani/QPC, terjemahan tambahan, sinkron AI (Hugging Face Space publik), serta pemotongan terjemahan atau gambar AI opsional.
+
+---
+
+## Tampilan & Alur Kerja
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/screenshots/home.png" alt="Beranda Quran Render" width="100%" />
+      <br />
+      <strong>Beranda</strong> — Buat proyek baru (9:16, 16:9, 1:1; Kemenag, Uthmani Hafs, atau QPC Madinah) dan lanjutkan proyek terakhir dalam satu klik.
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/screenshots/sync.png" alt="Langkah Sinkron AI & Waktu Kata" width="100%" />
+      <br />
+      <strong>Sinkron</strong> — Deteksi ayat dan waktu per kata otomatis lewat AI Aligner, dengan editor segmen dan penyesuaian langsung di gelombang suara.
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/screenshots/translations.png" alt="Langkah Terjemahan & AI Trim" width="100%" />
+      <br />
+      <strong>Teks & Terjemahan</strong> — Kelola terjemahan Kemenag RI maupun edisi Quran.com (seperti Saheeh International) lengkap dengan AI trim untuk ayat terpotong.
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/screenshots/export.png" alt="Dialog Ekspor Video" width="100%" />
+      <br />
+      <strong>Ekspor</strong> — Render hingga 4K (15–60 fps), ekspor sebagian rentang waktu untuk Shorts/Reels, render per potongan, serta hasilkan SRT, VTT, dan chapter YouTube.
+    </td>
+  </tr>
+</table>
+
+<details>
+<summary>Lihat tangkapan layar fitur lainnya (Suara Latar Alam, Thumbnail &amp; Cover, Teks Publikasi)</summary>
+<br />
+<table>
+  <tr>
+    <td width="33%" valign="top">
+      <img src="docs/screenshots/audio.png" alt="Suara Latar Alam di Editor" width="100%" />
+      <br />
+      <strong>Suara Latar Alam</strong> — 9 suara alam bawaan tanpa musik dengan level otomatis relatif terhadap kenyaringan qari (bawaan −24 dB).
+    </td>
+    <td width="33%" valign="top">
+      <img src="docs/screenshots/thumbnail.png" alt="Pembuat Thumbnail dan Cover" width="100%" />
+      <br />
+      <strong>Thumbnail &amp; Cover</strong> — Buat cover JPG di bawah 2 MB langsung dari gambar proyek atau bingkai video.
+    </td>
+    <td width="33%" valign="top">
+      <img src="docs/screenshots/publish.png" alt="Pembuat Teks Publikasi" width="100%" />
+      <br />
+      <strong>Teks Publikasi</strong> — Draf judul, deskripsi, hashtag, dan bab siap tempel untuk YouTube Shorts, TikTok, Reels, dan YouTube (opsional diperhalus AI).
+    </td>
+  </tr>
+</table>
+</details>
 
 ---
 

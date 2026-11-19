@@ -74,6 +74,7 @@ export const home: Dict = {
   'Coba kata lain, atau tampilkan semua proyek.': 'Try another word, or show all projects.',
   'Tampilkan semua': 'Show all',
   Pengaturan: 'Settings',
+  Dukung: 'Support',
   'Proyek tanpa judul': 'Untitled project',
   Batal: 'Cancel',
   Hapus: 'Delete',

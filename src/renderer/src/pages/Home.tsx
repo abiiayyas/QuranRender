@@ -308,6 +308,10 @@ export function Home() {
       <header className="app-hd">
         <Brand />
         <span className="spacer" />
+        <button type="button" className="qr-btn qr-btn--ghost" onClick={() => useApp.getState().openSupport()}>
+          <Icon name="heart" />
+          {t('Dukung')}
+        </button>
         <button type="button" className="qr-btn qr-btn--ghost" onClick={() => go({ name: 'settings', back: { name: 'home' } })}>
           <Icon name="settings" />
           {t('Pengaturan')}

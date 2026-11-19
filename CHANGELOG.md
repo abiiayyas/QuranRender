@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.12.0
+
+- **Popup ajakan donasi (`SupportDialog`):** muncul otomatis maksimal setiap 3 hari sekali setelah ekspor video selesai, serta bisa dibuka kapan saja lewat tombol **Dukung** di header Beranda. Menampilkan tautan donasi sukarela (PayPal dan Saweria) yang sama dengan Pengaturan > Dukungan.
+- **Tangkapan layar di `README.md`:** menambahkan gambar pratinjau teroptimasi di `docs/screenshots/` (tampilan Editor utama, grid 4 langkah alur kerja, dan blok lipat untuk Suara Latar Alam, Thumbnail, serta Publikasi), sambil mengabaikan folder mentah `screenshoots/` di `.gitignore`.
+
 ## 0.11.4
 
 - **Repositori dirapikan untuk rilis publik:** berkas internal, arsip dokumen Tauri/Rust, dataset mentah, dan artefak prototipe dikeluarkan dari tracking Git lewat `.gitignore` (tetap tersimpan di lokal), folder ikon aplikasi dipindahkan ke `design/brand/icons/`, dan tautan di `CONTRIBUTING.md`, `THIRD_PARTY_NOTICES.md`, serta dokumentasi teknis diperbarui.
