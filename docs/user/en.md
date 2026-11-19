@@ -1,7 +1,7 @@
 # Quran Render — User Guide
 
 Quran Render turns a recitation recording into a captioned video: Arabic verses, translation, and word-by-word highlighting in
-sync with the reciter's voice. To run it from source, see [`07_BUILD_DAN_TEST.md`](../engineering/07_BUILD_DAN_TEST.md).
+sync with the reciter's voice. To run it from source, see [`docs/engineering/README.en.md`](../engineering/README.en.md).
 
 The app speaks English and Indonesian: **Settings > General > Language**.
 

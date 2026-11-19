@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.12.1
+
+- **Dokumentasi bahasa Inggris di repositori:** menambahkan [`README.en.md`](README.en.md) dan [`docs/engineering/README.en.md`](docs/engineering/README.en.md), pemilih bahasa di `README.md`, serta memperbarui `docs/user/README.md`, `docs/user/en.md`, dan `CONTRIBUTING.md`.
+
 ## 0.12.0
 
 - **Popup ajakan donasi (`SupportDialog`):** muncul otomatis maksimal setiap 3 hari sekali setelah ekspor video selesai, serta bisa dibuka kapan saja lewat tombol **Dukung** di header Beranda. Menampilkan tautan donasi sukarela (PayPal dan Saweria) yang sama dengan Pengaturan > Dukungan.

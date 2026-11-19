@@ -4,9 +4,9 @@
 
 # Quran Render
 
-**Ubah rekaman tilawah menjadi video berteks: ayat Arab, terjemahan, dan sorotan per kata yang sinkron dengan suara qari.**
+**Bahasa Indonesia** · [English](README.en.md)
 
-*Turn recitation recordings into captioned videos with Arabic verses, translations, and word-by-word highlighting synced to the reciter's voice.*
+**Ubah rekaman tilawah menjadi video berteks: ayat Arab, terjemahan, dan sorotan per kata yang sinkron dengan suara qari.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Windows-lightgrey.svg)](#unduh--instalasi)
