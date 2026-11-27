@@ -25,22 +25,24 @@ export function wordAt(seg: Segment, ms: number): number | null {
   return seg.words.find((w) => ms >= w.startMs && ms < w.endMs)?.idx ?? null
 }
 
-/** Shows only part of its ayah. `wordCount` unknown: only a late start counts. */
-export function isPartial(seg: Segment, wordCount?: number): boolean {
-  if (seg.kind !== 'ayah') return false
+/** Shows only part of its ayah or dua. `wordCount` unknown: only a late start counts. */
+export function isPartial(seg: Pick<Segment, 'kind' | 'wordFrom' | 'wordTo'>, wordCount?: number): boolean {
+  if (seg.kind !== 'ayah' && seg.kind !== 'dua') return false
   return seg.wordFrom > 1 || (wordCount != null && seg.wordTo < wordCount)
 }
 
-/** `2:255`, `2:255 (3–9)` for a partial ayah, or Basmalah / Isti'adzah. */
-export function segmentLabel(seg: Segment, wordCount?: number): string {
+/** `2:255`, `2:255 (3–9)` for a partial ayah, `Doa` / `Doa (1–5)`, or Basmalah / Isti'adzah. */
+export function segmentLabel(seg: Pick<Segment, 'kind' | 'surah' | 'ayah' | 'wordFrom' | 'wordTo'>, wordCount?: number): string {
   if (seg.kind === 'basmalah') return 'Basmalah'
   if (seg.kind === 'istiadzah') return "Isti'adzah"
+  if (seg.kind === 'dua') return isPartial(seg, wordCount) ? `Doa (${seg.wordFrom}–${seg.wordTo})` : 'Doa'
   const code = `${seg.surah}:${seg.ayah}`
   return isPartial(seg, wordCount) ? `${code} (${seg.wordFrom}–${seg.wordTo})` : code
 }
 
-/** Low aligner confidence or no per-word timing. Manual segments (confidence null) are trusted. */
+/** Low aligner confidence or no per-word timing. Manual and dua segments (no word highlight) are trusted. */
 export function needsReview(seg: Segment): boolean {
+  if (seg.kind === 'dua') return seg.confidence != null && seg.confidence < REVIEW_CONFIDENCE
   return (seg.confidence != null && seg.confidence < REVIEW_CONFIDENCE) || seg.words.length === 0
 }
 
@@ -152,12 +154,12 @@ export function snapMs(ms: number, targets: ReadonlyArray<number>, tolMs: number
 }
 
 /**
- * Splits an ayah segment at `ms`. With word timings the cut moves to the start of the first word that is mostly after
- * `ms`, so no word is cut; without, the word range divides by time. Each half keeps at least one word and `minMs`.
+ * Splits an ayah or dua segment at `ms`. With word timings the cut moves to the start of the first word that is mostly
+ * after `ms`, so no word is cut; without, the word range divides by time. Each half keeps at least one word and `minMs`.
  * Translations reset because both ranges changed. Null when the split is not possible.
  */
 export function splitSegmentAt(seg: Segment, ms: number, verseWordCount?: number, minMs = MIN_SEGMENT_MS): [Segment, Segment] | null {
-  if (seg.kind !== 'ayah') return null
+  if (seg.kind !== 'ayah' && seg.kind !== 'dua') return null
   const from = seg.wordFrom
   const to = verseWordCount ? Math.min(seg.wordTo, verseWordCount) : seg.wordTo
   if (to <= from) return null
@@ -195,9 +197,13 @@ export function splitSegmentAt(seg: Segment, ms: number, verseWordCount?: number
   return [head, tail]
 }
 
-/** Two halves of one ayah (adjacent or overlapping word ranges), or two of the same special kind. */
+/** Two halves of one ayah or dua (adjacent or overlapping word ranges), or two of the same special kind. */
 export function canMerge(a: Segment, b: Segment): boolean {
   if (a.kind !== b.kind) return false
+  if (a.kind === 'dua') {
+    const [x, y] = a.startMs <= b.startMs ? [a, b] : [b, a]
+    return x.duaId === y.duaId && y.wordFrom <= x.wordTo + 1 && y.wordTo >= x.wordFrom
+  }
   if (a.kind !== 'ayah') return true
   const [x, y] = a.startMs <= b.startMs ? [a, b] : [b, a]
   return x.surah === y.surah && x.ayah === y.ayah && y.wordFrom <= x.wordTo + 1 && y.wordTo >= x.wordFrom
@@ -267,8 +273,11 @@ export function specialSegment(kind: Exclude<SegmentKind, 'ayah'>, startMs: numb
   return { ...seg, words: proportionalWords(seg, basmalahVerse) }
 }
 
-/** Changes kind or ayah/word range in place; word timings are re-spread because the words changed. */
+/** Changes kind or ayah/word range in place; word timings are re-spread because the words changed (except dua, which has none). */
 export function relabel(seg: Segment, label: Pick<Segment, 'kind' | 'surah' | 'ayah' | 'wordFrom' | 'wordTo'>, verse?: Verse | null): Segment {
+  if (seg.kind === 'dua' && label.kind === 'dua') {
+    return { ...seg, wordFrom: label.wordFrom, wordTo: label.wordTo, words: [], translations: [] }
+  }
   const next: Segment =
     label.kind === 'ayah'
       ? { ...seg, ...label, translations: [] }

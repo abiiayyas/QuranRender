@@ -57,9 +57,19 @@ export function gridBands(aspect: Aspect): { top: number; bottom: number } | nul
   return aspect === '9:16' ? { top: 0.125, bottom: 0.125 } : null
 }
 
-export function defaultThumbnail(project: Pick<Project, 'surah' | 'ayahFrom' | 'ayahTo' | 'reciter' | 'background'>, surahName: string | null): ThumbnailSpec {
-  const range = project.surah && project.ayahFrom ? `Ayat ${project.ayahFrom}${project.ayahTo && project.ayahTo !== project.ayahFrom ? `–${project.ayahTo}` : ''}` : ''
+export function defaultThumbnail(project: Pick<Project, 'surah' | 'ayahFrom' | 'ayahTo' | 'reciter' | 'background' | 'dua'>, surahName: string | null): ThumbnailSpec {
   const bg = project.background
+  if (project.dua) {
+    return {
+      title: project.dua.title.slice(0, THUMBNAIL_TITLE_MAX),
+      subtitle: project.reciter.trim() || project.dua.chapterTitle,
+      position: 'center',
+      accent: THUMBNAIL_ACCENTS[0],
+      dim: 0.5,
+      assetId: bg.kind === 'image' ? bg.assetId : null
+    }
+  }
+  const range = project.surah && project.ayahFrom ? `Ayat ${project.ayahFrom}${project.ayahTo && project.ayahTo !== project.ayahFrom ? `–${project.ayahTo}` : ''}` : ''
   return {
     title: surahName ? `Surah ${surahName}` : 'Tilawah Al-Qur’an',
     subtitle: project.reciter.trim() || range,

@@ -43,6 +43,9 @@ export const sync: Dict = {
   'Sinkron otomatis gagal': 'Auto sync failed',
   'Terjadi kesalahan.': 'Something went wrong.',
   'Tutup': 'Close',
+  'Sinkronisasi doa': 'Dua sync',
+  'Audio dan teks doa dari OpenDua sudah terpasang. Bila doanya panjang, belah segmen di pemutar atau di langkah Teks.':
+    'Audio and text for this OpenDua supplication are already loaded. If the dua is long, split the segment at the playhead or in the Text step.',
 
   // SegmentList
   'Manual': 'Manual',
@@ -75,6 +78,7 @@ export const sync: Dict = {
   'Dari kata': 'From word',
   'Sampai kata': 'To word',
   'Ayat ini terdiri dari {n} kata.': 'This verse has {n} word.|This verse has {n} words.',
+  'Doa ini terdiri dari {n} kata.': 'This dua has {n} word.|This dua has {n} words.',
   'Terapkan': 'Apply',
   'Letakkan pemutar di dalam segmen ayat, di antara dua kata': 'Place the playhead inside a verse segment, between two words',
   'Belah di pemutar': 'Split at playhead',

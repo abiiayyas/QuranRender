@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react'
 import { computeSegmentFit, type SegmentFit } from '@video/fit'
 import { ensureFonts, fontSpecs } from '@video/fonts'
 import { autoSplit } from '@shared/autosplit'
+import { OPENDUA_EDITION, duaTexts, duaVerses, segmentVerseKey } from '@shared/dua'
 import { autoTrim } from '@shared/translation'
 import type { Project, Segment, SurahInfo, Verse } from '@shared/types'
-import { canvasSize, verseKey } from '@shared/video'
+import { canvasSize } from '@shared/video'
 import { fetchVerses, loadSurahs } from './quran'
 
 /** Does a segment's text fit one screen at the sizes the video really uses? */
@@ -25,7 +26,12 @@ export interface FitContext {
 
 /** Loads what measuring needs (verses in the project's script, the fonts the composition uses) and returns the checker. */
 export async function fitContext(project: Project): Promise<FitContext> {
-  const [verses, surahs] = await Promise.all([fetchVerses(project.segments, project.script), loadSurahs()])
+  const quranSegs = project.segments.filter((s) => s.kind !== 'dua')
+  const [quranVerses, surahs] = await Promise.all([
+    quranSegs.length > 0 ? fetchVerses(quranSegs, project.script) : Promise.resolve({}),
+    project.dua ? Promise.resolve([]) : loadSurahs()
+  ])
+  const verses = { ...quranVerses, ...duaVerses(project.dua) }
   await ensureFonts('studio://fonts/', fontSpecs(project.script, verses))
   const surah = surahs.find((s) => s.id === project.surah) ?? null
   const { width, height } = canvasSize(project.aspect, 1080)
@@ -67,7 +73,7 @@ export function useFitReport(project: Project): Record<string, FitInfo> {
       stale = true
       clearTimeout(timer)
     }
-  }, [project.segments, project.style, project.script, project.editions, project.reciter, project.aspect, project.surah]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [project.segments, project.style, project.script, project.editions, project.reciter, project.aspect, project.surah, project.dua]) // eslint-disable-line react-hooks/exhaustive-deps
   return report
 }
 
@@ -87,10 +93,10 @@ export async function splitLongSegments(
   /** Segments that fit once their translation is cut to their own words: cutting the Arabic would not help, trimming does. */
   let trimNeeded = 0
   const segments = project.segments.flatMap((seg) => {
-    if (seg.kind !== 'ayah' || (only && !only.has(seg.id))) return [seg]
-    const key = verseKey(seg.surah, seg.ayah)
+    if ((seg.kind !== 'ayah' && seg.kind !== 'dua') || (only && !only.has(seg.id))) return [seg]
+    const key = segmentVerseKey(seg)
     const verse = ctx.verses[key] ?? null
-    const full = wholeTexts[key]
+    const full = wholeTexts[key] ?? (primary === OPENDUA_EDITION ? duaTexts(project.dua)[key] : undefined)
     const count = verse?.words.length ?? 0
     const fits = (part: Segment): boolean => {
       const translated: Segment =

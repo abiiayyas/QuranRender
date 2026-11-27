@@ -1,5 +1,6 @@
 import { useMemo, type CSSProperties, type ReactNode } from 'react'
 import { AbsoluteFill, Audio, Freeze, Img, Loop, OffthreadVideo, Sequence, spring, useCurrentFrame } from 'remotion'
+import { activeBackgroundLayers, DEFAULT_BG_TRANSITION_MS } from '../shared/background'
 import { setLang, t } from '../shared/i18n'
 import { bounceLeg, fadeFrames, fadeLayers } from '../shared/loop'
 import { DEFAULT_MOTION, type LoopMode } from '../shared/motion'
@@ -37,26 +38,50 @@ export function QuranVideo(props: VideoProps) {
       {source && !sourceIsBg && <Audio src={assetSrc(baseUrl.asset, project.id, source)} />}
       <AmbientTrack props={props} />
       {style.frame && <FrameLines color={style.frameColor} unit={unit} />}
-      {style.showSurahName && props.surah && (
-        <div
-          dir="rtl"
-          lang="ar"
-          style={{
-            position: 'absolute',
-            top: height * SAFE_AREA[project.aspect].top,
-            left: 0,
-            right: 0,
-            textAlign: 'center',
-            fontFamily: q(FAMILY.amiri),
-            fontWeight: 700,
-            fontSize: unit * 0.055,
-            lineHeight: 1.5,
-            color: style.arabicColor,
-            textShadow: style.shadow ? textShadow(unit) : undefined
-          }}
-        >
-          {`سورة ${props.surah.nameArabic}`}
-        </div>
+      {style.showSurahName && (props.surah || project.dua) && (
+        props.surah ? (
+          <div
+            dir="rtl"
+            lang="ar"
+            style={{
+              position: 'absolute',
+              top: height * SAFE_AREA[project.aspect].top,
+              left: 0,
+              right: 0,
+              textAlign: 'center',
+              fontFamily: q(FAMILY.amiri),
+              fontWeight: 700,
+              fontSize: unit * 0.055,
+              lineHeight: 1.5,
+              color: style.arabicColor,
+              textShadow: style.shadow ? textShadow(unit) : undefined
+            }}
+          >
+            {`سورة ${props.surah.nameArabic}`}
+          </div>
+        ) : (
+          <div
+            dir="auto"
+            style={{
+              position: 'absolute',
+              top: height * SAFE_AREA[project.aspect].top,
+              left: width * SAFE_AREA[project.aspect].side,
+              right: width * SAFE_AREA[project.aspect].side,
+              textAlign: 'center',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              fontFamily: q(FAMILY.inter),
+              fontWeight: 600,
+              fontSize: unit * 0.036,
+              lineHeight: 1.4,
+              color: style.arabicColor,
+              textShadow: style.shadow ? textShadow(unit) : undefined
+            }}
+          >
+            {project.dua!.title}
+          </div>
+        )
       )}
       {style.showReciter && project.reciter.trim() !== '' && (
         <div
@@ -118,8 +143,6 @@ function BackgroundLayer({
       </>
     )
   }
-  const media = sourceIsBg ? source : bg.kind === 'image' || bg.kind === 'video' ? (bg.assetId ? assets[bg.assetId] : undefined) : undefined
-  if (!media) return null
   const blur = bg.blur > 0 ? (bg.blur * unit) / 1080 : 0
   // Blur pulls the edges in; a slight zoom keeps them off-canvas.
   const fill: CSSProperties = {
@@ -129,6 +152,43 @@ function BackgroundLayer({
     filter: blur ? `blur(${blur}px)` : undefined,
     transform: blur ? 'scale(1.08)' : undefined
   }
+  if (bg.kind === 'multi' && bg.clips && bg.clips.length > 0) {
+    const now = (frame / fps) * 1000
+    const trans = bg.transitionMs ?? DEFAULT_BG_TRANSITION_MS
+    const layers = activeBackgroundLayers(bg.clips, now, trans)
+    if (layers.length === 0) return null
+    const halfMs = trans / 2
+    return (
+      <>
+        {layers.map(({ clip, opacity }) => {
+          const media = assets[clip.assetId]
+          if (!media) return null
+          const src = assetSrc(baseUrl.asset, project.id, media)
+          if (media.kind === 'image') {
+            return (
+              <AbsoluteFill key={clip.id} style={{ opacity }}>
+                <Img src={src} style={fill} />
+              </AbsoluteFill>
+            )
+          }
+          const seqFrom = Math.max(0, Math.floor(((clip.startMs - halfMs) * fps) / 1000))
+          const seqEnd = Math.ceil(((clip.endMs + halfMs) * fps) / 1000)
+          const seqDur = Math.max(1, seqEnd - seqFrom)
+          const clipFrames = media.durationMs ? Math.max(1, Math.floor((media.durationMs * fps) / 1000)) : 0
+          return (
+            <AbsoluteFill key={clip.id} style={{ opacity }}>
+              <Sequence from={seqFrom} durationInFrames={seqDur} layout="none">
+                <LoopedVideo src={src} style={fill} clip={clipFrames} total={seqDur} fps={fps} mode={bg.loop ?? 'repeat'} />
+              </Sequence>
+            </AbsoluteFill>
+          )
+        })}
+        {dimmer}
+      </>
+    )
+  }
+  const media = sourceIsBg ? source : bg.kind === 'image' || bg.kind === 'video' ? (bg.assetId ? assets[bg.assetId] : undefined) : undefined
+  if (!media) return null
   const src = assetSrc(baseUrl.asset, project.id, media)
   let el: ReactNode
   if (media.kind === 'image') el = <Img src={src} style={fill} />
@@ -273,8 +333,10 @@ function QariOverlay({ o, t: now, end, pos, props }: TimedOverlay & { pos: CSSPr
         <div dir="auto" style={{ fontWeight: 700, fontSize: font, lineHeight: 1.25 }}>
           {name}
         </div>
-        {surah && (
-          <div style={{ fontWeight: 500, fontSize: font * 0.68, lineHeight: 1.35, color: 'rgba(255, 255, 255, 0.78)' }}>{t('Surah {name}', { name: surah.nameLatin })}</div>
+        {(surah || project.dua) && (
+          <div style={{ fontWeight: 500, fontSize: font * 0.68, lineHeight: 1.35, color: 'rgba(255, 255, 255, 0.78)' }}>
+            {surah ? t('Surah {name}', { name: surah.nameLatin }) : project.dua!.title}
+          </div>
         )}
       </div>
     </div>

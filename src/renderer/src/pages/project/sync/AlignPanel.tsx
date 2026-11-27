@@ -9,6 +9,7 @@ type Model = 'base' | 'large'
 
 /** "Sinkron otomatis (AI)": runs the cloud aligner over the source and shows its progress or last failure. */
 export function AlignPanel() {
+  const isDua = useProject((s) => !!s.project?.dua)
   const [model, setModel] = useState<Model>('base')
   const [dismissed, setDismissed] = useState<string | null>(null)
   const active = useActiveJob('align')
@@ -17,6 +18,17 @@ export function AlignPanel() {
       .filter((j) => j.kind === 'align')
       .sort((a, b) => b.createdAt - a.createdAt)[0]
   )
+
+  if (isDua) {
+    return (
+      <section className="sync-ai stack" aria-labelledby="sync-ai-title">
+        <h2 className="pn-h" id="sync-ai-title">
+          {t('Sinkronisasi doa')}
+        </h2>
+        <p className="pn-note">{t('Audio dan teks doa dari OpenDua sudah terpasang. Bila doanya panjang, belah segmen di pemutar atau di langkah Teks.')}</p>
+      </section>
+    )
+  }
 
   const start = async () => {
     const st = useProject.getState()

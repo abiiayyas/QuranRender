@@ -3,7 +3,9 @@ import { randomUUID } from 'node:crypto'
 import { existsSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { BrowserWindow, clipboard, dialog } from 'electron'
-import { AUDIO_SOURCE_NAME, draftFor, PLATFORMS, platformOf, sanitizeKit, withBackgroundCredit, type PlatformId, type PublishFacts, type PublishKit } from '@shared/publish'
+import { backgroundAssetIds } from '@shared/background'
+import { OPENDUA_CREDIT, OPENDUA_EDITION } from '@shared/dua'
+import { AUDIO_SOURCE_NAME, draftFor, PLATFORMS, platformOf, sanitizeKit, withBackgroundCredit, withDuaCredit, type PlatformId, type PublishFacts, type PublishKit } from '@shared/publish'
 import { defaultThumbnail, thumbnailSize, type ThumbnailProps } from '@shared/thumbnail'
 import type { Project } from '@shared/types'
 import { chat } from './ai'
@@ -23,6 +25,7 @@ const mmss = (ms: number): string => `${Math.floor(ms / 60000)}:${String(Math.fl
 
 function editionName(id: string): string | null {
   if (id === 'id.kemenag') return 'Kemenag RI'
+  if (id === OPENDUA_EDITION) return 'OpenDua English'
   const row = getDb().prepare('SELECT name FROM editions WHERE id = ?').get(id) as { name: string } | undefined
   return row?.name ?? null
 }
@@ -33,15 +36,34 @@ export function publishFacts(p: Project): PublishFacts {
   const label =
     p.ayahFrom && p.ayahTo ? (p.ayahFrom === p.ayahTo ? `${p.ayahFrom}` : `${p.ayahFrom}–${p.ayahTo}`) : p.ayahFrom ? `${p.ayahFrom}` : ''
   // Only stock pictures carry a credit; AI images and the user's own files get none.
-  const bgAsset = p.background.assetId && (p.background.kind === 'image' || p.background.kind === 'video') ? getAssetOrNull(p.background.assetId) : null
-  const credit = bgAsset?.source === 'stock' ? bgAsset.meta.credit : null
+  const credits = [
+    ...new Set(
+      backgroundAssetIds(p.background)
+        .map((id) => getAssetOrNull(id))
+        .filter((a): a is NonNullable<typeof a> => a?.source === 'stock' && typeof a.meta.credit === 'string' && a.meta.credit.trim() !== '')
+        .map((a) => String(a.meta.credit).trim())
+    )
+  ]
+  const backgroundCredit = credits.length > 0 ? credits.join(' · ') : null
+  if (p.dua) {
+    return {
+      surahName: p.dua.title,
+      ayahLabel: '',
+      duaTitle: p.dua.title,
+      duaCredit: OPENDUA_CREDIT,
+      reciter: p.reciter,
+      translationName: p.editions[0] ? editionName(p.editions[0]) : null,
+      audioSource: AUDIO_SOURCE_NAME.opendua,
+      backgroundCredit
+    }
+  }
   return {
     surahName: surah?.nameLatin ?? (p.surah ? `Surah ${p.surah}` : 'Al-Qur’an'),
     ayahLabel: surah ? label : '',
     reciter: p.reciter,
     translationName: p.editions[0] ? editionName(p.editions[0]) : null,
     audioSource: (source && AUDIO_SOURCE_NAME[source.source]) ?? null,
-    backgroundCredit: typeof credit === 'string' && credit.trim() ? credit.trim() : null
+    backgroundCredit
   }
 }
 
@@ -49,7 +71,7 @@ export function publishFacts(p: Project): PublishFacts {
 function themeLines(p: Project): string[] {
   const edition = p.editions[0]
   return p.segments
-    .filter((s) => s.kind === 'ayah')
+    .filter((s) => s.kind === 'ayah' || s.kind === 'dua')
     .slice(0, 4)
     .map((s) => s.translations.find((x) => x.edition === edition)?.text ?? '')
     .filter(Boolean)
@@ -79,13 +101,14 @@ async function generate(projectId: string, platforms: PlatformId[]) {
     const pf = platformOf(id)
     return `- "${id}" (${pf.label}): ${pf.hasTitle ? `title up to ${pf.titleMax} characters, ` : 'no title (leave it empty), '}${id === 'youtube' ? 'body of 2 to 3 short paragraphs' : 'body of one or two short sentences'}`
   })
+  const subject = facts.duaTitle ? 'Islamic supplication (dua)' : 'Qur’an recitation'
   const reply = await chat(
     [
       {
         role: 'system',
         content: [
-          `You write upload copy for videos of Qur’an recitation, in warm, polite ${getLang() === 'en' ? 'English' : 'Indonesian'}.`,
-          'Rules: never write, quote, or paraphrase Qur’anic Arabic or ayah wording; never state virtues, rewards, or claims about the reciter that the facts do not give; no clickbait.',
+          `You write upload copy for videos of ${subject}, in warm, polite ${getLang() === 'en' ? 'English' : 'Indonesian'}.`,
+          'Rules: never write, quote, or paraphrase Arabic wording; never state virtues, rewards, or claims about the reciter that the facts do not give; no clickbait.',
           'Use only the facts given. Say who recited and which translation was used when the facts have it.',
           'Hashtags: 3 to 6, each starting with #, no spaces inside, no punctuation inside.',
           `Return only JSON shaped like {"<platform>": {"title": string, "body": string, "hashtags": string}} for these platforms:\n${spec.join('\n')}`
@@ -97,7 +120,9 @@ async function generate(projectId: string, platforms: PlatformId[]) {
   )
   const kit = sanitizeKit(parseJson(reply), platforms, fallback)
   const out: PublishKit = {}
-  for (const id of platforms) if (kit[id]) out[id] = withBackgroundCredit(kit[id], facts.backgroundCredit)
+  for (const id of platforms) {
+    if (kit[id]) out[id] = withDuaCredit(withBackgroundCredit(kit[id], facts.backgroundCredit), facts.duaCredit)
+  }
   return out
 }
 

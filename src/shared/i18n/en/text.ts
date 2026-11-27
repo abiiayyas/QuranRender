@@ -14,6 +14,7 @@ export const text: Dict = {
   "Isti'adzah": "Isti'adha",
   'Surah {id}': 'Surah {id}',
   '{name} {ayah} · kata {from}–{to} dari {total}': '{name} {ayah} · words {from}–{to} of {total}',
+  '{name} · kata {from}–{to} dari {total}': '{name} · words {from}–{to} of {total}',
   'Teks dan terjemahan': 'Text and translation',
   '{n} segmen': '{n} segment|{n} segments',
   '{n} perlu dicek': '{n} to check',
@@ -78,6 +79,8 @@ export const text: Dict = {
   'Daftar terjemahan belum bisa dimuat.': 'The translation list could not be loaded.',
   'Coba lagi': 'Try again',
   'Terjemahan teratas menjadi terjemahan utama di video dan subtitle.': 'The top translation is the primary one in the video and subtitles.',
+  'Terjemahan doa diambil dari OpenDua. Bila doa panjang dibelah, Anda bisa menyunting atau memotong terjemahannya dengan AI per segmen.':
+    'The dua translation comes from OpenDua. When a long dua is split, you can edit or AI-trim its translation per segment.',
   'Tambah terjemahan': 'Add translation',
 
   // EditionPicker

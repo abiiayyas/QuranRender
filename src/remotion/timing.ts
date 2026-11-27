@@ -1,5 +1,5 @@
+import { segmentVerseKey } from '../shared/dua'
 import type { Segment, Verse, WordTiming } from '../shared/types'
-import { verseKey } from '../shared/video'
 
 export const ISTIADZAH = 'أَعُوذُ بِاللَّهِ مِنَ الشَّيْطَانِ الرَّجِيمِ'
 
@@ -19,7 +19,7 @@ export function activeSegment(segments: ReadonlyArray<Segment>, t: number): Segm
 /** Words a segment shows, plus the verse they came from (for QPC page fonts). */
 export function segmentWords(seg: Segment, verses: Record<string, Verse>): { words: DisplayWord[]; verse: Verse | null } {
   if (seg.kind === 'istiadzah') return { words: ISTIADZAH.split(' ').map((text, i) => ({ text, idxs: [i + 1] })), verse: null }
-  const verse = seg.kind === 'basmalah' ? verses[verseKey(1, 1)] : verses[verseKey(seg.surah, seg.ayah)]
+  const verse = verses[segmentVerseKey(seg)]
   if (!verse) return { words: [], verse: null }
   const all = seg.kind === 'basmalah' || seg.wordFrom < 1
   const from = all ? 1 : seg.wordFrom

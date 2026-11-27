@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto'
 import { cpSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { DEFAULT_STYLE } from '@shared/style'
-import type { Asset, Job, JobKind, Project, ProjectBundle, ProjectInit, ProjectSummary } from '@shared/types'
+import type { Asset, ExportJobItem, Job, JobKind, Project, ProjectBundle, ProjectInit, ProjectSummary } from '@shared/types'
 import { getDb } from './db'
 import { emit } from './events'
 import { assetUrl, projectDir, projectsRoot } from './paths'
@@ -80,6 +80,7 @@ function summary(p: Project): ProjectSummary {
     status: p.status,
     aspect: p.aspect,
     ...coverage(p),
+    duaTitle: p.dua?.title ?? null,
     reciter: p.reciter,
     durationMs: src?.durationMs ?? null,
     segmentCount: p.segments.length,
@@ -239,6 +240,30 @@ export function jobsOf(projectId: string): Job[] {
       .prepare('SELECT * FROM jobs WHERE project_id = ? AND updated_at > ? ORDER BY created_at')
       .all(projectId, Date.now() - 86_400_000) as JobRow[]
   ).map(toJob)
+}
+
+/** Recent and active export jobs across all projects, newest first, for the global render queue. */
+export function recentExportJobs(): ExportJobItem[] {
+  const rows = getDb()
+    .prepare(
+      `SELECT j.*, p.data_json AS project_json
+       FROM jobs j
+       LEFT JOIN projects p ON p.id = j.project_id
+       WHERE j.kind = 'export' AND (j.status IN ('queued', 'running') OR j.updated_at > ?)
+       ORDER BY j.created_at DESC`
+    )
+    .all(Date.now() - 86_400_000) as (JobRow & { project_json: string | null })[]
+  return rows.map((r) => {
+    let projectTitle: string | null = null
+    if (r.project_json) {
+      try {
+        projectTitle = (JSON.parse(r.project_json) as { title?: string }).title ?? null
+      } catch {
+        projectTitle = null
+      }
+    }
+    return { ...toJob(r), projectTitle }
+  })
 }
 
 /** A job cannot survive a restart: whatever was queued or running is marked failed. */

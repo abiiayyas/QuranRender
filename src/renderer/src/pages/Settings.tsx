@@ -5,10 +5,12 @@ import { LANGS, msg, t } from '@shared/i18n'
 import { SUPPORT_LINKS } from '@shared/support'
 import type { KeyStatus, Settings as SettingsT } from '@shared/types'
 import { Icon, Segmented } from '../components/ui'
+import { RenderStatusPill } from '../components/RenderStatusPill'
 import { errorText } from '../lib/format'
 import { applyLanguage } from '../lib/language'
 import { applyTheme } from '../lib/theme'
 import { toast, useApp } from '../store/app'
+import { useUpdater } from '../store/updater'
 import { SCRIPTS } from './Home'
 import { StorageSection } from './StorageSection'
 
@@ -88,6 +90,7 @@ function Section({ id, title, lead, children }: { id: SectionId; title: string; 
 export function Settings() {
   const route = useApp((s) => s.route)
   const go = useApp((s) => s.go)
+  const updateState = useUpdater((s) => s.state)
   const [s, setS] = useState<SettingsT | null>(null)
   const [key, setKey] = useState<KeyStatus | null>(null)
   const [newKey, setNewKey] = useState('')
@@ -164,6 +167,8 @@ export function Settings() {
           {t('Kembali')}
         </button>
         <h1 className="st-name">{t('Pengaturan')}</h1>
+        <span className="spacer" />
+        <RenderStatusPill />
       </header>
       <main className="step-scroll" ref={scroller}>
         <div className="st-layout">
@@ -461,6 +466,45 @@ export function Settings() {
                   "Teks dan terjemahan Kemenag dari Lajnah Pentashihan Mushaf Al-Qur'an. Uthmani, QPC, dan terjemahan lain dari Quran.com. Ekspor video memakai Remotion (gratis untuk individu dan organisasi sampai 3 karyawan) dan FFmpeg."
                 )}
               </span>
+              <div className="upd-box">
+                <label className="qr-choice">
+                  <input
+                    type="checkbox"
+                    className="qr-check"
+                    checked={s.autoCheckUpdates !== false}
+                    onChange={(e) => void set({ autoCheckUpdates: e.target.checked })}
+                  />
+                  {t('Periksa pembaruan otomatis saat aplikasi dibuka')}
+                </label>
+                <div className="card-actions">
+                  <button
+                    type="button"
+                    className="qr-btn qr-btn--secondary qr-btn--sm"
+                    disabled={updateState.status === 'checking' || updateState.status === 'downloading'}
+                    onClick={() => void useUpdater.getState().check()}
+                  >
+                    <Icon name="rotate-ccw" size="sm" />
+                    {updateState.status === 'checking' ? t('Memeriksa pembaruan…') : t('Periksa pembaruan')}
+                  </button>
+                  {updateState.status === 'up-to-date' && <span className="qr-badge qr-badge--success">{t('Versi sudah paling baru')}</span>}
+                  {updateState.status === 'available' && updateState.info && (
+                    <button type="button" className="qr-btn qr-btn--primary qr-btn--sm" onClick={() => void useUpdater.getState().download()}>
+                      <Icon name="download" size="sm" />
+                      {t('Unduh & pasang v{version}', { version: updateState.info.latestVersion })}
+                    </button>
+                  )}
+                  {updateState.status === 'downloading' && (
+                    <span className="muted">{t('Mengunduh pembaruan… {pct}%', { pct: Math.round(updateState.progress * 100) })}</span>
+                  )}
+                  {updateState.status === 'downloaded' && (
+                    <button type="button" className="qr-btn qr-btn--primary qr-btn--sm" onClick={() => void useUpdater.getState().open()}>
+                      <Icon name="folder-open" size="sm" />
+                      {t('Buka installer')}
+                    </button>
+                  )}
+                </div>
+                {updateState.status === 'error' && updateState.error && <p className="qr-error">{updateState.error}</p>}
+              </div>
             </Section>
           </div>
         </div>

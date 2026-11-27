@@ -12,6 +12,7 @@ export const SOURCE_LABEL: Record<Asset['source'], string> = {
   local: msg('Berkas di komputer'),
   mp3quran: 'MP3Quran',
   qdc: 'Quran.com (QDC)',
+  opendua: 'OpenDua',
   youtube: 'YouTube',
   trim: msg('Hasil potongan'),
   frame: msg('Bingkai video'),

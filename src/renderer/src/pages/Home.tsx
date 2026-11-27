@@ -4,10 +4,14 @@ import { STATUS_ORDER, type Aspect, type ArabicScript, type ProjectStatus, type 
 import logoDark from '../../../../design/brand/logo/playhead-lockup-dark.svg'
 import logoLight from '../../../../design/brand/logo/playhead-lockup-light.svg'
 import { LookThumb } from '../components/LookThumb'
+import { RenderStatusPill } from '../components/RenderStatusPill'
+import { UpdateBanner } from '../components/UpdateBanner'
 import { Icon, RangePicker, Segmented, Sheet } from '../components/ui'
 import { errorText, formatDate, formatMs } from '../lib/format'
 import { rangeLabel, useSurahs } from '../lib/quran'
 import { confirmDialog, toast, useApp } from '../store/app'
+import { useJobs } from '../store/jobs'
+import { BatchExportDialog } from './BatchExportDialog'
 
 export const ASPECTS: { value: Aspect; label: string }[] = [
   { value: '9:16', label: '9:16 Shorts/Reels' },
@@ -94,6 +98,14 @@ function Progress({ status }: { status: ProjectStatus }) {
 
 /** Which surah and verses a project covers, so a list of projects can be told apart at a glance. */
 function SurahLine({ p, surah, surahs }: { p: ProjectSummary; surah: SurahInfo | undefined; surahs: SurahInfo[] }) {
+  if (p.duaTitle) {
+    return (
+      <span className="pl-surah">
+        <span className="pl-surah__no">{t('Doa')}</span>
+        <b>{p.duaTitle}</b>
+      </span>
+    )
+  }
   if (!p.surah) return <span className="pl-surah pl-surah--none">{t('Surah belum dipilih')}</span>
   if (p.surahTo) {
     // A recording that runs through several surahs: name both ends, and say how many it covers.
@@ -250,6 +262,9 @@ export function Home() {
   const [script, setScript] = useState<ArabicScript>('kemenag')
   const [name, setName] = useState('')
   const [blankOpen, setBlankOpen] = useState(false)
+  const batchOpen = useJobs((s) => s.batchOpen)
+  const openBatch = useJobs((s) => s.openBatch)
+  const closeBatch = useJobs((s) => s.closeBatch)
   const [busy, setBusy] = useState(false)
   const [filter, setFilter] = useState<Filter>('all')
   const [sort, setSort] = useState<Sort>('recent')
@@ -308,6 +323,7 @@ export function Home() {
       <header className="app-hd">
         <Brand />
         <span className="spacer" />
+        <RenderStatusPill />
         <button type="button" className="qr-btn qr-btn--ghost" onClick={() => useApp.getState().openSupport()}>
           <Icon name="heart" />
           {t('Dukung')}
@@ -319,6 +335,7 @@ export function Home() {
       </header>
       <main className="step-scroll home-scroll">
         <div className="home-wrap">
+          <UpdateBanner />
           <div className="home-greet">
             <p className="home-greet__hi">{t('Assalamu’alaikum, selamat {part}.', { part: dayPart(new Date().getHours()) })}</p>
             <p className="home-greet__sub">
@@ -438,6 +455,10 @@ export function Home() {
                       <option value="name">{t('Nama')}</option>
                     </select>
                   </span>
+                  <button type="button" className="qr-btn qr-btn--secondary qr-btn--sm" onClick={openBatch}>
+                    <Icon name="film" size="sm" />
+                    {t('Ekspor batch')}
+                  </button>
                 </>
               )}
             </div>
@@ -477,6 +498,7 @@ export function Home() {
         </div>
       </main>
       {blankOpen && <BlankProjectSheet aspect={aspect} script={script} onClose={() => setBlankOpen(false)} />}
+      {batchOpen && projects && <BatchExportDialog projects={projects} onClose={closeBatch} />}
     </div>
   )
 }

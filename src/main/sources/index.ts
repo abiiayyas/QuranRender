@@ -12,6 +12,7 @@ import { getAsset, getProject, insertAsset, patchProject } from '../repo'
 import { startDownload } from './download'
 import { AUDIO_EXT, checkFile, IMAGE_EXT, importMediaFile, importSource, pickFile, VIDEO_EXT } from './importFile'
 import { mp3quranReciters } from './mp3quran'
+import { openDuaEntries, startDownloadDua } from './opendua'
 import { qdcReciters } from './qdc'
 import { startYoutube } from './ytdlp'
 
@@ -106,6 +107,8 @@ export function registerSourcesIpc(): void {
   })
 
   handle('sources', 'download', (projectId, reciterId) => startDownload(projectId, reciterId))
+  handle('sources', 'duas', () => openDuaEntries())
+  handle('sources', 'downloadDua', (projectId, entryId) => startDownloadDua(projectId, entryId))
   handle('sources', 'youtube', (projectId, url) => startYoutube(projectId, url))
   handle('sources', 'trim', (projectId, inMs, outMs) => startTrim(projectId, inMs, outMs))
   handle('sources', 'waveform', (projectId, assetId, count) => assetPeaks(projectId, assetId, count))

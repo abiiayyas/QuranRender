@@ -41,7 +41,7 @@ function candidates(seg: Segment, verse: Verse | null): { ms: number; score: num
 export function autoSplit(seg: Segment, verse: Verse | null, fits: (part: Segment) => boolean): Segment[] {
   const out: Segment[] = []
   const visit = (s: Segment): void => {
-    if (s.kind !== 'ayah' || fits(s) || out.length >= MAX_PARTS) {
+    if ((s.kind !== 'ayah' && s.kind !== 'dua') || fits(s) || out.length >= MAX_PARTS) {
       out.push(s)
       return
     }

@@ -142,6 +142,18 @@ export const dialogs: Dict = {
   'Mac tidak tidur selama ekspor berjalan.': 'Your Mac stays awake while the export runs.',
   'Dijalankan hanya bila ekspor berhasil, setelah hitung mundur 1 menit yang bisa dibatalkan.': 'Only done if the export succeeds, after a 1-minute countdown you can cancel.',
   'Perkiraan lama render: {time}.': 'Estimated render time: {time}.',
+  'Kamu bisa menutup jendela ini; render tetap berjalan di latar belakang dan progresnya tampil di bar atas.':
+    'You can close this window; rendering keeps running in the background with progress shown in the top bar.',
+  'Buka antrean render': 'Open render queue',
+  'Ekspor batch': 'Batch export',
+  '{n} proyek masuk antrean render ({skipped} dilewati karena belum siap).':
+    '{n} project added to the render queue ({skipped} skipped because not ready).|{n} projects added to the render queue ({skipped} skipped because not ready).',
+  '{n} proyek masuk antrean render.': '{n} project added to the render queue.|{n} projects added to the render queue.',
+  'Masukkan {n} ke antrean': 'Queue {n} export|Queue {n} exports',
+  'Pilih proyek yang akan dirender berurutan': 'Select projects to render sequentially',
+  'Pilih semua yang siap': 'Select all ready',
+  'Kosongkan': 'Clear',
+  'Belum siap diekspor': 'Not ready to export',
   'Ini perkiraan kasar; setelah ekspor pertama, angkanya menyesuaikan dengan komputermu.': 'This is a rough guess; after your first export it adjusts to your computer.',
   'Disesuaikan dengan kecepatan ekspor sebelumnya di komputer ini.': 'Adjusted to the speed of earlier exports on this computer.',
   'sekitar {n} menit': 'about {n} min',

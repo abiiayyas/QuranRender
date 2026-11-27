@@ -44,13 +44,18 @@ function ProjectPictures({ onUse }: { onUse: (asset: Asset) => void }) {
 }
 
 /** Pick a background from stock photos and videos, or make one with AI. */
-export function BackgroundPicker({ onClose }: { onClose: () => void }) {
+export function BackgroundPicker({ onClose, onPick }: { onClose: () => void; onPick?: (asset: Asset) => void }) {
   const [tab, setTab] = useState<Tab>('stock')
 
   const use = (asset: Asset) => {
+    if (onPick) {
+      onPick(asset)
+      onClose()
+      return
+    }
     const cur = useProject.getState().project
     if (!cur) return
-    useProject.getState().update({ background: { ...cur.background, kind: asset.kind === 'image' ? 'image' : 'video', assetId: asset.id } })
+    useProject.getState().update({ background: { ...cur.background, kind: asset.kind === 'image' ? 'image' : 'video', assetId: asset.id, clips: [] } })
     toast('success', t('Latar sudah diganti.'))
     onClose()
   }

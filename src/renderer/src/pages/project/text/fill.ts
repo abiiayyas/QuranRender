@@ -1,3 +1,4 @@
+import { OPENDUA_EDITION, duaTexts, duaVerses } from '@shared/dua'
 import { fillTranslations } from '@shared/translation'
 import type { Segment } from '@shared/types'
 import { useProject } from '../../../store/project'
@@ -46,9 +47,13 @@ export async function fillProject(editionIds: string[]): Promise<number> {
   const spans = spansOf(before.segments)
 
   const counts: Record<string, number> = {}
+  for (const [key, verse] of Object.entries(duaVerses(before.dua))) counts[key] = verse.words.length
   for (const [s, [f, t]] of spans)
     for (const v of await window.api.quran.verses(s, f, t, 'kemenag')) counts[`${v.surah}:${v.ayah}`] = v.words.length
-  const texts = await Promise.all(editionIds.map((ed) => editionTexts(ed, spans)))
+  const dTexts = duaTexts(before.dua)
+  const texts = await Promise.all(
+    editionIds.map((ed) => (ed === OPENDUA_EDITION ? Promise.resolve(dTexts) : editionTexts(ed, spans)))
+  )
 
   // The user may have edited while the texts loaded: fill the current segments.
   const project = useProject.getState().project

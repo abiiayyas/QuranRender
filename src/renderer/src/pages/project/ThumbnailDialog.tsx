@@ -45,10 +45,10 @@ export function ThumbnailDialog({ onClose }: { onClose: () => void }) {
 
   // The dialog can open before the surah list has arrived; the default title then lacks the name. Fill it once, unedited.
   useEffect(() => {
-    if (!project.thumbnail && surahName) useProject.getState().applyPatch({ thumbnail: defaultThumbnail(project, surahName) })
+    if (!project.thumbnail && (surahName || project.dua)) useProject.getState().applyPatch({ thumbnail: defaultThumbnail(project, surahName) })
     // Only when the name first becomes known.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [surahName])
+  }, [surahName, project.dua])
 
   // Remember which version of the thumbnail a finished save holds, to tell "Tersimpan" from "Belum disimpan".
   useEffect(() => {

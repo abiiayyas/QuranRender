@@ -1,8 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { segmentVerseKey } from '@shared/dua'
 import { t } from '@shared/i18n'
 import { segmentLabel, snapMs, type Edge } from '@shared/segments'
 import type { Segment, Verse } from '@shared/types'
-import { verseKey } from '@shared/video'
 import { Icon } from '../../../components/ui'
 import { Waveform } from '../../../components/Waveform'
 import { formatMs } from '../../../lib/format'
@@ -138,7 +138,7 @@ export function SyncTimeline({
           </div>
           <div className="sync-tl__clips">
             {segments.map((s) => {
-              const label = segmentLabel(s, verses[verseKey(s.surah, s.ayah)]?.words.length)
+              const label = segmentLabel(s, verses[segmentVerseKey(s)]?.words.length)
               const cls = ['qr-clip', s.kind !== 'ayah' && 'is-special', s.id === selectedId && 'is-selected'].filter(Boolean).join(' ')
               const edge = (which: Edge) => (
                 <span

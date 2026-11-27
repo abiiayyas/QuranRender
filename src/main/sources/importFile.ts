@@ -1,4 +1,6 @@
 import { t } from '@shared/i18n'
+import { OPENDUA_EDITION } from '@shared/dua'
+import { KEMENAG } from '@shared/translation'
 import { randomUUID } from 'node:crypto'
 import { copyFile, mkdir, rename, rm, stat } from 'node:fs/promises'
 import { basename, extname, join } from 'node:path'
@@ -106,7 +108,14 @@ export async function importSource(
     meta: o.meta ?? {}
   })
   const cur = getProject(projectId)
-  patchProject(projectId, { sourceAssetId: asset.id, segments: [], status: advanceStatus(cur.status, 'source') })
+  const resetDua =
+    o.source !== 'opendua' && cur.dua
+      ? {
+          dua: null,
+          ...(cur.editions.length === 1 && cur.editions[0] === OPENDUA_EDITION ? { editions: [KEMENAG] } : {})
+        }
+      : {}
+  patchProject(projectId, { sourceAssetId: asset.id, segments: [], status: advanceStatus(cur.status, 'source'), ...resetDua })
   return asset
 }
 

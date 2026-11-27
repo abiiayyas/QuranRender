@@ -4,7 +4,9 @@ export const source: Dict = {
   // SourceStep
   'Berkas': 'File',
   'Qari': 'Reciter',
+  'Doa': 'Dua',
   'Mengunduh tilawah': 'Downloading recitation',
+  'Mengunduh doa': 'Downloading dua',
   'Menyiapkan yt-dlp': 'Preparing yt-dlp',
   'Mengunduh dari YouTube': 'Downloading from YouTube',
   'Memotong sumber': 'Trimming source',
@@ -13,14 +15,19 @@ export const source: Dict = {
   'Asal rekaman': 'Recording origin',
   'Sumber proyek': 'Project source',
   'Belum ada rekaman': 'No recording yet',
-  'Silakan impor berkas audio atau video, unduh tilawah qari, atau ambil dari YouTube melalui panel di kiri.':
-    'Import an audio or video file, download a reciter’s recitation, or get one from YouTube using the panel on the left.',
+  'Silakan impor berkas audio atau video, unduh tilawah qari, ambil dari YouTube, atau pilih doa OpenDua melalui panel di kiri.':
+    'Import an audio or video file, download a reciter’s recitation, get one from YouTube, or pick an OpenDua supplication using the panel on the left.',
   'Tambahkan rekaman terlebih dahulu.': 'Add a recording first.',
+  '{n} segmen doa siap. Silakan periksa di langkah Sinkron.':
+    '{n} dua segment is ready. Check it in the Sync step.|{n} dua segments are ready. Check them in the Sync step.',
   '{n} segmen sudah siap dari waktu bawaan qari. Silakan periksa di langkah Sinkron.':
     '{n} segment is ready from the reciter’s built-in timing. Check it in the Sync step.|{n} segments are ready from the reciter’s built-in timing. Check them in the Sync step.',
   'Rekaman siap disinkronkan dengan ayat.': 'The recording is ready to sync with the verses.',
   'Lanjut ke Sinkron': 'Continue to Sync',
   'Detail proyek': 'Project details',
+  'Bab': 'Chapter',
+  'Teks Arab dan terjemahan Inggris diambil langsung dari OpenDua (Hisn al-Muslim).':
+    'Arabic text and English translation are taken directly from OpenDua (Hisn al-Muslim).',
   'Rentang ayat': 'Verse range',
   'Rentang dipakai saat mengunduh tilawah qari dan saat sinkronisasi. Mengubahnya tidak memotong rekaman.':
     'The range is used when downloading a reciter’s recitation and when syncing. Changing it does not trim the recording.',
@@ -69,6 +76,18 @@ export const source: Dict = {
 
   // YoutubePanel
   'Unduhan gagal': 'Download failed',
+
+  // DuaPanel
+  'Doa (OpenDua)': 'Dua (OpenDua)',
+  'Cari doa': 'Search duas',
+  'Cari judul atau bab doa': 'Search dua title or chapter',
+  'Daftar doa tidak bisa dimuat': 'Couldn’t load the dua list',
+  'Memuat daftar doa…': 'Loading duas…',
+  'Daftar doa': 'Dua list',
+  'Tidak ada doa yang cocok.': 'No matching duas.',
+  'Unduh doa': 'Download dua',
+  'Data & audio Hisn al-Muslim dari OpenDua (CC BY 4.0) oleh Muhammad Jumah.':
+    'Hisn al-Muslim data & audio from OpenDua (CC BY 4.0) by Muhammad Jumah.',
   'Alamat video': 'Video link',
   'Silakan masukkan alamat https dari youtube.com atau youtu.be.': 'Please enter an https address from youtube.com or youtu.be.',
   'Unduh audio': 'Download audio',

@@ -38,6 +38,10 @@ export interface PublishFacts {
   surahName: string
   /** "1–7", "255", or '' when the project has no range. */
   ayahLabel: string
+  /** Set when the project uses an OpenDua supplication. */
+  duaTitle?: string | null
+  /** Required CC BY 4.0 attribution line for OpenDua. */
+  duaCredit?: string | null
   reciter: string
   translationName: string | null
   /** Where the recording came from, when the app knows it. */
@@ -61,14 +65,30 @@ export function hashtagList(text: string): string[] {
   return [...new Set(text.split(/\s+/).filter((w) => w.startsWith('#') && w.length > 1))]
 }
 
-export const AUDIO_SOURCE_NAME: Record<string, string> = { mp3quran: 'MP3Quran', qdc: 'Quran.com' }
+export const AUDIO_SOURCE_NAME: Record<string, string> = { mp3quran: 'MP3Quran', qdc: 'Quran.com', opendua: 'OpenDua (CC BY 4.0)' }
 
 /** The first draft, written without AI: facts and attribution only, so it is always correct and always available. */
 export function draftFor(platform: PlatformId, f: PublishFacts): PublishDraft {
   const p = platformOf(platform)
+  const reciter = f.reciter.trim()
+  if (f.duaTitle) {
+    const what = f.duaTitle
+    const lines = [reciter ? t('Doa {what} oleh {reciter}.', { what, reciter }) : t('Doa {what}.', { what })]
+    if (platform === 'youtube') lines.push(t('Teks Arab ditampilkan apa adanya, lengkap dengan terjemahan.'))
+    const credits = [
+      f.translationName ? t('Terjemahan: {name}.', { name: f.translationName }) : '',
+      f.duaCredit?.trim() ? t('Sumber audio & teks: {credit}.', { credit: f.duaCredit.trim() }) : f.audioSource ? t('Sumber audio: {name}.', { name: f.audioSource }) : '',
+      f.backgroundCredit?.trim() ? t('Latar: {credit}.', { credit: f.backgroundCredit.trim() }) : ''
+    ].filter(Boolean)
+    const tags = [t('#Doa'), t('#Dzikir'), hashtagOf(f.reciter)].filter(Boolean)
+    return {
+      title: p.hasTitle ? (reciter ? t('{what} oleh {reciter}', { what, reciter }) : what).slice(0, p.titleMax) : '',
+      body: [lines.join(' '), credits.join(' ')].filter(Boolean).join('\n\n'),
+      hashtags: [...new Set(tags)].join(' ')
+    }
+  }
   const range = /[–-]/.test(f.ayahLabel)
   const what = f.ayahLabel ? t('QS {surah} ayat {ayah}', { surah: f.surahName, ayah: f.ayahLabel, n: range ? 2 : 1 }) : t('QS {surah}', { surah: f.surahName })
-  const reciter = f.reciter.trim()
   const lines = [reciter ? t('Tilawah {what} oleh {reciter}.', { what, reciter }) : t('Tilawah {what}.', { what })]
   if (platform === 'youtube') lines.push(t('Teks Arab ditampilkan apa adanya, lengkap dengan terjemahan dan sorotan per kata.'))
   const credits = [
@@ -89,6 +109,13 @@ export function withBackgroundCredit(d: PublishDraft, credit: string | null | un
   const c = credit?.trim()
   if (!c || d.body.includes(c)) return d
   return { ...d, body: [d.body.trim(), t('Latar: {credit}.', { credit: c })].filter(Boolean).join('\n\n') }
+}
+
+/** Ensures OpenDua CC BY 4.0 attribution stays in AI-written upload copy. */
+export function withDuaCredit(d: PublishDraft, credit: string | null | undefined): PublishDraft {
+  const c = credit?.trim()
+  if (!c || d.body.includes(c)) return d
+  return { ...d, body: [d.body.trim(), t('Sumber audio & teks: {credit}.', { credit: c })].filter(Boolean).join('\n\n') }
 }
 
 /** What the user pastes into the platform's description (or caption) box. */

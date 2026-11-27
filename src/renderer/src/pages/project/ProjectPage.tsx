@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { advanceStatus, type Project, type Step } from '@shared/types'
 import { msg, t } from '@shared/i18n'
 import { Icon } from '../../components/ui'
+import { RenderStatusPill } from '../../components/RenderStatusPill'
 import { errorText } from '../../lib/format'
 import { toast, useApp } from '../../store/app'
 import { useProject } from '../../store/project'
@@ -127,6 +128,7 @@ export function ProjectPage({ id }: { id: string }) {
           })}
         </ol>
         <div className="r">
+          <RenderStatusPill />
           <button type="button" className="qr-btn qr-btn--ghost" onClick={() => setDialog('thumbnail')}>
             <Icon name="image" />
             Thumbnail

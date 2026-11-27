@@ -51,7 +51,7 @@ export function EditorStep() {
       </nav>
       <aside className="ed-panel" aria-label={t('Pengaturan')}>
         {tab === 'gaya' && <StylePanel />}
-        {tab === 'latar' && <BackgroundPanel />}
+        {tab === 'latar' && <BackgroundPanel durationMs={props.durationMs} />}
         {tab === 'overlay' && <OverlayPanel selectedId={overlayId} onSelect={setOverlayId} durationMs={props.durationMs} />}
         {tab === 'audio' && <AudioPanel />}
         {tab === 'format' && <FormatPanel guides={guides} onGuides={setGuides} />}

@@ -7,11 +7,31 @@ import { languageName, useEditions } from './editions'
 
 /** The project's editions in order (the first is primary), with install state and the catalog picker. */
 export function EditionsPanel() {
+  const isDua = useProject((s) => !!s.project?.dua)
   const editions = useProject((s) => s.project?.editions) ?? []
   const list = useEditions((s) => s.list)
   const error = useEditions((s) => s.error)
   const installs = useEditions((s) => s.installs)
   const [picking, setPicking] = useState(false)
+
+  if (isDua) {
+    return (
+      <aside className="st-left" aria-label={t('Terjemahan proyek')}>
+        <div className="st-left__body">
+          <h2 className="pn-h">{t('Terjemahan proyek')}</h2>
+          <ol className="ed-order">
+            <li className="ed-row">
+              <span className="ed-row__name">
+                OpenDua English
+                <small>{`${languageName('en')} · ${t('Utama')}`}</small>
+              </span>
+            </li>
+          </ol>
+          <p className="pn-note">{t('Terjemahan doa diambil dari OpenDua. Bila doa panjang dibelah, Anda bisa menyunting atau memotong terjemahannya dengan AI per segmen.')}</p>
+        </div>
+      </aside>
+    )
+  }
 
   const set = (next: string[]) => useProject.getState().update({ editions: next })
   const move = (from: number, to: number) => {

@@ -101,4 +101,16 @@ export const main: Dict = {
   'Berkas suara latar tidak ikut terpasang di aplikasi ini. Silakan pasang ulang dari installer terbaru.': 'The background sound file is not part of this installation. Please reinstall from the latest installer.',
   'Rentang waktu ekspor tidak valid.': 'The export time range is not valid.',
   'Rentang ekspor paling pendek 1 detik.': 'An export range must be at least 1 second long.',
+  'Daftar doa OpenDua tidak bisa dibaca. Silakan coba lagi nanti.': 'Could not read the OpenDua list. Please try again later.',
+  'Doa belum dipilih.': 'No dua selected.',
+  'Menyiapkan daftar doa…': 'Preparing the dua list…',
+  'Doa tidak ditemukan atau belum memiliki audio di OpenDua.': 'Dua not found or has no audio on OpenDua.',
+  'Mengunduh audio doa…': 'Downloading dua audio…',
+  'Menggabungkan audio doa…': 'Joining dua audio…',
+  'Doa terunduh dan siap disunting.': 'Dua downloaded and ready to edit.',
+  'GitHub menolak permintaan (HTTP {status}).': 'GitHub rejected the request (HTTP {status}).',
+  'Belum ada rilis publik yang bisa diperiksa.': 'No public release is available to check yet.',
+  'Gagal memeriksa pembaruan.': 'Failed to check for updates.',
+  'Gagal mengunduh pembaruan.': 'Failed to download the update.',
+  'Berkas pembaruan sudah tidak ada di folder Unduhan.': 'The downloaded update file is no longer in Downloads.'
 }

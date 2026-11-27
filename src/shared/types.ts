@@ -1,5 +1,7 @@
 import type { AiProvider, CliImageTool, CliTool, ImageProvider } from './aiTools'
 import type { AmbientSettings } from './ambient'
+import type { BackgroundClip } from './background'
+import type { DuaInfo } from './dua'
 import type { Lang } from './i18n'
 import type { Edge } from './placement'
 import type { LoopMode, MotionSpec } from './motion'
@@ -38,8 +40,8 @@ export interface SurahInfo {
   ayahCount: number
 }
 
-export type SegmentKind = 'ayah' | 'basmalah' | 'istiadzah'
-export type SegmentSource = 'aligner' | 'qdc' | 'mp3quran' | 'manual'
+export type SegmentKind = 'ayah' | 'basmalah' | 'istiadzah' | 'dua'
+export type SegmentSource = 'aligner' | 'qdc' | 'mp3quran' | 'opendua' | 'manual'
 /** full: whole-ayah text; auto: cut by rule; ai: cut by AI; manual: typed by the user; review: needs a look before export. */
 export type TranslationStatus = 'full' | 'auto' | 'ai' | 'manual' | 'review'
 
@@ -60,7 +62,9 @@ export interface SegmentTranslation {
 export interface Segment {
   id: string
   kind: SegmentKind
-  /** For basmalah / isti'adzah: 0. */
+  /** For `kind: 'dua'`: references an item in `project.dua.items`. */
+  duaId?: string
+  /** For basmalah / isti'adzah / dua: 0. */
   surah: number
   ayah: number
   /** Inclusive canonical word range shown by this segment; 0..0 for basmalah / isti'adzah. */
@@ -76,9 +80,13 @@ export interface Segment {
 }
 
 export interface Background {
-  /** source: the source video itself plays behind the text. motion: an animated background drawn by the composition. */
-  kind: 'color' | 'image' | 'video' | 'source' | 'motion'
+  /** source: the source video itself plays behind the text. motion: an animated background drawn by the composition. multi: ordered image/video clips with optional crossfade. */
+  kind: 'color' | 'image' | 'video' | 'source' | 'motion' | 'multi'
   motion?: MotionSpec
+  /** Ordered image/video clips used when `kind === 'multi'`. */
+  clips?: BackgroundClip[]
+  /** Crossfade duration between multi-background clips, ms (0..2000). */
+  transitionMs?: number
   /** What a video background does once it is shorter than the recitation; absent = 'repeat'. */
   loop?: LoopMode
   color: string
@@ -139,6 +147,8 @@ export interface Project {
   thumbnail?: ThumbnailSpec
   /** Upload copy the user edited, per platform; platforms without an entry show a fresh draft. */
   publish?: PublishKit
+  /** Present when the source was downloaded from OpenDua; null/absent for Quran projects. */
+  dua?: DuaInfo | null
   createdAt: number
   updatedAt: number
 }
@@ -159,6 +169,8 @@ export interface ProjectSummary {
   surahTo: number | null
   /** How many different surahs the segments cover (0 when there are no verse segments). */
   surahCount: number
+  /** Set when the project uses an OpenDua supplication instead of a Quran surah. */
+  duaTitle?: string | null
   reciter: string
   durationMs: number | null
   segmentCount: number
@@ -169,7 +181,7 @@ export interface ProjectSummary {
 }
 
 export type AssetKind = 'audio' | 'video' | 'image'
-export type AssetSource = 'local' | 'mp3quran' | 'qdc' | 'youtube' | 'trim' | 'frame' | 'stock' | 'ai'
+export type AssetSource = 'local' | 'mp3quran' | 'qdc' | 'opendua' | 'youtube' | 'trim' | 'frame' | 'stock' | 'ai'
 
 /** Owned by the main process: the renderer never writes asset rows. */
 export interface Asset {
@@ -203,6 +215,15 @@ export interface Job {
   error: string | null
   createdAt: number
   updatedAt: number
+}
+
+export interface ExportJobItem extends Job {
+  projectTitle: string | null
+}
+
+export interface BatchExportResult {
+  queued: Job[]
+  skipped: { projectId: string; title: string; reason: string }[]
 }
 
 export interface ProjectBundle {
@@ -242,6 +263,8 @@ export interface Settings {
   imageCliCommand: string
   /** Measured render speed of this computer (ms per megapixel of one frame, still background); null until the first export. Feeds the time estimate. */
   renderMsPerMpFrame: number | null
+  /** Automatically check GitHub Releases for app updates on startup; defaults to true. */
+  autoCheckUpdates?: boolean
 }
 
 /** Whether AI features can run: through an API key (or a local endpoint), or through an AI CLI installed on this computer. */

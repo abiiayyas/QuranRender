@@ -1,3 +1,4 @@
+import { segmentVerseKey } from './dua'
 import { t } from './i18n'
 import type { PolicyIssue, Project, Segment, Verse } from './types'
 import { verseKey } from './video'
@@ -5,7 +6,7 @@ import { verseKey } from './video'
 export interface PolicyContext {
   /** The source asset row exists and its file is on disk. */
   sourceOk: boolean
-  /** Verses of the ayahs the segments show (`${surah}:${ayah}`), for word counts. Missing ones skip the range check. */
+  /** Verses of the ayahs/duas the segments show, for word counts. Missing ones skip the range check. */
   verses: Record<string, Verse>
 }
 
@@ -15,6 +16,7 @@ export const LOW_CONFIDENCE = 0.8
 export function segmentCode(seg: Segment): string {
   if (seg.kind === 'basmalah') return 'Basmalah'
   if (seg.kind === 'istiadzah') return "Isti'adzah"
+  if (seg.kind === 'dua') return 'Doa'
   return verseKey(seg.surah, seg.ayah)
 }
 
@@ -46,9 +48,9 @@ export function checkExport(project: Project, ctx: PolicyContext): PolicyIssue[]
     if (seg.confidence !== null && seg.confidence < LOW_CONFIDENCE) {
       add('warning', seg, t('Segmen {code} memiliki tingkat keyakinan rendah ({pct}%). Sebaiknya didengarkan ulang.', { code, pct: Math.round(seg.confidence * 100) }))
     }
-    if (seg.kind !== 'ayah') return
+    if (seg.kind !== 'ayah' && seg.kind !== 'dua') return
 
-    const count = ctx.verses[verseKey(seg.surah, seg.ayah)]?.words.length
+    const count = ctx.verses[segmentVerseKey(seg)]?.words.length
     if (seg.wordFrom < 1 || seg.wordFrom > seg.wordTo || (count !== undefined && seg.wordTo > count)) {
       const range = { code, from: seg.wordFrom, to: seg.wordTo, count: count ?? 0 }
       add('error', seg, count !== undefined ? t('Segmen {code}: rentang kata {from}–{to} dari {count} kata tidak sah. Mohon perbaiki rentang katanya.', range) : t('Segmen {code}: rentang kata {from}–{to} tidak sah. Mohon perbaiki rentang katanya.', range))
@@ -62,7 +64,13 @@ export function checkExport(project: Project, ctx: PolicyContext): PolicyIssue[]
     if (tr.status === 'review') add('warning', seg, t('Terjemahan segmen {code} masih ditandai perlu ditinjau.', { code }))
     const partial = seg.wordFrom > 1 || (count !== undefined && seg.wordTo < count)
     if (partial && tr.status === 'full') {
-      add('warning', seg, t('Segmen {code} hanya memuat sebagian ayat, tetapi terjemahannya masih untuk ayat utuh. Silakan potong terjemahannya di langkah Teks.', { code }))
+      add(
+        'warning',
+        seg,
+        seg.kind === 'dua'
+          ? t('Segmen {code} hanya memuat sebagian teks, tetapi terjemahannya masih utuh. Silakan potong terjemahannya di langkah Teks.', { code })
+          : t('Segmen {code} hanya memuat sebagian ayat, tetapi terjemahannya masih untuk ayat utuh. Silakan potong terjemahannya di langkah Teks.', { code })
+      )
     }
   })
   return issues

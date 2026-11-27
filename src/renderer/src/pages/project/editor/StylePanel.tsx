@@ -31,6 +31,7 @@ function applyPreset(p: Preset): void {
 
 export function StylePanel() {
   const style = useProject((s) => s.project!.style)
+  const isDua = useProject((s) => !!s.project?.dua)
   return (
     <div className="ed-panel-body">
       <Section title={t('Preset')}>
@@ -74,10 +75,16 @@ export function StylePanel() {
       </Section>
 
       <Section title={t('Sorotan kata')}>
-        <SelectRow label={t('Gaya')} value={style.highlight} options={HIGHLIGHTS.map((h) => ({ ...h, label: t(h.label) }))} onChange={(v) => setStyle({ highlight: v })} />
-        <ColorRow label={t('Warna sorotan')} value={style.highlightColor} onChange={(v) => setStyle({ highlightColor: v }, 'highlightColor')} />
-        <Slider label={t('Kata lain')} value={style.inactiveOpacity} min={0.2} max={1} step={0.01} onChange={(v) => setStyle({ inactiveOpacity: v }, 'inactiveOpacity')} />
-        <p className="pn-note">{t('Sorotan muncul pada segmen yang memiliki waktu per kata.')}</p>
+        {isDua ? (
+          <p className="pn-note">{t('Sorotan per kata tidak dipakai untuk doa.')}</p>
+        ) : (
+          <>
+            <SelectRow label={t('Gaya')} value={style.highlight} options={HIGHLIGHTS.map((h) => ({ ...h, label: t(h.label) }))} onChange={(v) => setStyle({ highlight: v })} />
+            <ColorRow label={t('Warna sorotan')} value={style.highlightColor} onChange={(v) => setStyle({ highlightColor: v }, 'highlightColor')} />
+            <Slider label={t('Kata lain')} value={style.inactiveOpacity} min={0.2} max={1} step={0.01} onChange={(v) => setStyle({ inactiveOpacity: v }, 'inactiveOpacity')} />
+            <p className="pn-note">{t('Sorotan muncul pada segmen yang memiliki waktu per kata.')}</p>
+          </>
+        )}
       </Section>
 
       <Section title={t('Terjemahan')}>
@@ -132,8 +139,8 @@ export function StylePanel() {
       </Section>
 
       <Section title={t('Keterangan')}>
-        <SwitchRow label={t('Nama surah')} checked={style.showSurahName} onChange={(v) => setStyle({ showSurahName: v })} />
-        <SwitchRow label={t('Nomor ayat')} checked={style.showReference} onChange={(v) => setStyle({ showReference: v })} />
+        <SwitchRow label={isDua ? t('Judul doa') : t('Nama surah')} checked={style.showSurahName} onChange={(v) => setStyle({ showSurahName: v })} />
+        {!isDua && <SwitchRow label={t('Nomor ayat')} checked={style.showReference} onChange={(v) => setStyle({ showReference: v })} />}
         <SwitchRow label={t('Nama qari')} checked={style.showReciter} onChange={(v) => setStyle({ showReciter: v })} />
       </Section>
 

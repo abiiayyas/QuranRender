@@ -2,12 +2,14 @@ import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { basename, join } from 'node:path'
 import { BrowserWindow, dialog, powerSaveBlocker, shell } from 'electron'
 import { getLang, t } from '@shared/i18n'
+import { backgroundAssetIds } from '@shared/background'
+import { duaVerses } from '@shared/dua'
 import { clampRange, formatTime, rangeFrames, rangeProblem, type ExportRange } from '@shared/exportRange'
 import { checkExport } from '@shared/policy'
 import { blendSpeed, measuredMsPerMpFrame, useChunks } from '@shared/renderPlan'
 import { toSrt, toVtt, youtubeChapters, type SubtitleMode } from '@shared/subtitles'
 import { shiftSegments } from '@shared/timedSegments'
-import { advanceStatus, type ArabicScript, type Asset, type ExportOptions, type Job, type PolicyIssue, type Project, type Verse } from '@shared/types'
+import { advanceStatus, type ArabicScript, type Asset, type BatchExportResult, type ExportOptions, type Job, type PolicyIssue, type Project, type Verse } from '@shared/types'
 import { canvasSize, verseKey, type VideoProps } from '@shared/video'
 import { notifyExportDone, runAfterExport } from './afterExport'
 import { ambientOffsetDb } from './ambient'
@@ -33,13 +35,13 @@ async function versesOf(project: Project, script: ArabicScript): Promise<Record<
     if (s.kind === 'ayah') want(s.surah, s.ayah)
     else if (s.kind === 'basmalah') want(1, 1)
   }
-  const out: Record<string, Verse> = {}
+  const out: Record<string, Verse> = duaVerses(project.dua)
   for (const [surah, [from, to]] of ranges) for (const v of await getVerses(surah, from, to, script)) out[verseKey(v.surah, v.ayah)] = v
   return out
 }
 
 function referencedAssets(project: Project): Record<string, Asset> {
-  const ids = [project.sourceAssetId, project.background.assetId, ...project.overlays.map((o) => o.assetId)]
+  const ids = [project.sourceAssetId, ...backgroundAssetIds(project.background), ...project.overlays.map((o) => o.assetId)]
   const out: Record<string, Asset> = {}
   for (const id of ids) {
     const a = id ? getAssetOrNull(id) : null
@@ -159,7 +161,7 @@ async function start(o: ExportOptions): Promise<Job> {
         if (o.srt) writeFileSync(join(folder, `${name}.srt`), toSrt(cut, verses, mode))
         if (o.vtt) writeFileSync(join(folder, `${name}.vtt`), toVtt(cut, verses, mode))
         if (o.chapters) {
-          const lines = youtubeChapters(cut, props.surah?.nameLatin ?? '', range ? range.toMs - range.fromMs : props.durationMs)
+          const lines = youtubeChapters(cut, props.surah?.nameLatin ?? p.dua?.title ?? '', range ? range.toMs - range.fromMs : props.durationMs)
           writeFileSync(join(folder, `${name} - chapters.txt`), `${lines.join('\n')}\n`)
         }
       }
@@ -179,12 +181,40 @@ async function start(o: ExportOptions): Promise<Job> {
   })
 }
 
+async function batchStart(projectIds: string[], options: Omit<ExportOptions, 'projectId' | 'range'>): Promise<BatchExportResult> {
+  const uniqueIds = [...new Set(projectIds)]
+  const queued: Job[] = []
+  const skipped: BatchExportResult['skipped'] = []
+  for (const projectId of uniqueIds) {
+    let project: Project
+    try {
+      project = getProject(projectId)
+    } catch (e) {
+      skipped.push({ projectId, title: projectId, reason: e instanceof Error ? e.message : String(e) })
+      continue
+    }
+    const issues = await check(project, null)
+    const err = issues.find((i) => i.severity === 'error')
+    if (err) {
+      skipped.push({ projectId, title: project.title, reason: err.message })
+      continue
+    }
+    try {
+      queued.push(await start({ ...options, projectId, range: null }))
+    } catch (e) {
+      skipped.push({ projectId, title: project.title, reason: e instanceof Error ? e.message : String(e) })
+    }
+  }
+  return { queued, skipped }
+}
+
 export function registerExportIpc(): void {
   handle('exporter', 'check', (projectId, range) => {
     const project = getProject(projectId)
     return check(project, resolveRange(project, range))
   })
   handle('exporter', 'start', (options) => start(options))
+  handle('exporter', 'batchStart', (projectIds, options) => batchStart(projectIds, options))
   handle('exporter', 'partial', async (options) => {
     const project = getProject(options.projectId)
     const source = project.sourceAssetId ? getAssetOrNull(project.sourceAssetId) : null

@@ -102,7 +102,7 @@ export const SegmentRow = memo(function SegmentRow(p: SegmentRowProps) {
               {t('Sudah benar')}
             </button>
           )}
-          {p.tooLong && seg.kind === 'ayah' && (
+          {p.tooLong && (seg.kind === 'ayah' || seg.kind === 'dua') && (
             <button type="button" className="qr-btn qr-btn--secondary qr-btn--sm" disabled={p.splitBusy} onClick={() => p.onSplit(seg.id)}>
               <Icon name="scissors" size="sm" />
               {t('Belah otomatis')}

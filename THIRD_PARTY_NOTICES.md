@@ -56,6 +56,10 @@ of this repository or the installer:
   font is downloaded on first use.
 - **Translations other than Kemenag** — Quran.com.
 - **Recitation audio** — MP3Quran and QDC.
+- **Supplications (Hisn al-Muslim) & recitation audio** — OpenDua
+  (<https://opendua.org>), including Arabic text, OpenDua English translation,
+  and recitations by Muhammad Jumah, licensed under **CC BY 4.0**
+  (<https://creativecommons.org/licenses/by/4.0/>).
 - **Stock photos and videos** — Pexels, Unsplash, Pixabay (the user supplies
   their own API key; credits are shown per provider in the UI).
 - **AI background images** — Pollinations (free tier), an OpenAI-compatible

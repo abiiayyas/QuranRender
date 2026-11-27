@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.14.0
+
+- **Indikator render di latar belakang & Antrean Render:** menambahkan pil status render global di header (`Beranda`, `Proyek`, dan `Pengaturan`) yang menampilkan progres real-time dan jumlah antrean meski dialog ekspor ditutup, serta dialog **Antrean Render** untuk memantau, membatalkan, atau membuka folder hasil ekspor.
+- **Ekspor batch:** menambahkan tombol **Ekspor batch** di Beranda untuk memilih beberapa proyek yang siap sekaligus dengan pengaturan ekspor bersama dan memasukkannya ke antrean render berurutan.
+- **Hapus, ganti, & multi-background:** menambahkan tombol **Hapus latar** dan **Ganti** pada latar gambar/video tunggal, serta mode **Multi** di panel Latar Editor untuk menggabungkan beberapa gambar dan video dengan pengaturan urutan, durasi masing-masing, tombol **Bagi rata durasi**, dan transisi pudar antar latar tanpa mengganggu mode latar tunggal yang dapat diulang (*loop*).
+- **Pembaruan otomatis (GitHub Releases):** memeriksa pembaruan otomatis saat aplikasi dibuka (dapat diatur di **Pengaturan > Tentang**), menampilkan notifikasi versi baru dengan tombol satu klik **Unduh & pasang** langsung dari rilis GitHub `abiiayyas/QuranRender`, lalu membuka installer `.dmg`/`.exe` yang selesai diunduh.
+
+## 0.13.0
+
+- **Sumber Doa (OpenDua / Hisn al-Muslim):** menambahkan tab **Doa** di langkah 1 Sumber (tata letak grid 2×2 bersama Berkas, Qari, dan YouTube). Menampilkan entri *Hisn al-Muslim* yang memiliki rekaman audio Muhammad Jumah dari `opendua.org` (lisensi CC BY 4.0), lengkap dengan pencarian dan pratinjau Arab + terjemahan Inggris.
+- **Alur penyuntingan doa end-to-end:** doa yang diunduh langsung masuk sebagai segmen tersinkron tanpa sorotan per kata, mendukung pemecahan segmen manual maupun **Belah otomatis**, edit terjemahan Inggris & **AI Trim** untuk doa panjang, pratinjau/ekspor Remotion, subtitle SRT/VTT, bab YouTube, thumbnail, serta atribusi CC BY 4.0 OpenDua pada teks Publikasi dan `THIRD_PARTY_NOTICES.md`.
+
 ## 0.12.1
 
 - **Dokumentasi bahasa Inggris di repositori:** menambahkan [`README.en.md`](README.en.md) dan [`docs/engineering/README.en.md`](docs/engineering/README.en.md), pemilih bahasa di `README.md`, serta memperbarui `docs/user/README.md`, `docs/user/en.md`, dan `CONTRIBUTING.md`.

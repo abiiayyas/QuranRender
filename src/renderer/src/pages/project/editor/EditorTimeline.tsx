@@ -1,10 +1,10 @@
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react'
 import type { PlayerRef } from '@remotion/player'
+import { segmentVerseKey } from '@shared/dua'
 import { t } from '@shared/i18n'
 import { overlayLabel } from '@shared/overlay'
 import { segmentLabel, snapMs } from '@shared/segments'
 import type { Asset, Overlay, Project, Verse } from '@shared/types'
-import { verseKey } from '@shared/video'
 import { Icon } from '../../../components/ui'
 import { Waveform } from '../../../components/Waveform'
 import { formatMs } from '../../../lib/format'
@@ -241,11 +241,11 @@ export function EditorTimeline({
                     type="button"
                     className="qr-clip"
                     style={{ left: pct(s.startMs), width: pct(s.endMs - s.startMs) }}
-                    title={`${segmentLabel(s, verses[verseKey(s.surah, s.ayah)]?.words.length)} · ${formatMs(s.startMs)}–${formatMs(s.endMs)}`}
+                    title={`${segmentLabel(s, verses[segmentVerseKey(s)]?.words.length)} · ${formatMs(s.startMs)}–${formatMs(s.endMs)}`}
                     onPointerDown={(e) => e.stopPropagation()}
                     onClick={() => seekMs(s.startMs)}
                   >
-                    <span className="qr-clip__label">{segmentLabel(s, verses[verseKey(s.surah, s.ayah)]?.words.length)}</span>
+                    <span className="qr-clip__label">{segmentLabel(s, verses[segmentVerseKey(s)]?.words.length)}</span>
                   </button>
                 ))}
               </div>

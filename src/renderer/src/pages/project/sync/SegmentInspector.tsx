@@ -1,4 +1,5 @@
 import { useEffect, useId, useState } from 'react'
+import { segmentVerseKey } from '@shared/dua'
 import { msg, t } from '@shared/i18n'
 import {
   canMerge,
@@ -28,8 +29,7 @@ export async function fetchVerse(surah: number, ayah: number, script: ArabicScri
   return v ?? null
 }
 
-export const verseOf = (seg: Segment, verses: Record<string, Verse>): Verse | undefined =>
-  seg.kind === 'basmalah' ? verses[verseKey(1, 1)] : verses[verseKey(seg.surah, seg.ayah)]
+export const verseOf = (seg: Segment, verses: Record<string, Verse>): Verse | undefined => verses[segmentVerseKey(seg)]
 
 const KINDS: { value: SegmentKind; label: string }[] = [
   { value: 'ayah', label: msg('Ayat') },
@@ -56,7 +56,7 @@ export function SegmentInspector({ seg, list, verses, surahs, script, now, durat
   const ids = { start: useId(), end: useId(), surah: useId(), ayah: useId(), from: useId(), to: useId() }
   const verse = verseOf(seg, verses)
   const arFont = useArabicFont(script, Object.keys(verses).length > 0)
-  const count = seg.kind === 'ayah' ? verse?.words.length : undefined
+  const count = seg.kind === 'ayah' || seg.kind === 'dua' ? verse?.words.length : undefined
   const i = list.findIndex((s) => s.id === seg.id)
   const next = list[i + 1]
   const split = splitSegmentAt(seg, now, count)
@@ -68,14 +68,20 @@ export function SegmentInspector({ seg, list, verses, surahs, script, now, durat
     setForm({ kind: seg.kind, surah: seg.surah, ayah: seg.ayah, wordFrom: seg.wordFrom, wordTo: seg.wordTo })
   }, [seg.id, seg.kind, seg.surah, seg.ayah, seg.wordFrom, seg.wordTo])
   const surahInfo = surahs.find((s) => s.id === form.surah)
-  const formCount = verses[verseKey(form.surah, form.ayah)]?.words.length
+  const formCount = seg.kind === 'dua' ? count : verses[verseKey(form.surah, form.ayah)]?.words.length
   const dirty =
     form.kind !== seg.kind ||
-    (form.kind === 'ayah' && (form.surah !== seg.surah || form.ayah !== seg.ayah || form.wordFrom !== seg.wordFrom || form.wordTo !== seg.wordTo))
+    ((form.kind === 'ayah' || form.kind === 'dua') &&
+      (form.surah !== seg.surah || form.ayah !== seg.ayah || form.wordFrom !== seg.wordFrom || form.wordTo !== seg.wordTo))
 
   const applyLabel = async () => {
     try {
-      if (form.kind === 'ayah') {
+      if (form.kind === 'dua') {
+        const n = count ?? form.wordTo
+        const from = Math.min(Math.max(1, form.wordFrom), n)
+        const to = Math.min(Math.max(from, form.wordTo), n)
+        replace(relabel(seg, { kind: 'dua', surah: 0, ayah: 0, wordFrom: from, wordTo: to }, verse))
+      } else if (form.kind === 'ayah') {
         if (!surahInfo || form.ayah < 1 || form.ayah > surahInfo.ayahCount) throw new Error(t('Nomor ayat tidak ada di surah ini.'))
         const v = verses[verseKey(form.surah, form.ayah)] ?? (await fetchVerse(form.surah, form.ayah, script))
         const n = v?.words.length ?? form.wordTo
@@ -160,43 +166,56 @@ export function SegmentInspector({ seg, list, verses, surahs, script, now, durat
 
         <fieldset className="sync-label stack">
           <legend className="pn-h">{t('Isi segmen')}</legend>
-          <Segmented<SegmentKind> ariaLabel={t('Jenis segmen')} value={form.kind} onChange={(kind) => setForm({ ...form, kind })} options={KINDS.map((k) => ({ ...k, label: t(k.label) }))} />
-          {form.kind === 'ayah' && (
+          {seg.kind !== 'dua' && (
+            <Segmented<SegmentKind>
+              ariaLabel={t('Jenis segmen')}
+              value={form.kind}
+              onChange={(kind) => setForm({ ...form, kind })}
+              options={KINDS.filter((k) => k.value !== 'dua').map((k) => ({ ...k, label: t(k.label) }))}
+            />
+          )}
+          {(form.kind === 'ayah' || form.kind === 'dua') && (
             <>
-              <div className="qr-fieldset">
-                <label className="qr-label" htmlFor={ids.surah}>
-                  {t('Surah')}
-                </label>
-                <span className="qr-field">
-                  <select id={ids.surah} value={form.surah || ''} onChange={(e) => setForm({ ...form, surah: Number(e.target.value), ayah: 1, wordFrom: 1, wordTo: 1 })}>
-                    <option value="" disabled>
-                      {t('Pilih surah')}
-                    </option>
-                    {surahs.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {`${s.id}. ${s.nameLatin}`}
-                      </option>
-                    ))}
-                  </select>
-                </span>
-              </div>
+              {form.kind === 'ayah' && (
+                <>
+                  <div className="qr-fieldset">
+                    <label className="qr-label" htmlFor={ids.surah}>
+                      {t('Surah')}
+                    </label>
+                    <span className="qr-field">
+                      <select id={ids.surah} value={form.surah || ''} onChange={(e) => setForm({ ...form, surah: Number(e.target.value), ayah: 1, wordFrom: 1, wordTo: 1 })}>
+                        <option value="" disabled>
+                          {t('Pilih surah')}
+                        </option>
+                        {surahs.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {`${s.id}. ${s.nameLatin}`}
+                          </option>
+                        ))}
+                      </select>
+                    </span>
+                  </div>
+                  <div className="grid-2">
+                    <div className="qr-fieldset">
+                      <label className="qr-label" htmlFor={ids.ayah}>
+                        {t('Ayat')}
+                      </label>
+                      <span className="qr-field">
+                        <input
+                          id={ids.ayah}
+                          type="number"
+                          min={1}
+                          max={surahInfo?.ayahCount}
+                          value={form.ayah || ''}
+                          onChange={(e) => setForm({ ...form, ayah: Number(e.target.value) })}
+                        />
+                      </span>
+                    </div>
+                    <div />
+                  </div>
+                </>
+              )}
               <div className="grid-2">
-                <div className="qr-fieldset">
-                  <label className="qr-label" htmlFor={ids.ayah}>
-                    {t('Ayat')}
-                  </label>
-                  <span className="qr-field">
-                    <input
-                      id={ids.ayah}
-                      type="number"
-                      min={1}
-                      max={surahInfo?.ayahCount}
-                      value={form.ayah || ''}
-                      onChange={(e) => setForm({ ...form, ayah: Number(e.target.value) })}
-                    />
-                  </span>
-                </div>
-                <div />
                 <div className="qr-fieldset">
                   <label className="qr-label" htmlFor={ids.from}>
                     {t('Dari kata')}
@@ -214,7 +233,11 @@ export function SegmentInspector({ seg, list, verses, surahs, script, now, durat
                   </span>
                 </div>
               </div>
-              {formCount != null && <p className="pn-note">{t('Ayat ini terdiri dari {n} kata.', { n: formCount })}</p>}
+              {formCount != null && (
+                <p className="pn-note">
+                  {form.kind === 'dua' ? t('Doa ini terdiri dari {n} kata.', { n: formCount }) : t('Ayat ini terdiri dari {n} kata.', { n: formCount })}
+                </p>
+              )}
             </>
           )}
           <button type="button" className="qr-btn qr-btn--secondary" disabled={!dirty} onClick={() => void applyLabel()}>
@@ -260,45 +283,47 @@ export function SegmentInspector({ seg, list, verses, surahs, script, now, durat
           </button>
         </div>
 
-        <section className="stack" aria-labelledby={`${ids.start}-words`}>
-          <div className="sync-words-head">
-            <h3 className="pn-h" id={`${ids.start}-words`}>
-              {t('Waktu per kata')}
-            </h3>
-            <button type="button" className="qr-btn qr-btn--ghost qr-btn--sm" disabled={words.length === 0} onClick={() => replace({ ...seg, words: proportionalWords(seg, verse) })}>
-              {t('Ratakan waktu kata')}
-            </button>
-          </div>
-          {words.length === 0 && <p className="pn-note">{t('Teks ayat belum dimuat.')}</p>}
-          <ol className="sync-words">
-            {words.map((w) => {
-              const tm = timing.get(w.idx)
-              return (
-                <li key={w.idx} className={w.idx === current ? 'is-current' : undefined}>
-                  <span className="sync-words__n">{w.idx}</span>
-                  <span className="sync-words__ar" dir="rtl" lang="ar" style={{ fontFamily: arFont }}>
-                    {w.text || '·'}
-                  </span>
-                  {tm ? (
-                    <>
-                      <TimeInput label={t('Mulai kata {n}', { n: w.idx })} value={tm.startMs} onCommit={(ms) => replace(setWordStart(seg, w.idx, ms), `word:${seg.id}`)} />
-                      <button
-                        type="button"
-                        className="qr-btn qr-btn--ghost qr-btn--icon qr-btn--sm"
-                        aria-label={t('Putar kata {n}', { n: w.idx })}
-                        onClick={() => playRange(tm.startMs, tm.endMs)}
-                      >
-                        <Icon name="play" size="sm" />
-                      </button>
-                    </>
-                  ) : (
-                    <span className="muted sync-words__none">{t('tanpa waktu')}</span>
-                  )}
-                </li>
-              )
-            })}
-          </ol>
-        </section>
+        {seg.kind !== 'dua' && (
+          <section className="stack" aria-labelledby={`${ids.start}-words`}>
+            <div className="sync-words-head">
+              <h3 className="pn-h" id={`${ids.start}-words`}>
+                {t('Waktu per kata')}
+              </h3>
+              <button type="button" className="qr-btn qr-btn--ghost qr-btn--sm" disabled={words.length === 0} onClick={() => replace({ ...seg, words: proportionalWords(seg, verse) })}>
+                {t('Ratakan waktu kata')}
+              </button>
+            </div>
+            {words.length === 0 && <p className="pn-note">{t('Teks ayat belum dimuat.')}</p>}
+            <ol className="sync-words">
+              {words.map((w) => {
+                const tm = timing.get(w.idx)
+                return (
+                  <li key={w.idx} className={w.idx === current ? 'is-current' : undefined}>
+                    <span className="sync-words__n">{w.idx}</span>
+                    <span className="sync-words__ar" dir="rtl" lang="ar" style={{ fontFamily: arFont }}>
+                      {w.text || '·'}
+                    </span>
+                    {tm ? (
+                      <>
+                        <TimeInput label={t('Mulai kata {n}', { n: w.idx })} value={tm.startMs} onCommit={(ms) => replace(setWordStart(seg, w.idx, ms), `word:${seg.id}`)} />
+                        <button
+                          type="button"
+                          className="qr-btn qr-btn--ghost qr-btn--icon qr-btn--sm"
+                          aria-label={t('Putar kata {n}', { n: w.idx })}
+                          onClick={() => playRange(tm.startMs, tm.endMs)}
+                        >
+                          <Icon name="play" size="sm" />
+                        </button>
+                      </>
+                    ) : (
+                      <span className="muted sync-words__none">{t('tanpa waktu')}</span>
+                    )}
+                  </li>
+                )
+              })}
+            </ol>
+          </section>
+        )}
       </div>
     </div>
   )

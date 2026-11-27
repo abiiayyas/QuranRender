@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
+import { backgroundAssetIds } from '@shared/background'
+import { duaVerses } from '@shared/dua'
 import type { Asset, Project } from '@shared/types'
 import { getLang } from '@shared/i18n'
 import { canvasSize, type VideoProps } from '@shared/video'
@@ -6,14 +8,15 @@ import { useSurahs, useVerses } from './quran'
 
 /** Props for the preview Player: the same object export builds, with files read over studio://. */
 export function useVideoProps(project: Project, assets: Record<string, Asset>, fps: number): VideoProps {
-  const hasBasmalah = project.segments.some((s) => s.kind === 'basmalah')
-  const shown = hasBasmalah ? [...project.segments, { kind: 'ayah' as const, surah: 1, ayah: 1 }] : project.segments
-  const verses = useVerses(shown, project.script)
+  const quranSegs = useMemo(() => project.segments.filter((s) => s.kind !== 'dua'), [project.segments])
+  const hasBasmalah = quranSegs.some((s) => s.kind === 'basmalah')
+  const shown = hasBasmalah ? [...quranSegs, { kind: 'ayah' as const, surah: 1, ayah: 1 }] : quranSegs
+  const quranVerses = useVerses(shown, project.script)
+  const verses = useMemo(() => ({ ...quranVerses, ...duaVerses(project.dua) }), [quranVerses, project.dua])
   const surahs = useSurahs()
-  const surah = surahs.find((s) => s.id === project.surah) ?? null
+  const surah = project.dua ? null : (surahs.find((s) => s.id === project.surah) ?? null)
 
-  const bgId = project.background.assetId
-  const ids = [project.sourceAssetId, bgId, ...project.overlays.map((o) => o.assetId)].filter((x): x is string => !!x)
+  const ids = [project.sourceAssetId, ...backgroundAssetIds(project.background), ...project.overlays.map((o) => o.assetId)].filter((x): x is string => !!x)
   const idsKey = ids.join('|')
   const used = useMemo(() => {
     const out: Record<string, Asset> = {}

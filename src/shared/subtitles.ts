@@ -1,5 +1,5 @@
+import { segmentVerseKey } from './dua'
 import type { Project, Segment, Verse } from './types'
-import { verseKey } from './video'
 
 export type SubtitleMode = 'arabic' | 'translation' | 'both'
 
@@ -15,7 +15,7 @@ interface Cue {
 /** The Arabic a segment shows: its canonical word range, joined words ('' slots) skipped. Basmalah = all of 1:1. */
 export function segmentArabic(seg: Segment, verses: Record<string, Verse>): string {
   if (seg.kind === 'istiadzah') return ISTIADZAH_TEXT
-  const v = seg.kind === 'basmalah' ? verses[verseKey(1, 1)] : verses[verseKey(seg.surah, seg.ayah)]
+  const v = verses[segmentVerseKey(seg)]
   if (!v) return ''
   const words = seg.kind === 'basmalah' ? v.words : v.words.slice(Math.max(0, seg.wordFrom - 1), seg.wordTo)
   return words.filter((w) => w !== '').join(' ')
@@ -74,6 +74,7 @@ interface Unit {
   kind: Segment['kind']
   surah: number
   ayah: number
+  duaId?: string
 }
 
 interface Chapter {
@@ -84,6 +85,7 @@ interface Chapter {
 function unitLabel(u: Unit, surahName: string): string {
   if (u.kind === 'basmalah') return 'Basmalah'
   if (u.kind === 'istiadzah') return "Isti'adzah"
+  if (u.kind === 'dua') return surahName || 'Doa'
   return `QS ${surahName ? `${surahName} ` : ''}${u.surah}:${u.ayah}`
 }
 
@@ -91,22 +93,23 @@ function chapterLabel(c: Chapter, surahName: string): string {
   const first = c.units[0]
   const last = c.units[c.units.length - 1]
   if (first === last) return unitLabel(first, surahName)
+  if (first.kind === 'dua' && last.kind === 'dua') return unitLabel(first, surahName)
   if (first.kind === 'ayah' && last.kind === 'ayah' && first.surah === last.surah) return `${unitLabel(first, surahName)}–${last.ayah}`
   return `${unitLabel(first, surahName)} – ${unitLabel(last, surahName)}`
 }
 
 /**
- * YouTube chapter lines (`0:00 QS Al-Baqarah 2:255`), one per ayah. YouTube needs the first at 0:00 and every chapter at
+ * YouTube chapter lines (`0:00 QS Al-Baqarah 2:255`), one per ayah or dua. YouTube needs the first at 0:00 and every chapter at
  * least 10 s long, so shorter ones are merged into the chapter before them (the label becomes a range).
  * `durationMs`, when known, also keeps the last chapter from being too short.
  */
 export function youtubeChapters(project: Project, surahName: string, durationMs?: number): string[] {
   const chapters: Chapter[] = []
   for (const seg of [...project.segments].sort((a, b) => a.startMs - b.startMs)) {
-    const unit: Unit = { kind: seg.kind, surah: seg.surah, ayah: seg.ayah }
+    const unit: Unit = { kind: seg.kind, surah: seg.surah, ayah: seg.ayah, duaId: seg.duaId }
     const prev = chapters[chapters.length - 1]?.units.at(-1)
-    // Several segments of one ayah (split ayah) are one chapter.
-    if (prev && prev.kind === unit.kind && prev.surah === unit.surah && prev.ayah === unit.ayah) continue
+    // Several segments of one ayah or dua (split) are one chapter.
+    if (prev && prev.kind === unit.kind && prev.surah === unit.surah && prev.ayah === unit.ayah && prev.duaId === unit.duaId) continue
     chapters.push({ sec: Math.floor(seg.startMs / 1000), units: [unit] })
   }
   if (chapters.length === 0) return []

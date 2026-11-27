@@ -7,6 +7,7 @@ import { handleStudioProtocol, registerSchemes } from './protocol'
 import { failInterruptedJobs } from './repo'
 import { autoClean } from './storage'
 import { applyLanguage, getSettings } from './settings'
+import { checkForUpdates } from './updater'
 
 if (!app.isPackaged && process.env.QR_USER_DATA) app.setPath('userData', process.env.QR_USER_DATA)
 
@@ -60,6 +61,7 @@ if (!app.requestSingleInstanceLock()) {
     handleStudioProtocol()
     registerIpc()
     createWindow()
+    if (getSettings().autoCheckUpdates !== false) setTimeout(() => void checkForUpdates(false), 4000)
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow()
     })

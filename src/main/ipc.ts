@@ -8,7 +8,7 @@ import { cliStatus } from './cli'
 import { registerImageIpc } from './imagegen'
 import { registerPublishIpc } from './publish'
 import { registerQuranIpc } from './quran'
-import { bundle, createProject, duplicateProject, listProjects, removeProject, saveProject } from './repo'
+import { bundle, createProject, duplicateProject, listProjects, recentExportJobs, removeProject, saveProject } from './repo'
 import { aiKeyStatus, clearAiKey, getSettings, setAiKey, setSettings } from './settings'
 import { registerSourcesIpc } from './sources'
 import { registerAmbientIpc } from './ambient'
@@ -17,6 +17,7 @@ import { registerStockIpc } from './stock'
 import { registerStorageIpc } from './storage'
 import { registerSyncIpc } from './sync'
 import { registerTextIpc } from './text'
+import { registerUpdaterIpc } from './updater'
 
 type Group = Exclude<keyof StudioApi, 'files' | 'on'>
 type Fn = (...args: never[]) => unknown
@@ -54,6 +55,7 @@ export function registerIpc(): void {
   handle('settings', 'testAi', () => testAi())
   handle('settings', 'cliStatus', () => cliStatus(true))
 
+  handle('jobs', 'list', () => recentExportJobs())
   handle('jobs', 'cancel', (id) => cancelJob(id))
 
   handle('app', 'openExternal', async (url) => {
@@ -73,4 +75,5 @@ export function registerIpc(): void {
   registerSpectrumIpc()
   registerAmbientIpc()
   registerStorageIpc()
+  registerUpdaterIpc()
 }

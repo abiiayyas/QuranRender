@@ -1,3 +1,4 @@
+import { segmentVerseKey } from './dua'
 import { msg } from './i18n'
 import type { Segment, SegmentTranslation, TranslationStatus } from './types'
 
@@ -55,9 +56,9 @@ export function cleanTranslation(raw: string): string {
     .trim()
 }
 
-/** True for an ayah segment that shows only part of its ayah. */
+/** True for an ayah or dua segment that shows only part of its text. */
 export function isPartial(seg: Pick<Segment, 'kind' | 'wordFrom' | 'wordTo'>, verseWordCount: number): boolean {
-  if (seg.kind !== 'ayah' || verseWordCount <= 0) return false
+  if ((seg.kind !== 'ayah' && seg.kind !== 'dua') || verseWordCount <= 0) return false
   return seg.wordFrom > 1 || (seg.wordTo > 0 && seg.wordTo < verseWordCount)
 }
 
@@ -149,7 +150,7 @@ export function fillTranslations(
       return text ? put(text, 'full') : seg
     }
 
-    const key = `${seg.surah}:${seg.ayah}`
+    const key = segmentVerseKey(seg)
     const full = texts[key]
     const count = verseWordCounts[key]
     if (!full || !count) return seg

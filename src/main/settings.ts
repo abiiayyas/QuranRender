@@ -22,7 +22,8 @@ const DEFAULTS: Settings = {
   imageModel: '',
   imageCliTool: 'codex',
   imageCliCommand: '',
-  renderMsPerMpFrame: null
+  renderMsPerMpFrame: null,
+  autoCheckUpdates: true
 }
 
 export function getSettings(): Settings {

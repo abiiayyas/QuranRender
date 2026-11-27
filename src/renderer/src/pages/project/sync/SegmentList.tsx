@@ -1,12 +1,13 @@
 import { useEffect, useRef } from 'react'
+import { segmentVerseKey } from '@shared/dua'
 import { t } from '@shared/i18n'
 import { needsReview, segmentLabel } from '@shared/segments'
 import type { Segment, Verse } from '@shared/types'
-import { verseKey } from '@shared/video'
 import { Icon } from '../../../components/ui'
 import { formatMs } from '../../../lib/format'
 
 export function ConfidenceBadge({ seg }: { seg: Segment }) {
+  if (seg.source === 'opendua') return <span className="qr-badge qr-badge--plain">OpenDua</span>
   if (seg.confidence == null) return <span className="qr-badge qr-badge--plain">{t('Manual')}</span>
   const pct = Math.round(seg.confidence * 100)
   return <span className={`qr-badge ${needsReview(seg) ? 'qr-badge--warning' : 'qr-badge--success'}`}>{pct}%</span>
@@ -36,7 +37,7 @@ export function SegmentList({
     <div className="seg-list" ref={ref} role="list" aria-label={t('Daftar segmen')}>
       {segments.map((s) => {
         const review = needsReview(s)
-        const label = segmentLabel(s, verses[verseKey(s.surah, s.ayah)]?.words.length)
+        const label = segmentLabel(s, verses[segmentVerseKey(s)]?.words.length)
         return (
           <div role="listitem" key={s.id}>
             <button

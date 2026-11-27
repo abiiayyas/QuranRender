@@ -11,7 +11,10 @@ export const shared: Dict = {
   'Segmen {code}: rentang kata {from}–{to} tidak sah. Mohon perbaiki rentang katanya.': 'Segment {code}: the word range {from}–{to} is not valid. Fix the word range.',
   'Segmen {code} belum memiliki terjemahan utama. Silakan lengkapi di langkah Teks.': 'Segment {code} has no primary translation yet. Add it in the Text step.',
   'Terjemahan segmen {code} masih ditandai perlu ditinjau.': 'The translation of segment {code} is still marked as needing review.',
-  'Segmen {code} hanya memuat sebagian ayat, tetapi terjemahannya masih untuk ayat utuh. Silakan potong terjemahannya di langkah Teks.': 'Segment {code} holds only part of the verse, but its translation is still for the whole verse. Trim the translation in the Text step.',
+  'Segmen {code} hanya memuat sebagian ayat, tetapi terjemahannya masih untuk ayat utuh. Silakan potong terjemahannya di langkah Teks.':
+    'Segment {code} holds only part of the verse, but its translation is still for the whole verse. Trim the translation in the Text step.',
+  'Segmen {code} hanya memuat sebagian teks, tetapi terjemahannya masih utuh. Silakan potong terjemahannya di langkah Teks.':
+    'Segment {code} holds only part of the text, but its translation is still whole. Trim the translation in the Text step.',
   'Jumlah kata ayat {surah}:{ayah} tidak sesuai peta kata ({found}, seharusnya {expected}).': 'The word count of verse {surah}:{ayah} does not match the word map ({found}, expected {expected}).',
   'Peta kata ayat {surah}:{ayah} tidak konsisten.': 'The word map of verse {surah}:{ayah} is inconsistent.',
   'Waktu ayat dari penyedia tidak lengkap untuk rentang ini.': 'The provider’s verse timings are incomplete for this range.',
@@ -24,5 +27,11 @@ export const shared: Dict = {
   'Nama qari': 'Reciter name',
   'Kemajuan': 'Progress',
   'Gelombang suara': 'Sound wave',
-  'Gambar': 'Image'
+  'Gambar': 'Image',
+  'Doa {what} oleh {reciter}.': 'Dua {what} by {reciter}.',
+  'Doa {what}.': 'Dua {what}.',
+  'Teks Arab ditampilkan apa adanya, lengkap dengan terjemahan.': 'Arabic text is shown verbatim with its translation.',
+  'Sumber audio & teks: {credit}.': 'Audio & text source: {credit}.',
+  '#Doa': '#Dua',
+  '#Dzikir': '#Dhikr'
 }

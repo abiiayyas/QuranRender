@@ -28,7 +28,7 @@ const api = {
       }
     }
   },
-  on: { job: listen(EVENTS.job), project: listen(EVENTS.project), asset: listen(EVENTS.asset) }
+  on: { job: listen(EVENTS.job), project: listen(EVENTS.project), asset: listen(EVENTS.asset), update: listen(EVENTS.update) }
 } as StudioApi
 
 contextBridge.exposeInMainWorld('api', api)

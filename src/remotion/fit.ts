@@ -11,6 +11,7 @@ export const ARABIC_MIN_SCALE = 0.5
 export const TRANSLATION_MIN_SCALE = 0.7
 
 export function arabicFamily(project: VideoProps['project'], seg: Segment, page: number | undefined): string {
+  if (seg.kind === 'dua') return FAMILY.amiri
   if (seg.kind === 'istiadzah') return project.script === 'uthmani' ? FAMILY.uthmani : FAMILY.lpmq
   if (project.script === 'qpc') return page ? qpcFamily(page) : FAMILY.lpmq
   return project.script === 'uthmani' ? FAMILY.uthmani : FAMILY.lpmq
@@ -50,8 +51,8 @@ export function computeSegmentFit(p: Pick<VideoProps, 'project' | 'verses' | 'su
   const boxPad = unit * 0.045
   const maxW = style.maxWidth * width - (boxed ? boxPad * 2 : 0)
 
-  // Room between the surah name and the reciter pill, minus the box padding.
-  const regionTop = height * safe.top + (style.showSurahName && surah ? unit * 0.055 * 1.5 + unit * 0.03 : 0)
+  // Room between the surah/dua title and the reciter pill, minus the box padding.
+  const regionTop = height * safe.top + (style.showSurahName && (surah || project.dua) ? unit * 0.055 * 1.5 + unit * 0.03 : 0)
   const regionBottom = height * (1 - safe.bottom) - (style.showReciter && project.reciter.trim() ? unit * 0.06 + unit * 0.03 : 0)
   const maxH = regionBottom - regionTop - (boxed || banded ? boxPad * 2 : 0)
 

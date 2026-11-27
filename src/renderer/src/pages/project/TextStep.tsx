@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { OPENDUA_EDITION, duaTexts, duaVerses, segmentVerseKey } from '@shared/dua'
 import { t } from '@shared/i18n'
 import { segmentArabic } from '@shared/subtitles'
 import { isPartial } from '@shared/translation'
@@ -39,21 +40,22 @@ export function TextStep({ onNext }: { onNext: () => void }) {
   const fit = useFitReport(project)
 
   const segments = useMemo(() => [...project.segments].sort((a, b) => a.startMs - b.startMs), [project.segments])
+  const isDua = !!project.dua
   const primary = project.editions[0] ?? null
   const hasBasmalah = segments.some((s) => s.kind === 'basmalah')
-  const ayahVerses = useVerses(segments, 'kemenag')
+  const ayahVerses = useVerses(isDua ? NONE : segments, 'kemenag')
   const basmalahVerse = useVerses(hasBasmalah ? BASMALAH_VERSE : NONE, 'kemenag')
-  const verses = useMemo(() => ({ ...basmalahVerse, ...ayahVerses }), [ayahVerses, basmalahVerse])
+  const verses = useMemo(() => ({ ...basmalahVerse, ...ayahVerses, ...duaVerses(project.dua) }), [ayahVerses, basmalahVerse, project.dua])
   const source = project.sourceAssetId ? assets[project.sourceAssetId] : undefined
   const audio = useAudio(source?.url ?? null)
 
   useEffect(() => {
-    if (useEditions.getState().list === null) void useEditions.getState().load()
-  }, [])
+    if (!isDua && useEditions.getState().list === null) void useEditions.getState().load()
+  }, [isDua])
 
   const installed = useMemo(
-    () => project.editions.filter((id) => catalog?.some((e) => e.id === id && e.installed)),
-    [project.editions, catalog]
+    () => project.editions.filter((id) => (isDua && id === OPENDUA_EDITION) || catalog?.some((e) => e.id === id && e.installed)),
+    [project.editions, catalog, isDua]
   )
 
   const fill = useCallback(async (editionIds: string[], announce: boolean) => {
@@ -80,6 +82,10 @@ export function TextStep({ onNext }: { onNext: () => void }) {
   const spanKey = JSON.stringify(spansOf(segments))
   useEffect(() => {
     let live = true
+    if (isDua) {
+      setWhole(duaTexts(project.dua))
+      return
+    }
     if (primary && installed.includes(primary))
       void editionTexts(primary, JSON.parse(spanKey) as AyahSpan[]).then(
         (t) => live && setWhole(t),
@@ -89,9 +95,9 @@ export function TextStep({ onNext }: { onNext: () => void }) {
     return () => {
       live = false
     }
-  }, [primary, installed, spanKey])
+  }, [isDua, project.dua, primary, installed, spanKey])
 
-  const counts = (seg: Segment): number => verses[`${seg.surah}:${seg.ayah}`]?.words.length ?? 0
+  const counts = (seg: Segment): number => verses[segmentVerseKey(seg)]?.words.length ?? 0
   const partialCount = segments.filter((s) => isPartial(s, counts(s))).length
   const reviewCount = segments.filter((s) => needsReview(s, primary)).length
   const shown = onlyReview ? segments.filter((s) => needsReview(s, primary)) : segments
@@ -143,7 +149,7 @@ export function TextStep({ onNext }: { onNext: () => void }) {
       setSplitting(true)
       try {
         const ed = p.editions[0]
-        const texts = ed ? await editionTexts(ed, spansOf(p.segments)).catch(() => ({})) : {}
+        const texts = ed === OPENDUA_EDITION && p.dua ? duaTexts(p.dua) : ed ? await editionTexts(ed, spansOf(p.segments)).catch(() => ({})) : {}
         const { segments: next, cuts, trimNeeded } = await splitLongSegments(p, texts, only)
         if (cuts === 0) {
           toast(
@@ -193,6 +199,11 @@ export function TextStep({ onNext }: { onNext: () => void }) {
   const label = (seg: Segment): string => {
     if (seg.kind === 'basmalah') return 'Basmalah'
     if (seg.kind === 'istiadzah') return t("Isti'adzah")
+    if (seg.kind === 'dua') {
+      const name = project.dua?.title ?? t('Doa')
+      const n = counts(seg)
+      return isPartial(seg, n) ? t('{name} · kata {from}–{to} dari {total}', { name, from: seg.wordFrom, to: seg.wordTo, total: n }) : name
+    }
     const name = surahs.find((s) => s.id === seg.surah)?.nameLatin ?? t('Surah {id}', { id: seg.surah })
     const n = counts(seg)
     return isPartial(seg, n)
@@ -307,7 +318,7 @@ export function TextStep({ onNext }: { onNext: () => void }) {
                     label={label(seg)}
                     arabic={segmentArabic(seg, verses)}
                     primary={primary}
-                    whole={partial ? (whole[`${seg.surah}:${seg.ayah}`] ?? null) : null}
+                    whole={partial ? (whole[segmentVerseKey(seg)] ?? null) : null}
                     partial={partial}
                     secondaries={secondaries}
                     playing={playing && time >= seg.startMs && time < seg.endMs}

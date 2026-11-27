@@ -67,5 +67,11 @@ export const settings: Dict = {
   'Donasi via {name}': 'Donate via {name}',
   'Donasi bersifat sukarela dan tidak membuka fitur apa pun. Semua fitur tetap bisa dipakai tanpa donasi.': 'Donations are voluntary and unlock nothing. Every feature stays available without one.',
   'Quran Render {version}. Lisensi MIT.': 'Quran Render {version}. MIT license.',
-  "Teks dan terjemahan Kemenag dari Lajnah Pentashihan Mushaf Al-Qur'an. Uthmani, QPC, dan terjemahan lain dari Quran.com. Ekspor video memakai Remotion (gratis untuk individu dan organisasi sampai 3 karyawan) dan FFmpeg.": 'Kemenag text and translation from the Lajnah Pentashihan Mushaf Al-Qur’an. Uthmani, QPC and other translations from Quran.com. Video export uses Remotion (free for individuals and organizations of up to 3 employees) and FFmpeg.'
+  "Teks dan terjemahan Kemenag dari Lajnah Pentashihan Mushaf Al-Qur'an. Uthmani, QPC, dan terjemahan lain dari Quran.com. Ekspor video memakai Remotion (gratis untuk individu dan organisasi sampai 3 karyawan) dan FFmpeg.": 'Kemenag text and translation from the Lajnah Pentashihan Mushaf Al-Qur’an. Uthmani, QPC and other translations from Quran.com. Video export uses Remotion (free for individuals and organizations of up to 3 employees) and FFmpeg.',
+  'Periksa pembaruan otomatis saat aplikasi dibuka': 'Check for updates automatically on startup',
+  'Memeriksa pembaruan…': 'Checking for updates…',
+  'Periksa pembaruan': 'Check for updates',
+  'Versi sudah paling baru': 'Up to date',
+  'Unduh & pasang v{version}': 'Download & install v{version}',
+  'Mengunduh pembaruan… {pct}%': 'Downloading update… {pct}%'
 }

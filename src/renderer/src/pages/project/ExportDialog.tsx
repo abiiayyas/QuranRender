@@ -8,6 +8,7 @@ import { ErrorAlert, Icon, JobProgress, Segmented, Sheet } from '../../component
 import { computeFitReport } from '../../lib/fit'
 import { errorText, formatDuration } from '../../lib/format'
 import { toast } from '../../store/app'
+import { useJobs } from '../../store/jobs'
 import { useProject } from '../../store/project'
 import { ExportRangeFields, type RangeInput } from './ExportRangeFields'
 
@@ -43,7 +44,8 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
   const [tooLong, setTooLong] = useState<PolicyIssue[]>([])
   const [jobId, setJobId] = useState<string | null>(null)
   const [starting, setStarting] = useState(false)
-  const job = useProject((s) => (jobId ? (s.jobs[jobId] ?? null) : null))
+  const activeJob = useProject((s) => Object.values(s.jobs).find((j) => j.kind === 'export' && (j.status === 'queued' || j.status === 'running')) ?? null)
+  const job = useProject((s) => (jobId ? (s.jobs[jobId] ?? null) : activeJob))
   const ids = { res: useId(), fps: useId(), mode: useId(), after: useId(), folder: useId(), issues: useId() }
   const sourceMs = source?.durationMs ?? 0
   const [rangeInput, setRangeInput] = useState<RangeInput>({ scope: 'all', fromText: '0:00', toText: '' })
@@ -324,6 +326,21 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
         </section>
 
         <JobProgress job={job} label={t('Mengekspor video')} />
+        {running && (
+          <p className="qr-help">
+            {t('Kamu bisa menutup jendela ini; render tetap berjalan di latar belakang dan progresnya tampil di bar atas.')}{' '}
+            <button
+              type="button"
+              className="bp-link"
+              onClick={() => {
+                onClose()
+                useJobs.getState().openQueue()
+              }}
+            >
+              {t('Buka antrean render')}
+            </button>
+          </p>
+        )}
         {done && (
           <div className="qr-alert qr-alert--success" role="status">
             <Icon name="circle-check" />

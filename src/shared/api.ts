@@ -1,12 +1,16 @@
 import type { CliStatus } from './aiTools'
+import type { OpenDuaEntry } from './dua'
 import type { ExportRange } from './exportRange'
 import type { ImageRequest } from './imagegen'
 import type { PlatformId, PublishFacts, PublishKit } from './publish'
 import type { CacheId, StorageProject, StorageUsage } from './storage'
 import type { StockItem, StockPage, StockProvider, StockQuery } from './stock'
+import type { UpdateState } from './updater'
 import type {
   Asset,
+  BatchExportResult,
   Edition,
+  ExportJobItem,
   ExportOptions,
   Job,
   AiReady,
@@ -48,6 +52,10 @@ export interface StudioApi {
     reciters(provider: Reciter['provider']): Promise<Reciter[]>
     /** Download a reciter's recitation of the project's surah + ayah range. Timed providers also fill `segments`. */
     download(projectId: string, reciterId: string): Promise<Job>
+    /** Cached OpenDua entries that have recitation audio. */
+    duas(): Promise<OpenDuaEntry[]>
+    /** Download an OpenDua entry's audio and initialize the project's dua metadata and segments. */
+    downloadDua(projectId: string, entryId: string): Promise<Job>
     youtube(projectId: string, url: string): Promise<Job>
     /** Cut the source to [inMs, outMs] into a new asset and make it the source; segments shift with it. */
     trim(projectId: string, inMs: number, outMs: number): Promise<Job>
@@ -77,6 +85,8 @@ export interface StudioApi {
     /** Problems that block an export; with `range`, only those of the segments inside it. */
     check(projectId: string, range?: ExportRange | null): Promise<PolicyIssue[]>
     start(options: ExportOptions): Promise<Job>
+    /** Queues one export job per ready project sequentially; invalid projects are returned in `skipped`. */
+    batchStart(projectIds: string[], options: Omit<ExportOptions, 'projectId' | 'range'>): Promise<BatchExportResult>
     /** Pieces an interrupted chunked render of the same project and settings left on disk (null when none or when this export would not be chunked). */
     partial(options: ExportOptions): Promise<{ done: number; total: number } | null>
     defaultFolder(): Promise<string>
@@ -108,7 +118,14 @@ export interface StudioApi {
     generateImage(projectId: string, request: ImageRequest): Promise<Job>
   }
   jobs: {
+    list(): Promise<ExportJobItem[]>
     cancel(id: string): Promise<void>
+  }
+  updater: {
+    state(): Promise<UpdateState>
+    check(): Promise<UpdateState>
+    download(): Promise<UpdateState>
+    open(): Promise<void>
   }
   storage: {
     /** Sizes of what can be cleared, plus the projects and export folders for information. */
@@ -145,25 +162,27 @@ export interface StudioApi {
     job(cb: (job: Job) => void): () => void
     project(cb: (e: ProjectPatchEvent) => void): () => void
     asset(cb: (asset: Asset) => void): () => void
+    update(cb: (state: UpdateState) => void): () => void
   }
 }
 
-export const EVENTS = { job: 'event:job', project: 'event:project', asset: 'event:asset' } as const
+export const EVENTS = { job: 'event:job', project: 'event:project', asset: 'event:asset', update: 'event:update' } as const
 
 type Group = Exclude<keyof StudioApi, 'files' | 'on'>
 /** Invoke channels, in the order preload exposes them. Adding a method: add it to StudioApi, here, and a handler in main. */
 export const CHANNELS: { [G in Group]: (keyof StudioApi[G])[] } = {
   projects: ['list', 'create', 'get', 'save', 'remove', 'duplicate'],
   quran: ['surahs', 'verses'],
-  sources: ['importFile', 'reciters', 'download', 'youtube', 'trim', 'waveform', 'spectrum', 'ambientOffset', 'importMedia'],
+  sources: ['importFile', 'reciters', 'download', 'duas', 'downloadDua', 'youtube', 'trim', 'waveform', 'spectrum', 'ambientOffset', 'importMedia'],
   sync: ['align'],
   text: ['editions', 'install', 'remove', 'verses', 'aiTrim'],
-  exporter: ['check', 'start', 'partial', 'defaultFolder', 'pickFolder', 'reveal'],
+  exporter: ['check', 'start', 'batchStart', 'partial', 'defaultFolder', 'pickFolder', 'reveal'],
   settings: ['get', 'set', 'aiReady', 'aiKey', 'setAiKey', 'clearAiKey', 'testAi', 'cliStatus'],
   stock: ['keys', 'setKey', 'clearKey', 'search', 'download'],
   ai: ['generateImage'],
   publish: ['facts', 'frame', 'thumbnail', 'generate', 'saveText'],
-  jobs: ['cancel'],
+  jobs: ['list', 'cancel'],
+  updater: ['state', 'check', 'download', 'open'],
   storage: ['usage', 'clear', 'assets', 'deleteAssets'],
   app: ['openExternal', 'copyText', 'version']
 }

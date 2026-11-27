@@ -1,3 +1,4 @@
+import { OPENDUA_EDITION, duaTexts, duaVerses, segmentVerseKey } from '@shared/dua'
 import { t } from '@shared/i18n'
 import { segmentArabic } from '@shared/subtitles'
 import { acceptFragment, editionLanguage, isPartial } from '@shared/translation'
@@ -13,7 +14,7 @@ const BATCH = 8
 // Every CLI call starts an agent runtime (tens of seconds before the model even answers), so it takes bigger batches.
 const CLI_BATCH = 20
 
-const SYSTEM_PROMPT = `You align Quran translations to partial recitation segments. Each item gives the Arabic words of ONE segment of an ayah, the full Arabic ayah, and the full translation of that ayah. For every item, return the part of its translation that corresponds to the segment's Arabic words. Copy wording verbatim from the given translation (keep its language, spelling and punctuation); do not paraphrase, add commentary, or translate yourself. Prefer cutting at natural phrase boundaries. Never return an empty fragment. Reply with ONLY a JSON object {"fragments": [{"id": "<item id>", "fragment": "..."}]} that covers every item.`
+const SYSTEM_PROMPT = `You align Quran or supplication (dua) translations to partial recitation segments. Each item gives the Arabic words of ONE segment, the full Arabic text, and the full translation of that item. For every item, return the part of its translation that corresponds to the segment's Arabic words. Copy wording verbatim from the given translation (keep its language, spelling and punctuation); do not paraphrase, add commentary, or translate yourself. Prefer cutting at natural phrase boundaries. Never return an empty fragment. Reply with ONLY a JSON object {"fragments": [{"id": "<item id>", "fragment": "..."}]} that covers every item.`
 
 interface Item {
   seg: Segment
@@ -52,17 +53,20 @@ async function versesFor(segments: Segment[]): Promise<Record<string, Verse>> {
 export function startAiTrim(projectId: string, editionId: string, segmentIds?: string[]): Job {
   return startJob(projectId, 'aitrim', 'net', async (ctx) => {
     const project = getProject(projectId)
-    const ayahs = project.segments.filter((s) => s.kind === 'ayah' && (!segmentIds || segmentIds.includes(s.id)))
-    const verses = await versesFor(ayahs)
-    const texts: Record<string, string> = {}
-    for (const s of new Set(ayahs.map((a) => a.surah))) {
-      const list = ayahs.filter((a) => a.surah === s).map((a) => a.ayah)
-      Object.assign(texts, editionVerses(editionId, s, Math.min(...list), Math.max(...list)))
+    const ayahs = project.segments.filter((s) => (s.kind === 'ayah' || s.kind === 'dua') && (!segmentIds || segmentIds.includes(s.id)))
+    const quranSegs = ayahs.filter((s) => s.kind === 'ayah')
+    const verses = { ...(await versesFor(quranSegs)), ...duaVerses(project.dua) }
+    const texts: Record<string, string> = duaTexts(project.dua)
+    if (editionId !== OPENDUA_EDITION) {
+      for (const s of new Set(quranSegs.map((a) => a.surah))) {
+        const list = quranSegs.filter((a) => a.surah === s).map((a) => a.ayah)
+        Object.assign(texts, editionVerses(editionId, s, Math.min(...list), Math.max(...list)))
+      }
     }
 
     const items: Item[] = []
     for (const seg of ayahs) {
-      const key = `${seg.surah}:${seg.ayah}`
+      const key = segmentVerseKey(seg)
       const verse = verses[key]
       const full = texts[key]
       if (!verse || !full || !isPartial(seg, verse.words.length)) continue
@@ -99,7 +103,7 @@ export function startAiTrim(projectId: string, editionId: string, segmentIds?: s
           translation_language: language,
           items: batch.map((it, j) => ({
             id: String(j + 1),
-            verse: `${it.seg.surah}:${it.seg.ayah}`,
+            verse: it.seg.kind === 'dua' ? (project.dua?.title ?? 'Dua') : `${it.seg.surah}:${it.seg.ayah}`,
             segment_words: `${it.seg.wordFrom}-${it.seg.wordTo} of ${it.count}`,
             segment_arabic: it.arabicPart,
             full_ayah_arabic: it.arabicFull,

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, Fragment } from 'react'
+import { duaVerses } from '@shared/dua'
 import { t } from '@shared/i18n'
-import { manualSegment, MIN_SEGMENT_MS, needsReview, segmentAt, segmentLabel, segmentWordTexts, setEdge, sortSegments, wordAt, type Edge } from '@shared/segments'
+import { manualSegment, MIN_SEGMENT_MS, needsReview, newSegmentId, segmentAt, segmentLabel, segmentWordTexts, setEdge, sortSegments, wordAt, type Edge } from '@shared/segments'
 import type { Asset, Project, Segment } from '@shared/types'
 import { verseKey } from '@shared/video'
 import { Icon, isModalOpen, isTypingTarget } from '../../components/ui'
@@ -44,10 +45,11 @@ function SyncWorkspace({ project, asset, onNext }: { project: Project; asset: As
   // QPC words are glyph codes that need per-page fonts; Uthmani has the same canonical words and plain Unicode.
   const script = project.script === 'qpc' ? 'uthmani' : project.script
   const wanted = useMemo<Pick<Segment, 'kind' | 'surah' | 'ayah'>[]>(
-    () => (list.some((s) => s.kind === 'basmalah') ? [...list, { kind: 'ayah', surah: 1, ayah: 1 }] : list),
-    [list]
+    () => (project.dua ? [] : list.some((s) => s.kind === 'basmalah') ? [...list, { kind: 'ayah', surah: 1, ayah: 1 }] : list),
+    [list, project.dua]
   )
-  const verses = useVerses(wanted, script, { surah: project.surah, from: project.ayahFrom, to: project.ayahTo })
+  const quranVerses = useVerses(wanted, script, project.dua ? undefined : { surah: project.surah, from: project.ayahFrom, to: project.ayahTo })
+  const verses = useMemo(() => ({ ...quranVerses, ...duaVerses(project.dua) }), [quranVerses, project.dua])
   const surahs = useSurahs()
   const audio = useAudio(asset.url)
   const durationMs = asset.durationMs ?? audio.durationMs
@@ -115,6 +117,38 @@ function SyncWorkspace({ project, asset, onNext }: { project: Project; asset: As
       toast('info', t('Ruang kosong di posisi pemutar terlalu sempit untuk segmen baru.'))
       return
     }
+    if (project.dua) {
+      const prevDua = [...list].reverse().find((s) => s.kind === 'dua' && s.endMs <= at)
+      const items = project.dua.items
+      const prevItem = prevDua ? items.find((x) => x.id === prevDua.duaId) : undefined
+      let item = items[0]
+      let wordFrom = 1
+      if (prevDua && prevItem && prevDua.wordTo < prevItem.words.length) {
+        item = prevItem
+        wordFrom = prevDua.wordTo + 1
+      } else if (prevDua) {
+        const idx = items.findIndex((x) => x.id === prevDua.duaId)
+        item = items[Math.min(items.length - 1, Math.max(0, idx + 1))] ?? items[0]
+      }
+      if (!item) return
+      const seg: Segment = {
+        id: newSegmentId(),
+        kind: 'dua',
+        duaId: item.id,
+        surah: 0,
+        ayah: 0,
+        wordFrom: Math.min(wordFrom, item.words.length),
+        wordTo: item.words.length,
+        startMs: at,
+        endMs: end,
+        confidence: null,
+        source: 'manual',
+        words: [],
+        translations: []
+      }
+      commit([...list, seg], undefined, seg.id)
+      return
+    }
     // Continue after the last ayah heard before this point: the rest of a partial ayah, else the next ayah.
     const prev = [...list].reverse().find((s) => s.kind === 'ayah' && s.endMs <= at)
     let surah = project.surah ?? 1
@@ -167,8 +201,13 @@ function SyncWorkspace({ project, asset, onNext }: { project: Project; asset: As
 
   const arFont = useArabicFont(script, Object.keys(verses).length > 0)
   const stageWords = selected ? segmentWordTexts(selected, verseOf(selected, verses)) : []
-  const current = selected && now >= selected.startMs && now < selected.endMs ? wordAt(selected, now) : null
-  const surahName = selected?.kind === 'ayah' ? surahs.find((s) => s.id === selected.surah)?.nameLatin : undefined
+  const current = selected && selected.kind !== 'dua' && now >= selected.startMs && now < selected.endMs ? wordAt(selected, now) : null
+  const surahName =
+    selected?.kind === 'dua'
+      ? project.dua?.title
+      : selected?.kind === 'ayah'
+        ? surahs.find((s) => s.id === selected.surah)?.nameLatin
+        : undefined
 
   return (
     <div className="st-body sync-body">
